@@ -49,7 +49,8 @@ export class AudioEngine {
   private dry!: GainNode;
   private wet!: GainNode;
   private reverb!: ConvolverNode;
-  private layers!: Record<'roomTone' | 'hvac' | 'hum' | 'rain' | 'wind' | 'water', GainNode>;
+  private layers!: Record<'roomTone' | 'hvac' | 'hum' | 'rain' | 'wind' | 'water' | 'crackle', GainNode>;
+  private nextBleep = 2;
   private nextCricket = 1;
   private humBuzz!: GainNode;
   private noise!: { white: AudioBuffer; pink: AudioBuffer; brown: AudioBuffer };
@@ -127,6 +128,7 @@ export class AudioEngine {
     const windGust = 0.55 + 0.45 * Math.sin(this.rainDrift * 1.7 + 2) * Math.sin(this.rainDrift * 0.6);
     this.layers.wind.gain.setTargetAtTime(profile.wind * v.wind * windGust, t, fade);
     this.layers.water.gain.setTargetAtTime(profile.water * v.water * (0.8 + 0.2 * Math.sin(this.rainDrift * 5)), t, fade);
+    this.layers.crackle.gain.setTargetAtTime(profile.crackle * v.crackle, t, fade);
     // Néons : bourdonnement constant, grésillement qui suit le vacillement.
     let hum = profile.hum * v.hum;
     this.flickerTimer -= dt;
@@ -143,6 +145,11 @@ export class AudioEngine {
     if (this.nextDistantSteps <= 0) {
       this.nextDistantSteps = 10 + Math.random() * 25;
       if (Math.random() < profile.distantSteps) this.distantWalker(listener);
+    }
+    this.nextBleep -= dt;
+    if (this.nextBleep <= 0) {
+      this.nextBleep = 0.8 + Math.random() * 3;
+      if (Math.random() < profile.bleeps) this.bleep(listener);
     }
     this.nextCricket -= dt;
     if (this.nextCricket <= 0) {
@@ -251,7 +258,9 @@ export class AudioEngine {
     // Clapotis : bruit rose grave et doux.
     const water = loop(this.noise.pink, filter('lowpass', 650), filter('highpass', 120));
     water.connect(this.reverb);
-    this.layers = { roomTone, hvac, hum, rain, wind, water };
+    // Vinyle : souffle léger et craquements, en boucle.
+    const crackle = loop(this.crackleBuffer(ctx), filter('highpass', 900));
+    this.layers = { roomTone, hvac, hum, rain, wind, water, crackle };
   }
 
   /** Réponse impulsionnelle synthétique : bruit à décroissance exponentielle (stéréo). */
@@ -366,6 +375,43 @@ export class AudioEngine {
     const pace = 0.5 + Math.random() * 0.15;
     const floor = (['parquet', 'beton', 'carrelage'] as const)[Math.floor(Math.random() * 3)]!;
     for (let i = 0; i < steps; i++) this.step(ctx.currentTime + 0.1 + i * pace, floor, 0.5 * (1 - (i / steps) * 0.5), g);
+  }
+
+  /** Boucle de crépitement de vinyle : un souffle, des craquements épars. */
+  private crackleBuffer(ctx: AudioContext): AudioBuffer {
+    const len = ctx.sampleRate * 4;
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * 0.04;
+    const pops = 90;
+    for (let k = 0; k < pops; k++) {
+      const at = Math.floor(Math.random() * (len - 200));
+      const amp = 0.3 + Math.random() * 0.7;
+      for (let j = 0; j < 40; j++) d[at + j]! += (Math.random() * 2 - 1) * amp * Math.exp(-j / 6);
+    }
+    return buf;
+  }
+
+  /** Une borne d'arcade quelque part : un petit arpège en signaux carrés. */
+  private bleep(at: { x: number; y: number; z: number }): void {
+    const ctx = this.ctx!;
+    const a = Math.random() * Math.PI * 2;
+    const p = this.panner(at.x + Math.cos(a) * 7, at.y, at.z + Math.sin(a) * 7, 2);
+    const base = [262, 330, 392, 523, 659][Math.floor(Math.random() * 5)]!;
+    const notes = 3 + Math.floor(Math.random() * 4);
+    let t = ctx.currentTime + 0.02;
+    for (let i = 0; i < notes; i++) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'square';
+      o.frequency.value = base * [1, 1.25, 1.5, 2, 1.5][i % 5]!;
+      g.gain.setValueAtTime(CONFIG.audio.bleeps, t);
+      g.gain.setValueAtTime(0, t + 0.07);
+      o.connect(g).connect(p);
+      o.start(t);
+      o.stop(t + 0.08);
+      t += 0.08;
+    }
   }
 
   /** Stridulation d'un grillon : trois impulsions aiguës. */

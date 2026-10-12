@@ -467,6 +467,118 @@ function boiserie(rng: Rng): HTMLCanvasElement {
   return c;
 }
 
+/** Pierre de taille usée : assises irrégulières. Motif de 2 m. */
+function pierre(rng: Rng): HTMLCanvasElement {
+  const size = 256;
+  const [c, ctx] = canvas(size);
+  ctx.fillStyle = '#9a9a9a';
+  ctx.fillRect(0, 0, size, size);
+  let y = 0;
+  while (y < size) {
+    const h = rng.range(24, 40);
+    let x = -rng.range(0, 40);
+    while (x < size) {
+      const w = rng.range(40, 90);
+      const l = Math.round(rng.range(200, 240));
+      ctx.fillStyle = `rgb(${l},${l - 6},${l - 16})`;
+      ctx.fillRect(x + 2, y + 2, w - 3, Math.min(h, size - y) - 3);
+      x += w;
+    }
+    y += h;
+  }
+  noise(ctx, rng, size, 3000, 0.08);
+  // Éclats et fissures.
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath();
+    let px = rng.range(0, size), py = rng.range(0, size);
+    ctx.moveTo(px, py);
+    for (let k = 0; k < 5; k++) ctx.lineTo((px += rng.range(-14, 14)), (py += rng.range(4, 16)));
+    ctx.stroke();
+  }
+  return c;
+}
+
+/** Miroir : panneaux argentés, reflets obliques, joints. Panneau de 1 m. */
+function miroir(rng: Rng): HTMLCanvasElement {
+  const size = 128;
+  const [c, ctx] = canvas(size);
+  const g = ctx.createLinearGradient(0, 0, size, size);
+  g.addColorStop(0, '#d9dde2');
+  g.addColorStop(0.45, '#f7f9fb');
+  g.addColorStop(0.55, '#c9ced5');
+  g.addColorStop(1, '#eef1f4');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  for (let i = 0; i < 3; i++) {
+    const x = rng.range(0, size);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + 18, 0);
+    ctx.lineTo(x - 30, size);
+    ctx.lineTo(x - 48, size);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#7a8088';
+  ctx.fillRect(0, 0, 2, size);
+  return c;
+}
+
+/** Hublots sur l'espace : panneaux métalliques percés d'un hublot étoilé. Panneau de 2 m. */
+function hublots(rng: Rng): HTMLCanvasElement {
+  const size = 256;
+  const [c, ctx] = canvas(size);
+  ctx.fillStyle = '#e4e6ea';
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(0, 0, size, 2);
+  ctx.fillRect(0, 0, 2, size);
+  const cx = size / 2, cy = size * 0.42, r = size * 0.22;
+  ctx.fillStyle = '#9aa0a8';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#05060c';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 70; i++) {
+    const a = rng.range(0, Math.PI * 2), d = Math.sqrt(rng.next()) * (r - 3);
+    ctx.fillStyle = `rgba(255,255,255,${rng.range(0.4, 1)})`;
+    ctx.fillRect(cx + Math.cos(a) * d, cy + Math.sin(a) * d, rng.range(1, 2.2), rng.range(1, 2.2));
+  }
+  // Rivets.
+  ctx.fillStyle = '#8a9098';
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * (r + 5), cy + Math.sin(a) * (r + 5), 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return c;
+}
+
+/** Panneaux métalliques rivetés. Panneau de 1 m. */
+function panneaux(rng: Rng): HTMLCanvasElement {
+  const size = 128;
+  const [c, ctx] = canvas(size);
+  ctx.fillStyle = '#e8eaee';
+  ctx.fillRect(0, 0, size, size);
+  noise(ctx, rng, size, 500, 0.04);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(0, 0, size, 2);
+  ctx.fillRect(0, 0, 2, size);
+  ctx.fillRect(0, size / 2, size, 1);
+  ctx.fillStyle = '#9aa0a8';
+  for (const [x, y] of [[8, 8], [size - 8, 8], [8, size - 8], [size - 8, size - 8]] as const) {
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return c;
+}
+
 export function makeWallTexture(preset: AmbiancePreset): THREE.CanvasTexture | null {
   const rng = new Rng('mur', preset.id);
   switch (preset.surfaces.wall) {
@@ -482,6 +594,14 @@ export function makeWallTexture(preset: AmbiancePreset): THREE.CanvasTexture | n
       return finish(rayonnages(rng), 1);
     case 'boiserie':
       return finish(boiserie(rng), 1.25);
+    case 'pierre':
+      return finish(pierre(rng), 0.5);
+    case 'miroir':
+      return finish(miroir(rng), 1);
+    case 'hublots':
+      return finish(hublots(rng), 0.5);
+    case 'panneaux':
+      return finish(panneaux(rng), 1);
     default:
       return null;
   }

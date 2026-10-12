@@ -57,6 +57,9 @@ while (Date.now() < end) {
     textures: s.textures,
     heapMB: s.heapMB === null ? null : Number(s.heapMB.toFixed(2)),
     artTextures: s.art?.liveTextures ?? 0,
+    // Textures hors œuvres (surfaces, cartels…) : leur nombre ne dépend pas des ambiances traversées.
+    // Reste = textures hors œuvres, cartels et surfaces des ambiances chargées (≤ 5 chacune) : doit rester borné.
+    envTextures: s.textures - (s.art?.liveTextures ?? 0) - s.world.cartels - s.world.presets * 5,
     // Textures d'œuvres qui ne sont ni accrochées, ni en réserve, ni en HD : doit rester proche de 0.
     artOrphans: s.art ? s.art.liveTextures - s.world.artTextures - s.art.ready - (s.art.themeReady ?? 0) : 0,
     artMB: s.art ? Number(s.art.gpuMB.toFixed(1)) : 0,
@@ -81,10 +84,12 @@ const failures = [];
 
 // Le monde chargé varie beaucoup (salles, embranchements) : on compare des moyennes.
 // Le nombre de textures d'œuvres dépend des ambiances traversées (accrochage serré…) : ce sont les orphelines qui comptent.
-for (const k of ['geometries', 'textures', 'modules']) {
+for (const k of ['geometries', 'modules']) {
   const a = avg(first, k), b = avg(second, k);
-  if (b > a * 1.35 + 4) failures.push(`${k} augmente : moyenne ${a.toFixed(1)} puis ${b.toFixed(1)}`);
+  if (b > a + Math.abs(a) * 0.35 + 4) failures.push(`${k} augmente : moyenne ${a.toFixed(1)} puis ${b.toFixed(1)}`);
 }
+const env = max(samples, 'envTextures');
+if (env > 12) failures.push(`textures hors œuvres en trop : jusqu'à ${env}`);
 // Fuite de textures d'œuvres : des textures vivantes qui n'appartiennent plus à rien.
 const orphans = max(samples, 'artOrphans');
 if (orphans > 12) failures.push(`textures d'œuvres orphelines : jusqu'à ${orphans}`);

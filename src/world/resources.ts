@@ -73,6 +73,25 @@ function frameMaterials(tint?: string): Record<FrameMaterialKey, THREE.MeshLambe
   ) as Record<FrameMaterialKey, THREE.MeshLambertMaterial>;
 }
 
+/** Horloge partagée des murs qui respirent. */
+const breathTime = { value: 0 };
+
+/** Le musée qui respire : les murs ondulent doucement (déplacement le long de la normale). */
+function breathing(mat: THREE.MeshLambertMaterial, amount: number): THREE.MeshLambertMaterial {
+  if (amount <= 0) return mat;
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uBreathTime = breathTime;
+    shader.uniforms.uBreathAmp = { value: amount * 0.25 };
+    shader.vertexShader = `uniform float uBreathTime;\nuniform float uBreathAmp;\n${shader.vertexShader}`.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\ntransformed += normal * uBreathAmp * sin(uBreathTime * 0.9 + position.y * 0.9 + position.x * 0.6 + position.z * 0.4);',
+    );
+  };
+  // Une clé de programme propre à ce réglage (sinon Three.js réutiliserait celui d'un mur normal).
+  mat.customProgramCacheKey = () => `souffle-${amount}`;
+  return mat;
+}
+
 /** Lieu sans murs (désert, néant, rêve…) : sol continu et ciel. */
 export function isOpenAir(preset: AmbiancePreset): boolean {
   return preset.surfaces.wall === 'brume';
@@ -184,7 +203,7 @@ export class ResourceCache {
           walls:
             preset.surfaces.wall === 'brume'
               ? new THREE.MeshBasicMaterial({ colorWrite: false })
-              : new THREE.MeshLambertMaterial({ vertexColors: true, map: makeWallTexture(preset) }),
+              : breathing(new THREE.MeshLambertMaterial({ vertexColors: true, map: makeWallTexture(preset) }), preset.lighting.breath ?? 0),
           trims: new THREE.MeshLambertMaterial({ vertexColors: true }),
           // La verrière laisse passer le jour : elle n'est pas éclairée, elle éclaire.
           ceiling:
@@ -285,6 +304,7 @@ export class ResourceCache {
    */
   animate(dt: number): void {
     this.time += dt;
+    breathTime.value = this.time;
     for (const e of this.presets.values()) {
       // Eau au sol : les reflets dérivent.
       if (e.preset.surfaces.floor === 'eau' && e.value.floor.map) e.value.floor.map.offset.set(Math.sin(this.time * 0.13) * 0.05, this.time * 0.012);

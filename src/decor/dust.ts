@@ -21,6 +21,7 @@ const STYLES: Record<Particles, ParticleStyle> = {
   neige: { color: '#ffffff', size: 2.6, fall: 0.55, sway: 0.5, blink: false, additive: false },
   lucioles: { color: '#d8ff6a', size: 2.8, fall: 0, sway: 1.2, blink: true, additive: true },
   paillettes: { color: '#ffd6f2', size: 1.8, fall: -0.04, sway: 0.6, blink: true, additive: true },
+  bulles: { color: '#d8f4ff', size: 1.6, fall: -0.35, sway: 0.15, blink: false, additive: true },
 };
 
 /**

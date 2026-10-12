@@ -107,6 +107,7 @@ export class Engine {
   /** Module précédent (pour savoir par où le visiteur est entré). */
   private previousModule: WorldModule | null = null;
   private readonly portalPoint = new THREE.Vector3();
+  private eyeScale = 1;
   /** Dernier pas sonorisé (demi-foulées parcourues). */
   private lastStep = 0;
   private readonly forward = new THREE.Vector3();
@@ -271,6 +272,8 @@ export class Engine {
     this.hemi.color.lerp(this.tmpColor.set(p.lighting.hemiSky), k);
     this.hemi.groundColor.lerp(this.tmpColor.set(p.lighting.hemiGround), k);
     this.hemi.intensity += (p.lighting.hemiIntensity - this.hemi.intensity) * k;
+    // Le musée qui respire : la lumière enfle et retombe, lentement.
+    if (p.lighting.breath) this.hemi.intensity = p.lighting.hemiIntensity * (1 + p.lighting.breath * Math.sin(this.elapsed * 0.9));
     const far = this.fog.far + 5;
     if (Math.abs(this.camera.far - far) > 0.5) {
       this.camera.far = far;
@@ -489,6 +492,7 @@ export class Engine {
       }
     }
 
+    speed *= this.world.currentModule?.preset.visitor?.speed ?? 1;
     this.player.applyLook(dYaw, dPitch);
     const before = { ...this.player.position };
     this.player.update(dt, move, speed, this.world.collisionWalls(this.player.position, this.player.floorY, this.walls));
@@ -506,7 +510,10 @@ export class Engine {
 
     this.updateEnvironment(dt);
     this.world.cache.animate(dt);
-    this.camera.position.set(this.player.position.x, this.player.floorY + this.player.eyeY, this.player.position.z);
+    // Le visiteur grandit ou rapetisse avec l'ambiance (échelle déréglée), en douceur.
+    const v = this.world.currentModule?.preset.visitor;
+    this.eyeScale += ((v?.eyeScale ?? 1) - this.eyeScale) * Math.min(1, dt * 1.2);
+    this.camera.position.set(this.player.position.x, this.player.floorY + this.player.eyeY * this.eyeScale, this.player.position.z);
     this.camera.rotation.set(this.player.pitch, this.player.yaw, 0);
     this.camera.updateMatrixWorld();
     this.projView.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);

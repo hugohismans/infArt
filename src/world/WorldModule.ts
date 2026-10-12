@@ -12,6 +12,16 @@ import type { ResourceCache } from './resources';
 import { buildDecor } from '../decor';
 import type { ArtSlotDef } from './modules/defs';
 
+/** Modèle d'un couloir qui se répète. */
+export interface LoopSource {
+  def: ModuleDef;
+  /** Graine du module d'origine : même tirage d'œuvres et de décor. */
+  seed: string;
+  /** Pièces du module d'origine, dont on recopie les œuvres. */
+  pieces: readonly ArtPiece[];
+  remaining: number;
+}
+
 /** Fuite au plafond : une goutte tombe à intervalles irréguliers (repère du module). */
 interface Drip {
   x: number;
@@ -83,6 +93,11 @@ export class WorldModule {
   private steamTime = 0;
   /** Étrangeté « porte murée » : l'entrée sera murée derrière le visiteur. */
   sealEntrance = false;
+  /**
+   * Étrangeté « couloir qui revient sur lui-même » : ce module se répète à l'identique
+   * (même forme, mêmes œuvres, même décor) dans les `remaining` modules suivants.
+   */
+  loop: LoopSource | null = null;
   /** Ouverture par laquelle le visiteur est entré (pour la murer derrière lui). */
   enteredFrom = -1;
   private seals: THREE.Mesh[] = [];
@@ -135,6 +150,8 @@ export class WorldModule {
     readonly zone: ZoneState,
     readonly seed: string,
     private readonly cache: ResourceCache,
+    /** Couloir répété : le module d'origine dont on reprend les œuvres. */
+    private readonly loopFrom: LoopSource | null = null,
   ) {
     const t = transform;
     this.footprint = def.footprint.map((p) => applyTransform(t, p));
@@ -158,6 +175,12 @@ export class WorldModule {
         neighbor: null,
       };
     });
+  }
+
+  /** Hauteur du repère du module (retourné : son plafond est au niveau du sol). */
+  private get groupY(): number {
+    if (!this.preset.inverted) return this.baseY;
+    return this.baseY + (this.def.ceilingHeight ?? this.preset.geometry.ceilingHeight * this.def.ceilingScale);
   }
 
   /** Potentiellement visible lors de la dernière vérification (mis à jour par World). */
@@ -185,21 +208,31 @@ export class WorldModule {
     const odd = this.zone.oddity;
     // Salle vide : les œuvres sont parties, il reste les clous et les traces des cadres.
     const emptied = odd === 'salle-vide' && this.def.kind === 'room';
-    // La même œuvre, trois fois de suite.
-    const triple = odd === 'triple' && this.def.artSlots.length >= 3 ? artCtx?.library.take(this.preset.art.prefer) ?? null : null;
-    let tripleLeft = triple ? 3 : 0;
+    // La même œuvre, trois fois de suite (ou partout : labyrinthe de miroirs).
+    const mirror = !!this.preset.art.mirror;
+    const triple = (odd === 'triple' && this.def.artSlots.length >= 3) || mirror ? artCtx?.library.take(this.preset.art.prefer) ?? null : null;
+    let tripleLeft = triple ? (mirror ? Infinity : 3) : 0;
+    const tripleTotal = tripleLeft;
     const oddIndex = rng.int(0, Math.max(0, this.def.artSlots.length - 1));
     let index = -1;
-    const hang = (slot: ArtSlotDef, wallHeight: number) => {
+    const hang = (slotIn: ArtSlotDef, wallHeight: number) => {
+      let slot = slotIn;
       index++;
       const opts: ArtOptions = { ...(this.zone.wing ? { themeId: this.zone.wing.theme.id } : {}) };
       if (odd === 'cartel-illisible') opts.scrambled = true;
       if (odd === 'oeuvre-changeante' && index === oddIndex) opts.changeling = true;
       if (odd === 'a-l-envers' && index === oddIndex) opts.upsideDown = true;
+      if (odd === 'oeuvre-plafond' && index === oddIndex && !slot.hangY) {
+        opts.ceiling = true;
+        slot = { ...slot, hangY: 0, maxHeight: Math.min(2.2, this.preset.geometry.corridorWidth - 1) };
+      }
+      // Répétition d'un couloir déjà vu : la même œuvre au même endroit.
+      const copied = this.loopFrom?.pieces[index]?.artwork;
+      if (copied) opts.artwork = copied;
       if (triple && tripleLeft > 0 && !slot.hangY) {
         opts.ready = triple;
-        // La première pièce possède la texture ; les deux autres l'empruntent.
-        if (tripleLeft < 3) opts.borrowed = true;
+        // La première pièce possède la texture ; les autres l'empruntent.
+        if (tripleLeft < tripleTotal) opts.borrowed = true;
         tripleLeft--;
       }
       const art = new ArtPiece(slot, rng, this.preset, mats, wallHeight, artCtx, () => this.visible, opts);
@@ -216,16 +249,17 @@ export class WorldModule {
       const rows = this.preset.art.salon && !slot.wallHeight ? CONFIG.art.salonRows.filter(([y, h]) => y + h / 2 + 0.25 < wallHeight) : [];
       hang(rows.length > 0 ? { ...slot, maxHeight: CONFIG.art.salonRows[0]![0] - CONFIG.art.salonRows[0]![1] / 2 - 0.2 } : slot, wallHeight);
       for (const [y, h] of rows) {
-        const pair = slot.maxWidth > 1.7 && rng.chance(0.7);
+        const pair = slot.maxWidth > 1.7 && rng.chance(0.5);
         for (const side of pair ? [-1, 1] : [0]) {
-          if (!rng.chance(0.85)) continue;
+          // (Chaque œuvre est une texture : on reste raisonnable pour les téléphones.)
+          if (!rng.chance(CONFIG.art.salonFill)) continue;
           hang({ ...slot, hangY: y, maxHeight: h, maxWidth: pair ? slot.maxWidth / 2 - 0.1 : slot.maxWidth * 0.8, offset: (side * slot.maxWidth) / 4 }, wallHeight);
         }
       }
     }
 
     // Œuvre réservée pour « trois fois la même » mais jamais accrochée : on la libère.
-    if (triple && tripleLeft === 3) triple.texture.dispose();
+    if (triple && tripleLeft === tripleTotal) triple.texture.dispose();
 
     // Décors (géométries propres au module : chaque module tire les siens).
     const decor = buildDecor(this.def, this.preset, new Rng(this.seed, 'decor'), hung, {
@@ -242,6 +276,9 @@ export class WorldModule {
         this.group.add(puff);
       }
     }
+    // Couloir qui revient sur lui-même : les modules suivants le répéteront.
+    if (this.loopFrom && this.loopFrom.remaining > 0) this.loop = { ...this.loopFrom, remaining: this.loopFrom.remaining - 1 };
+    else if (odd === 'couloir-boucle' && this.def.kind === 'straight') this.loop = { def: this.def, seed: this.seed, pieces: this.arts, remaining: 2 };
     // Porte murée : l'entrée se fermera derrière le visiteur (voir World).
     // (Jamais dans une impasse : le visiteur serait enfermé.)
     this.sealEntrance = odd === 'porte-muree' && this.def.connectors.length >= 2 && this.def.kind !== 'sas';
@@ -265,8 +302,11 @@ export class WorldModule {
       this.drips.push({ ...d, mesh, timer: dripRng.range(0, CONFIG.decor.dripInterval[1]) });
     }
 
-    this.group.position.set(this.transform.x, this.baseY, this.transform.z);
+    this.group.position.set(this.transform.x, this.groupY, this.transform.z);
     this.group.rotation.y = this.transform.angle;
+    // Monde inversé : le module est retourné autour de sa mi-hauteur ; on marche sur le
+    // plafond, les bancs pendent au-dessus de nous. (Three.js gère l'inversion des faces.)
+    if (this.preset.inverted) this.group.scale.y = -1;
     this.group.updateMatrixWorld(true);
     // Le module ne bouge jamais (sauf recentrage) : inutile de recalculer ses matrices à chaque frame.
     this.group.matrixAutoUpdate = false;
@@ -362,7 +402,7 @@ export class WorldModule {
       mv(ad.portal.a);
       mv(ad.portal.b);
     }
-    this.group.position.set(this.transform.x, this.baseY, this.transform.z);
+    this.group.position.set(this.transform.x, this.groupY, this.transform.z);
     this.group.updateMatrix();
     this.group.updateMatrixWorld(true);
   }
@@ -430,6 +470,7 @@ export class WorldModule {
     this.steam = null;
     this.steamPuffs = [];
     this.seals = [];
+    this.loop = null;
     this.decorWalls = [];
     this.group.removeFromParent();
     this.group.clear();

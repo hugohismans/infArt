@@ -54,7 +54,9 @@ export type Oddity =
   | 'porte-muree'
   | 'veste-cafe'
   | 'salle-vide'
-  | 'a-l-envers';
+  | 'a-l-envers'
+  | 'oeuvre-plafond'
+  | 'couloir-boucle';
 
 export interface ZoneState {
   zone: Zone;
@@ -195,7 +197,8 @@ export class Director {
 
     // Plus le saut de tension est grand, plus la rupture est probable.
     const jump = Math.abs(ambiance.tension - prev.ambiance.tension);
-    const transition = rng.weighted({
+    const forced = ambiance.transition ?? prev.ambiance.transition;
+    const transition = forced ?? rng.weighted({
       progressive: d.transitionWeights.progressive,
       seuil: d.transitionWeights.seuil,
       rupture: d.transitionWeights.rupture * (jump > 0.5 ? 2 : 0.5),

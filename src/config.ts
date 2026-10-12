@@ -144,6 +144,8 @@ export const CONFIG = {
     easelDistance: 0.95,
     floatDistance: 0.75,
     /** Accrochage serré : rangs supérieurs (hauteur du centre, hauteur max), si le mur est assez haut. */
+    /** Probabilité qu'une place d'un rang supérieur soit occupée. */
+    salonFill: 0.6,
     salonRows: [
       [2.95, 1.1],
       [4.15, 0.95],
@@ -190,10 +192,11 @@ export const CONFIG = {
     /** Durée des fondus d'ambiance aux transitions (s). */
     crossfade: 3,
     /** Niveau de chaque nappe pour une intensité 1 dans le profil de l'ambiance. */
-    layers: { roomTone: 0.32, hvac: 0.1, hum: 0.05, rain: 0.08, wind: 0.22, water: 0.12 },
+    layers: { roomTone: 0.32, hvac: 0.1, hum: 0.05, rain: 0.08, wind: 0.22, water: 0.12, crackle: 0.18 },
     footsteps: 0.22,
     drips: 0.35,
     birds: 0.05,
+    bleeps: 0.03,
   },
 
   lighting: {
@@ -245,6 +248,8 @@ export const CONFIG = {
       'veste-cafe': 1,
       'salle-vide': 0.9,
       'a-l-envers': 1,
+      'oeuvre-plafond': 0.8,
+      'couloir-boucle': 0.9,
     } as Record<string, number>,
   },
 

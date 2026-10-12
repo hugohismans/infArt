@@ -20,6 +20,8 @@ export interface ArtContext {
   /** Nombre de textures haute résolution en cours (partagé). */
   budget: { highRes: number };
   textureSizeHigh: number;
+  /** Taille des textures d'affichage. */
+  textureSize: number;
   /** Ce que voit réellement la caméra (renseigné par le moteur). */
   viewer: { watching(object: THREE.Object3D): boolean } | null;
 }
@@ -38,6 +40,10 @@ export interface ArtOptions {
   ready?: ReadyArt;
   /** … dont la texture appartient à une autre pièce (elle ne la libère pas). */
   borrowed?: boolean;
+  /** Œuvre imposée, dont l'image est à charger (couloir qui revient sur lui-même). */
+  artwork?: Artwork;
+  /** Accrochée au plafond, face vers le bas. */
+  ceiling?: boolean;
 }
 
 /** Une langue inventée : chaque lettre devient un glyphe, les mots gardent leur longueur. */
@@ -115,8 +121,15 @@ export class ArtPiece {
     this.object.position.set(slot.pos.x, slot.y, slot.pos.z);
     this.object.rotation.y = Math.atan2(slot.normal.x, slot.normal.z);
     if (slot.offset) this.object.translateX(slot.offset);
+    if (opts.ceiling) {
+      // Étrangeté : au plafond, à un peu plus d'un mètre du mur, face vers le bas.
+      const d = Math.min(1.3, preset.geometry.corridorWidth / 2 - 0.4);
+      this.object.position.set(slot.pos.x + slot.normal.x * d, slot.y + wallHeight - 0.03, slot.pos.z + slot.normal.z * d);
+      this.object.rotation.order = 'YXZ';
+      this.object.rotation.set(Math.PI / 2, Math.atan2(slot.normal.x, slot.normal.z), 0);
+    }
     this.object.add(this.holder);
-    this.brightness = preset.art.mount === 'caisson' ? 1.25 : 0.92;
+    this.brightness = preset.art.mount === 'caisson' ? 1.25 : preset.art.mount === 'projection' ? 1.05 : 0.92;
     this.phase = rng.range(0, Math.PI * 2);
     // Les œuvres flottantes bougent : leur matrice est recalculée à chaque image.
     if (preset.art.mount === 'flottant') this.holder.userData.animated = true;
@@ -126,6 +139,23 @@ export class ArtPiece {
       this.hangPlaceholder();
       return;
     }
+    if (opts.artwork && ctx) {
+      // Une œuvre précise, déjà vue ailleurs : on recharge son image.
+      const art = opts.artwork;
+      this.hangPlaceholder();
+      const { promise, cancel } = ctx.loader.load(ctx.client.imageUrls(art, ctx.textureSize), ctx.textureSize, 2);
+      this.cancelWait = cancel;
+      promise.then(
+        (img) => {
+          this.cancelWait = null;
+          this.arrive({ artwork: art, texture: img.texture, aspect: img.naturalWidth / img.naturalHeight });
+        },
+        () => {
+          this.cancelWait = null;
+        },
+      );
+      return;
+    }
     const ready = opts.ready ?? ctx?.library.take(preset.art.prefer, opts.themeId) ?? null;
     if (ready) this.hang(ready);
     else if (!ctx || ctx.library.offline) this.hangProcedural();
@@ -133,6 +163,11 @@ export class ArtPiece {
       this.hangPlaceholder();
       this.cancelWait = ctx.library.request((r) => this.arrive(r));
     }
+  }
+
+  /** Le texte du cartel est affiché (une texture). */
+  get hasCartelTexture(): boolean {
+    return this.cartelMaterial !== null;
   }
 
   /** Textures d'image détenues (ou empruntées) : pour le comptage des fuites. */
@@ -150,6 +185,10 @@ export class ArtPiece {
       this.holder.position.y = Math.sin(t * 0.6 + this.phase) * 0.08;
       this.holder.rotation.y = Math.sin(t * 0.23 + this.phase) * 0.3;
       this.holder.rotation.z = Math.sin(t * 0.31 + this.phase * 2) * 0.05;
+    }
+    // Projecteur : l'image papillote légèrement.
+    if (this.preset.art.mount === 'projection' && this.canvasMaterial && this.fadeT >= 1) {
+      this.canvasMaterial.color.setScalar(this.brightness * (0.93 + Math.random() * 0.07));
     }
     if (this.fadeT >= 1 || !this.canvasMaterial) return;
     this.fadeT = Math.min(1, this.fadeT + dt / CONFIG.art.fadeDuration);
@@ -250,7 +289,11 @@ export class ArtPiece {
     this.artwork = ready.artwork;
     this.baseTexture = ready.texture;
     const { w, h } = this.physicalSize(ready.artwork, ready.aspect);
-    const style = chooseFrame(ready.artwork, w, h, this.rng, this.preset.art.frames);
+    // Projection : pas de cadre, l'image est projetée sur le mur.
+    const style: FrameStyle =
+      this.preset.art.mount === 'projection'
+        ? { border: 0, depth: 0.002, mat: 0, material: 'white', lip: false }
+        : chooseFrame(ready.artwork, w, h, this.rng, this.preset.art.frames);
     this.build(this.fit(w, h, style), ready.texture);
   }
 
@@ -329,6 +372,10 @@ export class ArtPiece {
       w *= CONFIG.art.bookScale;
       h *= CONFIG.art.bookScale;
     }
+    // Échelle déréglée, écran de cinéma.
+    const scale = this.preset.art.scale ?? 1;
+    w *= scale;
+    h *= scale;
     const min = CONFIG.art.minSize;
     if (Math.min(w, h) < min) {
       const k = min / Math.min(w, h);
@@ -352,7 +399,9 @@ export class ArtPiece {
     const totalH = h + pad;
     // Ligne d'accrochage : centre à hauteur d'yeux, mais jamais trop près du sol.
     // (Accrochage serré : chaque rang a sa propre hauteur.)
-    const centerY = this.slot.hangY ?? Math.max(CONFIG.art.hangHeight, totalH / 2 + 0.55);
+    // (À l'échelle du visiteur : un visiteur minuscule accroche plus bas.)
+    const e = this.preset.visitor?.eyeScale ?? 1;
+    const centerY = this.slot.hangY ?? Math.max(CONFIG.art.hangHeight * e, totalH / 2 + 0.55 * e);
     const frontZ = style.depth + (style.lip ? 0.012 : 0);
     return { w, h, style, totalW, totalH, centerY, frontZ };
   }
@@ -422,7 +471,7 @@ export class ArtPiece {
     }
 
     // Pas de halo sur une cimaise (il déborderait au-dessus de la cloison), ni loin du mur.
-    const onWall = (this.preset.art.mount ?? 'mur') === 'mur' || this.preset.art.mount === 'caisson';
+    const onWall = ((this.preset.art.mount ?? 'mur') === 'mur' && !this.preset.art.rotations) || this.preset.art.mount === 'caisson';
     if (this.preset.lighting.artGlow > 0 && this.wallHeight > 3.2 && onWall && !this.slot.hangY) {
       // Halo additif sur le mur : simule un spot sans lumière dynamique.
       const glow = new THREE.Mesh(m.unitPlane, m.glow);
@@ -437,6 +486,12 @@ export class ArtPiece {
 
     if (!this.slot.hangY) this.addCartel(L);
     this.applyMount(L);
+    if (this.preset.art.rotations && (this.preset.art.mount ?? 'mur') === 'mur') {
+      // Escher : un quart de tour au hasard, autour du centre de l'œuvre.
+      const a = this.rng.pick([0, Math.PI / 2, Math.PI, -Math.PI / 2]);
+      this.holder.rotation.z = a;
+      this.holder.position.set(L.centerY * Math.sin(a), L.centerY - L.centerY * Math.cos(a), 0);
+    }
     if (this.opts.upsideDown && (this.preset.art.mount ?? 'mur') === 'mur') {
       // Étrangeté : tête en bas (le cartel aussi).
       this.holder.position.y = 2 * L.centerY;

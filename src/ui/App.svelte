@@ -40,6 +40,7 @@
     client,
     budget: { highRes: 0 },
     textureSizeHigh: mobile ? CONFIG.art.textureSizeHigh.mobile : CONFIG.art.textureSizeHigh.desktop,
+    textureSize: mobile ? CONFIG.art.textureSize.mobile : CONFIG.art.textureSize.desktop,
     viewer: null,
   };
 

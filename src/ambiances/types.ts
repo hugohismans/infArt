@@ -26,13 +26,13 @@ export type FloorPattern =
  * murs : désert, néant, rêve…). Il continue de cacher ce qui est derrière, si bien que la
  * génération reste invisible.
  */
-export type WallPattern = 'uni' | 'papier-peint' | 'damas' | 'shoji' | 'faience' | 'rayonnages' | 'boiserie' | 'brume';
+export type WallPattern = 'uni' | 'papier-peint' | 'damas' | 'shoji' | 'faience' | 'rayonnages' | 'boiserie' | 'pierre' | 'miroir' | 'hublots' | 'panneaux' | 'brume';
 /** Plafond. « ciel » : pas de plafond, le ciel de l'ambiance (voir `sky`). */
 export type CeilingStyle = 'uni' | 'dalles' | 'verriere' | 'ciel' | 'peint' | 'beton';
 /** Support des œuvres : au mur (défaut), sur chevalet, flottantes, en caisson lumineux, posées au sol. */
-export type ArtMount = 'mur' | 'chevalet' | 'flottant' | 'caisson' | 'sol';
+export type ArtMount = 'mur' | 'chevalet' | 'flottant' | 'caisson' | 'sol' | 'projection';
 /** Particules en suspension. */
-export type Particles = 'poussiere' | 'neige' | 'lucioles' | 'paillettes';
+export type Particles = 'poussiere' | 'neige' | 'lucioles' | 'paillettes' | 'bulles';
 /** Mobilier des salles : banc, cimaise, jardinières, rien. */
 export type Furniture = 'banc' | 'cimaise' | 'jardinieres' | 'aucun';
 /** Objets de décor posés ou accrochés (voir src/decor/catalog.ts). */
@@ -61,7 +61,14 @@ export type DecorKind =
   | 'presentoir-vhs'
   | 'lanterne'
   | 'bonsai'
-  | 'stalactite';
+  | 'stalactite'
+  | 'vitrine'
+  | 'bac-vinyles'
+  | 'borne'
+  | 'sieges'
+  | 'colonne'
+  | 'lierre'
+  | 'console';
 
 /** Profil sonore d'une ambiance (intensités de 0 à 1, interpolées aux transitions). */
 export interface SoundProfile {
@@ -85,6 +92,10 @@ export interface SoundProfile {
   crickets: number;
   /** Clapotis (eau au sol). */
   water: number;
+  /** Crépitement de vinyle. */
+  crackle: number;
+  /** Bips de bornes d'arcade. */
+  bleeps: number;
 }
 
 /** Style de cadres privilégié. */
@@ -131,6 +142,15 @@ export interface AmbiancePreset {
 
   fog: { color: string; near: number; far: number };
 
+  /** Le visiteur lui-même : hauteur des yeux et vitesse relatives (échelle déréglée, sous l'eau). */
+  visitor?: { eyeScale?: number; speed?: number };
+
+  /** Monde inversé : chaque module est retourné, on marche au plafond. */
+  inverted?: boolean;
+
+  /** Transition imposée pour entrer dans cette ambiance. */
+  transition?: 'progressive' | 'seuil' | 'rupture';
+
   /** Ciel visible (plafond « ciel ») : dégradé du zénith à l'horizon, étoiles. */
   sky?: { top: string; horizon: string; stars?: boolean };
 
@@ -146,6 +166,8 @@ export interface AmbiancePreset {
     flashlight?: number;
     /** Bandes lumineuses de couleur changeante (néons RVB). */
     rgb?: boolean;
+    /** Le musée respire : amplitude de la pulsation de la lumière et de l'ondulation des murs. */
+    breath?: number;
   };
 
   furniture: { small: Furniture; large: Furniture };
@@ -164,6 +186,12 @@ export interface AmbiancePreset {
     frameTint?: string;
     /** Part des œuvres emballées sous une bâche (musée en travaux). */
     wrapped?: number;
+    /** Taille des œuvres (× ; échelle déréglée, projection de cinéma). */
+    scale?: number;
+    /** Œuvres tournées d'un quart de tour au hasard (Escher). */
+    rotations?: boolean;
+    /** Toutes les œuvres d'un module sont la même, comme des reflets (labyrinthe de miroirs). */
+    mirror?: boolean;
   };
 
   /** Décors procéduraux tirés dans le pool de l'ambiance, avec la graine du module. */

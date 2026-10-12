@@ -39,6 +39,6 @@ export const beauxArts: AmbiancePreset = {
     lightShafts: 0,
     dust: 0.35,
   },
-  sound: { roomTone: 0.7, hvac: 0.2, hum: 0, rain: 0, birds: 0, distantSteps: 0.6, reverb: 0.5, wind: 0, crickets: 0, water: 0 },
+  sound: { roomTone: 0.7, hvac: 0.2, hum: 0, rain: 0, birds: 0, distantSteps: 0.6, reverb: 0.5, wind: 0, crickets: 0, water: 0, crackle: 0, bleeps: 0 },
   art: { density: 1, frames: 'classique', prefer: ['peinture'] },
 };

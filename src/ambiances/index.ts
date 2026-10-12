@@ -19,20 +19,33 @@ import { desert } from './presets/desert';
 import { foret } from './presets/foret';
 import { reve } from './presets/reve';
 import { vaporwave } from './presets/vaporwave';
+import { cabinet } from './presets/cabinet';
+import { disquaire } from './presets/disquaire';
+import { arcade } from './presets/arcade';
+import { cinema } from './presets/cinema';
+import { escher } from './presets/escher';
+import { englouti } from './presets/englouti';
+import { station } from './presets/station';
+import { ruines } from './presets/ruines';
+import { miroirs } from './presets/miroirs';
+import { inverse } from './presets/inverse';
+import { geant } from './presets/geant';
+import { miniature } from './presets/miniature';
+import { respire } from './presets/respire';
 
 /** Registre des ambiances disponibles : ajouter une ambiance = ajouter un preset ici. */
 export const AMBIANCES: Record<string, AmbiancePreset> = Object.fromEntries(
   [
     // Musées « réels »
-    beauxArts, whiteCube, baroque, japonaise, nuit,
+    beauxArts, whiteCube, baroque, japonaise, cabinet, nuit,
     // Lieux culturels détournés
-    videoclub, bibliotheque,
+    videoclub, disquaire, arcade, bibliotheque, cinema,
     // Liminal
     backRooms, poolrooms, bureaux, hopital, parking, travaux,
     // Onirique
-    serre, reve, vaporwave, foret, desert,
+    serre, reve, escher, vaporwave, foret, desert, englouti, station, ruines,
     // Étrange
-    neant, givre,
+    miroirs, inverse, neant, geant, miniature, respire, givre,
   ].map((p) => [p.id, p]),
 );
 

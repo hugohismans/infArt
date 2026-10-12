@@ -6,7 +6,7 @@ import { makeModuleDefs, type ModuleDef } from './modules/defs';
 import { Rng } from './random';
 import { isOpenAir, ResourceCache } from './resources';
 import { computeVisibility, modulesContaining, type VisibilityResult } from './visibility';
-import { WorldModule } from './WorldModule';
+import { WorldModule, type LoopSource } from './WorldModule';
 import type { ArtContext } from '../art/ArtPiece';
 import { AMBIANCES } from '../ambiances';
 import { Director, type ZoneState } from '../director/Director';
@@ -19,6 +19,10 @@ export interface WorldStats {
   arts: number;
   /** Textures d'œuvres réellement accrochées (distinctes). */
   artTextures: number;
+  /** Cartels dont le texte est affiché (une texture chacun). */
+  cartels: number;
+  /** Ambiances dont les matériaux sont chargés (quelques textures chacune). */
+  presets: number;
   urgentFills: number;
   /** Modules créés alors qu'ils étaient potentiellement visibles en deçà du brouillard (doit rester à 0). */
   popIns: number;
@@ -300,10 +304,14 @@ export class World {
 
   stats(): WorldStats {
     let arts = 0;
+    let cartels = 0;
     const held = new Set<THREE.Texture>();
     for (const m of this.modules) {
       arts += m.artCount;
-      for (const a of m.artPieces) a.collectTextures(held);
+      for (const a of m.artPieces) {
+        a.collectTextures(held);
+        if (a.hasCartelTexture) cartels++;
+      }
     }
     return {
       modules: this.modules.size,
@@ -312,6 +320,8 @@ export class World {
       visible: this.lastVisibility.modules.size,
       arts,
       artTextures: held.size,
+      cartels,
+      presets: this.cache.stats().presets,
       urgentFills: this.counters.urgentFills,
       popIns: this.counters.popIns,
       popInLog: this.popInLog.slice(),
@@ -442,6 +452,16 @@ export class World {
     // Transition « seuil » : la zone commence par un sas.
     const forceSas = zone.step === 0 && zone.zone.transition === 'seuil';
 
+    // Couloir qui revient sur lui-même : on prolonge par une copie conforme, si elle tient.
+    const loop = parent.loop;
+    if (loop && loop.remaining > 0 && !forceSas && parent.def.connectors.length === 2 && connector === 1) {
+      const def = this.defsFor(parent.preset)[loop.def.id];
+      if (def && this.overlapping(def, parent.preset, transform, baseY, parent).length === 0) {
+        this.link(parent, connector, this.createModule(def, transform, baseY, { ...parent.zone, oddity: undefined }, parent.preset, loop));
+        return;
+      }
+    }
+
     let fallback: { def: ModuleDef; obstacles: WorldModule[] } | null = null;
     for (let attempt = 0; attempt < 7; attempt++) {
       let id: string;
@@ -516,9 +536,10 @@ export class World {
     child.applyAdapter(0, a);
   }
 
-  private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number, zone: ZoneState, preset: AmbiancePreset): WorldModule {
+  private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number, zone: ZoneState, preset: AmbiancePreset, loop: LoopSource | null = null): WorldModule {
     const id = this.nextId++;
-    const m = new WorldModule(id, def, { ...transform }, baseY, preset, zone, `${this.seed}:${id}`, this.cache);
+    // Une copie de couloir reprend la graine de l'original : même tirage, même décor.
+    const m = new WorldModule(id, def, { ...transform }, baseY, preset, zone, loop ? loop.seed : `${this.seed}:${id}`, this.cache, loop);
     m.build(this.artCtx);
     this.root.add(m.group);
     this.modules.add(m);

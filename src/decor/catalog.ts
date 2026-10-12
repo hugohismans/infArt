@@ -384,6 +384,102 @@ export const CATALOG: Record<DecorKind, DecorItem> = {
       }
     },
   },
+
+  /** Vitrine de cabinet de curiosités : coquillages, crânes, minéraux sous verre. */
+  vitrine: {
+    width: 1.1, depth: 0.6, height: 1.9, low: false, flat: false,
+    build(k, rng) {
+      const wood = rng.pick(['#3a2414', '#4a2c18', '#2e1c10']);
+      k.box(1.1, 0.8, 0.55, 0, 0.4, 0.3, wood);
+      for (const x of [-0.53, 0.53]) for (const z of [0.05, 0.55]) k.box(0.04, 1.05, 0.04, x, 1.32, z, wood);
+      k.box(1.1, 0.06, 0.55, 0, 1.87, 0.3, wood);
+      // Objets : boules nacrées, crâne, cristaux.
+      const shells = [new THREE.Color('#e8dcc6'), new THREE.Color('#d6c2a0'), new THREE.Color('#f2ece0')];
+      const seed = rng.int(0, 999);
+      k.blob(0.09, -0.32, 0.9, 0.3, shells, seed, 0.8);
+      k.blob(0.1, 0, 0.92, 0.32, [new THREE.Color('#ece6d8'), new THREE.Color('#d8d0c0')], seed + 4, 1.1);
+      k.cyl(0.05, 0.16, 0.3, 0.88, 0.28, rng.pick(['#6a3a8a', '#3a7a6a', '#b84a2a']), 6, 0.1);
+      k.box(0.2, 0.012, 0.4, 0, 1.25, 0.3, '#d8e4e8');
+      k.blob(0.07, 0.25, 1.33, 0.3, shells, seed + 7, 0.6);
+      k.cyl(0.035, 0.22, -0.25, 1.37, 0.3, '#c8d8a0', 6, 0.5);
+    },
+  },
+
+  /** Bac à vinyles : une rangée de pochettes dont on voit le dos. */
+  'bac-vinyles': {
+    width: 1.1, depth: 0.55, height: 0.95, low: false, flat: false,
+    build(k, rng) {
+      k.box(1.05, 0.7, 0.45, 0, 0.35, 0.3, '#2a1c14');
+      const sleeves = ['#c8282e', '#1f4fa0', '#f2c230', '#2a8a4a', '#e6e6e6', '#7a2aa0', '#111111', '#e86a1a', '#d8b88a'];
+      for (let i = 0; i < 22; i++) k.box(0.31, 0.31, 0.012, -0.47 + i * 0.045, 0.82, 0.3, rng.pick(sleeves), { y: Math.PI / 2, z: rng.range(-0.18, 0.05) });
+    },
+  },
+
+  /** Borne d'arcade, écran allumé. */
+  borne: {
+    width: 0.75, depth: 0.85, height: 1.85, low: false, flat: false,
+    build(k, rng) {
+      const body = rng.pick(['#1a1a2a', '#2a0a3a', '#0a2a3a']);
+      k.box(0.7, 1.85, 0.7, 0, 0.925, 0.4, body);
+      k.box(0.72, 0.16, 0.06, 0, 1.75, 0.76, rng.pick(['#ff3fd0', '#3fd0ff', '#ffd23f']));
+      k.glowBox(0.55, 0.42, 0.02, 0, 1.32, 0.76, rng.pick(['#3a6aff', '#22c88a', '#ff5a3a', '#c83aff']), { x: -0.25 });
+      k.box(0.7, 0.06, 0.3, 0, 0.98, 0.86, '#222230');
+      k.cyl(0.02, 0.08, -0.12, 1.04, 0.88, '#d8d8d8', 6);
+      k.glowBox(0.05, 0.02, 0.05, 0.08, 1.02, 0.9, '#ff2a2a');
+      k.glowBox(0.05, 0.02, 0.05, 0.18, 1.02, 0.88, '#2aff6a');
+    },
+  },
+
+  /** Rangée de fauteuils de cinéma, velours rouge élimé. */
+  sieges: {
+    width: 2.2, depth: 0.9, height: 1.0, low: false, flat: false,
+    build(k, rng) {
+      const velvet = rng.pick(['#7a1420', '#6a1018', '#8a2028']);
+      for (let i = 0; i < 4; i++) {
+        const x = -0.83 + i * 0.55;
+        k.box(0.5, 0.12, 0.5, x, 0.45, 0.45, velvet, { x: rng.chance(0.3) ? -0.9 : 0 });
+        k.box(0.5, 0.55, 0.1, x, 0.75, 0.2, velvet);
+        k.box(0.05, 0.6, 0.55, x + 0.27, 0.3, 0.42, '#2a2420');
+      }
+    },
+  },
+
+  /** Colonne antique brisée. */
+  colonne: {
+    width: 0.9, depth: 0.9, height: 3, low: false, flat: false,
+    build(k, rng) {
+      const stone = rng.pick(['#d8d0bc', '#cbc2ac', '#e2dccc']);
+      k.box(0.8, 0.25, 0.8, 0, 0.125, 0.45, stone);
+      const h = rng.range(0.8, 2.8);
+      k.cyl(0.3, h, 0, 0.25 + h / 2, 0.45, stone, 14, 0.92);
+      if (rng.chance(0.6)) k.cyl(0.28, 0.5, 0.55, 0.25, 0.75, stone, 14, 1, { z: Math.PI / 2, y: rng.range(0, 3) });
+    },
+  },
+
+  /** Lierre qui court sur le mur. */
+  lierre: {
+    width: 1.4, depth: 0.15, height: 3, low: false, flat: true,
+    build(k, rng, ceiling) {
+      const greens = [new THREE.Color('#2e5a26'), new THREE.Color('#3c6e30'), new THREE.Color('#244a20')];
+      const top = Math.min(ceiling, 3.5);
+      let y = top - 0.2;
+      while (y > 0.3) {
+        k.blob(rng.range(0.12, 0.26), rng.range(-0.6, 0.6), y, 0.06, greens, rng.int(0, 999), 1);
+        y -= rng.range(0.12, 0.3);
+      }
+    },
+  },
+
+  /** Console de station orbitale : écrans et voyants. */
+  console: {
+    width: 1.3, depth: 0.5, height: 1.4, low: false, flat: false,
+    build(k, rng) {
+      k.box(1.3, 0.9, 0.45, 0, 0.45, 0.25, '#c8ccd2');
+      k.box(1.3, 0.05, 0.5, 0, 0.92, 0.27, '#8a9098', { x: -0.3 });
+      for (let i = 0; i < 3; i++) k.glowBox(0.34, 0.24, 0.02, -0.42 + i * 0.42, 1.18, 0.06, rng.pick(['#2ad0ff', '#2aff9a', '#ffb02a']));
+      for (let i = 0; i < 8; i++) k.glowBox(0.03, 0.03, 0.02, -0.5 + i * 0.14, 0.95, 0.4, rng.pick(['#ff3a3a', '#3aff6a', '#ffd23a']));
+    },
+  },
 };
 
 /** Cordon de sécurité devant une œuvre : deux poteaux en laiton, une corde rouge. */

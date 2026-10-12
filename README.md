@@ -4,28 +4,29 @@ Un musée infini, explorable à la première personne sur PC et sur mobile. Le b
 
 **Version en ligne** : https://hugohismans.github.io/infArt/
 
-## État : phase 7 (première vague), toutes les ambiances et étrangetés
+## État : phase 7, toutes les ambiances et étrangetés
 
-### 20 ambiances
+### 33 ambiances
 Chaque ambiance reste un simple fichier de données (`src/ambiances/presets/`). Le Directeur les choisit selon leur rareté, la courbe de tension et leurs affinités. Pour en essayer une directement : `?ambiance=foret` (identifiants ci-dessous).
 
 | Famille | Ambiances |
 |---|---|
-| Musées « réels » | beaux-arts, white-cube, `baroque` (damas, marbre, plafond peint, accrochage serré jusqu'au plafond), `galerie-japonaise` (tatamis, shoji, lanternes, bonsaïs), `musee-nuit` (lampe torche, veilleuses, sorties de secours) |
-| Lieux détournés | `videoclub` (néons, cassettes, affiches en caissons lumineux), `bibliotheque` (rayonnages jusqu'au plafond, échelles) |
+| Musées « réels » | beaux-arts, white-cube, `baroque` (damas, marbre, plafond peint, accrochage serré jusqu'au plafond), `galerie-japonaise` (tatamis, shoji, lanternes, bonsaïs), `cabinet` (boiseries sombres, vitrines de curiosités), `musee-nuit` (lampe torche, veilleuses, sorties de secours) |
+| Lieux détournés | `videoclub` (néons, cassettes, affiches en caissons lumineux), `disquaire` (bacs à vinyles, crépitement), `arcade` (bornes, néons RVB, bips), `bibliotheque` (rayonnages jusqu'au plafond, échelles), `cinema` (fauteuils rouges, œuvre projetée en grand) |
 | Liminal | back-rooms, `poolrooms` (faïence, eau turquoise au sol, échos), `bureaux-nuit`, `hopital`, `parking` (piliers, lumière orange, œuvres posées au sol), `travaux` (bâches, échafaudages, œuvres emballées) |
-| Onirique | serre, `reve-pastel` (nuages, cadres flottants), `vaporwave` (grille néon, couchant, statues, palmiers), `foret` (la nuit, lucioles, œuvres accrochées aux arbres), `desert` (dunes, vent, chevalets) |
-| Étrange | `neant` (blanc infini, chevalets, seulement nos pas), `givre` (neige qui tombe, cadres pris dans la glace) |
+| Onirique | serre, `reve-pastel` (nuages, cadres flottants), `escher` (escaliers sans fin, œuvres dans tous les sens), `vaporwave` (grille néon, couchant, statues, palmiers), `foret` (la nuit, lucioles, œuvres accrochées aux arbres), `desert` (dunes, vent, chevalets), `englouti` (sous l'eau, bulles, mouvements ralentis), `station` (hublots sur les étoiles, apesanteur légère), `ruines` (murs sans toit, colonnes brisées, lierre) |
+| Étrange | `miroirs` (la même œuvre reflétée partout), `inverse` (on marche au plafond), `neant` (blanc infini, chevalets, seulement nos pas), `geant` et `miniature` (échelle déréglée : œuvres gigantesques, ou couloirs où l'on se baisse), `respire` (murs qui ondulent, lumière qui pulse), `givre` (neige qui tombe, cadres pris dans la glace) |
 
 **Moteur.** Les ambiances s'appuient sur de nouvelles capacités, toutes pilotées par les données :
 - **surfaces** : 13 sols (marbre, tatami, lino, eau animée, sable, grille néon, nuages, herbe, neige…), murs (damas, shoji, faïence, rayonnages, boiseries), plafonds (fresque, béton, ciel ouvert) ;
 - **lieux sans murs** (`wall: 'brume'`) :
   - les murs y sont invisibles mais remplissent la profondeur : ils cachent toujours ce qui se génère derrière eux ;
   - un sol continu jusqu'à l'horizon et un ciel en dégradé, avec des étoiles, donnent l'illusion d'un paysage ouvert ;
-- **lumière** : lampe torche du visiteur, néons RVB ;
+- **lumière** : lampe torche du visiteur, néons RVB, respiration (pulsation et murs qui ondulent) ;
+- **visiteur** : hauteur des yeux et vitesse propres à l'ambiance ; monde retourné (`inverted`) ;
 - **particules** : poussière, neige, lucioles, paillettes ;
-- **supports d'œuvres** : chevalet, cadre flottant, caisson lumineux, posé au sol, accrochage serré sur plusieurs rangs ;
-- **son** : vent, grillons, clapotis ; pas dans l'eau, le sable et la neige.
+- **supports d'œuvres** : chevalet, cadre flottant, caisson lumineux, posé au sol, projection, accrochage serré sur plusieurs rangs, quarts de tour, taille ×, reflets ;
+- **son** : vent, grillons, clapotis, crépitement de vinyle, bips d'arcade ; pas dans l'eau, le sable et la neige.
 
 ### Étrangetés
 Le Directeur les saupoudre rarement, un peu plus quand la tension monte (`CONFIG.director.oddities`) :
@@ -35,7 +36,8 @@ Le Directeur les saupoudre rarement, un peu plus quand la tension monte (`CONFIG
 - une porte murée derrière soi : une fois l'entrée hors de vue, elle devient un mur de briques et le chemin du retour disparaît ;
 - une veste oubliée et un café qui fume encore ;
 - une salle vidée, où ne restent que les clous et les traces claires des cadres ;
-- une œuvre accrochée à l'envers.
+- une œuvre accrochée à l'envers, ou au plafond ;
+- un couloir qui revient sur lui-même : les segments suivants le répètent à l'identique (mêmes œuvres, même décor).
 
 Pour en essayer une : `?oddity=porte-muree`.
 
@@ -259,5 +261,5 @@ Le déploiement sur GitHub Pages se fait automatiquement à chaque push sur `mai
 4. ~~Ambiances et Directeur~~
 5. ~~Plus de sources : affiches, jaquettes, pochettes, livres~~
 6. ~~Décors procéduraux et son~~
-7. Toutes les ambiances et étrangetés
+7. ~~Toutes les ambiances et étrangetés~~
 8. Finitions
