@@ -311,7 +311,8 @@ export class ArtPiece {
       const gw = totalW * 1.5 + 0.6;
       const gh = Math.max(totalH * 2.2, 2.2);
       glow.scale.set(gw, gh, 1);
-      glow.position.set(0, centerY + totalH / 2 + 0.35 - gh * 0.2, 0.012);
+      // Le point le plus lumineux (42 % du haut du halo) se trouve 35 cm au-dessus du cadre.
+      glow.position.set(0, centerY + totalH / 2 + 0.35 - gh * 0.08, 0.012);
       glow.renderOrder = 1;
       this.object.add(glow);
     }

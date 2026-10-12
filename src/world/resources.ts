@@ -106,24 +106,37 @@ function makeDrapeTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-function makeGlowTexture(): THREE.CanvasTexture {
+/**
+ * Halo d'un spot : tache de lumière plus intense en haut, qui s'évase vers le bas.
+ *
+ * Calculée pixel par pixel plutôt que dessinée avec un dégradé du canvas : Safari
+ * ajoute du bruit (tramage) aux dégradés semi-transparents, ce qui donnait des
+ * confettis colorés sur iPhone. L'intensité est codée dans la couleur (opaque) et
+ * ajoutée au mur par mélange additif.
+ */
+function makeGlowTexture(): THREE.DataTexture {
   const w = 64, h = 128;
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d')!;
-  ctx.translate(w / 2, h * 0.3);
-  ctx.scale(1, 1.9);
+  const data = new Uint8Array(w * h * 4);
+  // Décroissance douce jusqu'à zéro (pente nulle au bord) : aucun contour visible.
+  const profile = (d: number): number => (d >= 1 ? 0 : 0.8 * Math.pow(1 - d * d, 2.2));
   const r = w / 2;
-  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-  g.addColorStop(0, 'rgba(255,255,255,1)');
-  g.addColorStop(0.35, 'rgba(255,255,255,0.55)');
-  g.addColorStop(0.7, 'rgba(255,255,255,0.15)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(-r, -h, w, h * 2);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      // La ligne 0 d'une DataTexture est en BAS de l'image. Centre à 42 % du haut et
+      // ellipse étirée ×1,6 : elle tient entière dans la texture (aucun bord coupé).
+      const dx = x + 0.5 - w / 2;
+      const dy = (h - 1 - y + 0.5 - h * 0.42) / 1.6;
+      const v = Math.round(255 * profile(Math.hypot(dx, dy) / r));
+      const i = (y * w + x) * 4;
+      data[i] = data[i + 1] = data[i + 2] = v;
+      data[i + 3] = 255;
+    }
+  }
+  const tex = new THREE.DataTexture(data, w, h);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.needsUpdate = true;
   return tex;
 }
 
