@@ -1,5 +1,5 @@
 export const fr = {
-  'app.title': 'Galerie Infinie',
+  'app.title': 'Ailleurs',
   'app.subtitle': 'Un musée sans fin, qui se construit devant vous et s’efface derrière.',
   'home.enter': 'Entrer',
   'home.collection': 'Ma collection',

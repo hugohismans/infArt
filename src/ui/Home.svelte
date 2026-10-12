@@ -270,8 +270,8 @@
   h1 {
     font-family: var(--serif);
     font-weight: 400;
-    font-size: clamp(2.6rem, 10vw, 4.6rem);
-    letter-spacing: 0.05em;
+    font-size: clamp(3.4rem, 16vw, 6.4rem);
+    letter-spacing: 0.06em;
     line-height: 1.05;
     margin: 0;
     color: #fbf4e6;

@@ -1,5 +1,5 @@
 /**
- * Worker « Galerie Infinie » : proxy des API de musées.
+ * Worker « Ailleurs » : proxy des API de musées.
  *
  * - GET /artworks?count=24&seed=…&batch=0&types=peinture,estampe&sources=aic,met&theme=chats
  *     &weights=peinture:0.5,affiche:0.1 (mode mélange : part de chaque type)
@@ -21,7 +21,7 @@ import { resolveTheme } from '../../shared/themes';
 /** Secrets (wrangler secret put …) : chaque source qui en a besoin reste inactive sans eux. */
 export type Env = Keys;
 
-const USER_AGENT = 'galerie-infinie/0.2 (+https://github.com/hugohismans/infArt)';
+const USER_AGENT = 'ailleurs/0.3 (+https://github.com/hugohismans/infArt)';
 
 /** Hôtes d'images autorisés pour le relais (jamais un proxy ouvert). */
 const IMAGE_HOSTS = new Set([

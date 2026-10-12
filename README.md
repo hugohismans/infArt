@@ -1,4 +1,4 @@
-# Galerie Infinie
+# Ailleurs
 
 Un musée infini, explorable à la première personne sur PC et sur mobile. Le bâtiment se génère devant le visiteur et s'efface derrière lui : si l'on fait demi-tour, on ne retrouve jamais le chemin d'origine.
 

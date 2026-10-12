@@ -8,7 +8,7 @@ import { randomPageStart, type SourceAdapter } from './types';
  */
 const API = 'https://api.artic.edu/api/v1/artworks/search';
 const IIIF = 'https://www.artic.edu/iiif/2';
-const HEADERS = { 'AIC-User-Agent': 'galerie-infinie (https://github.com/hugohismans/infArt)' };
+const HEADERS = { 'AIC-User-Agent': 'ailleurs (https://github.com/hugohismans/infArt)' };
 const PAGE = 40;
 /**
  * L'API refuse offset + limit > 1 000 (contrairement à ce que laisse penser la doc) :

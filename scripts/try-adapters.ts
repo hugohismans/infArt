@@ -10,7 +10,7 @@ const [only, onlyType] = process.argv.slice(2);
 const fetchJson = async (url: string, opts?: { headers?: Record<string, string>; body?: string }) => {
   const r = await fetch(url, {
     method: opts?.body ? 'POST' : 'GET',
-    headers: { 'User-Agent': 'galerie-infinie/0.2 (+https://github.com/hugohismans/infArt)', ...opts?.headers },
+    headers: { 'User-Agent': 'ailleurs/0.3 (+https://github.com/hugohismans/infArt)', ...opts?.headers },
     ...(opts?.body ? { body: opts.body } : {}),
   });
   if (!r.ok) throw new Error(`HTTP ${r.status} ${url}`);
