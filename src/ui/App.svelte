@@ -14,6 +14,7 @@
   import { multiplayerAvailable } from '../net/config';
   import type { Session } from '../net/Session';
   import type { Companion } from '../net/Companion';
+  import type { Voice } from '../net/Voice';
   import { readUrlParams } from './params';
   import { loadSettings, saveSettings } from './settings';
   import { CONFIG } from '../config';
@@ -111,6 +112,9 @@
   const duoAvailable = multiplayerAvailable();
   let session: Session | null = null;
   let companion: Companion | null = null;
+  let voice: Voice | null = null;
+  let micOn = $state(false);
+  let meSpeaking = $state(false);
   let duoState = $state<'joining' | 'active' | null>(null);
   let duoRooms = $state<number | null>(null);
   let duoNotice = $state<string | null>(null);
@@ -120,20 +124,30 @@
 
   async function startDuo(p: Pairing) {
     if (!engine || !lobby.F || !lobby.database || !lobby.uid) return;
-    const [{ Session }, { Companion }] = await Promise.all([import('../net/Session'), import('../net/Companion')]);
+    const [{ Session }, { Companion }, { Voice }] = await Promise.all([import('../net/Session'), import('../net/Companion'), import('../net/Voice')]);
     const e = engine;
     const s = new Session(lobby.F, lobby.database, p.sid, lobby.uid, p.friend.uid, p.role, e);
     session = s;
     companion = new Companion(e, s, p.friend.name);
     duoState = 'joining';
     friendAbsent = 0;
+    const v = new Voice(lobby.F, lobby.database, s, e, audio, apiUrl ? `${apiUrl}/turn` : null);
     s.onState = (st) => {
       if (st === 'ended') stopDuo(p.friend.name);
       else duoState = st;
+      // Musées raccordés : la liaison audio peut s'établir.
+      if (st === 'active' && !voice) {
+        voice = v;
+        void v.start();
+      }
     };
     e.onFrame = (dt) => {
       s.update(dt);
+      voice?.update(dt);
+      if (companion) companion.speaking = voice?.friendSpeaking ?? false;
       companion?.update(dt);
+      const speaking = voice?.meSpeaking ?? false;
+      if (speaking !== meSpeaking) meSpeaking = speaking;
       duoRooms = s.path.length > 0 ? s.path.length - 1 : null;
       // L'ami ne donne plus de nouvelles (fermé, coupé) : on arrête après un moment.
       friendAbsent = s.friend ? 0 : friendAbsent + dt;
@@ -146,6 +160,10 @@
     if (engine) engine.onFrame = null;
     companion?.dispose();
     companion = null;
+    voice?.dispose();
+    voice = null;
+    micOn = false;
+    meSpeaking = false;
     session = null;
     duoState = null;
     duoRooms = null;
@@ -154,6 +172,18 @@
       duoNotice = t('duo.left', { name });
       window.setTimeout(() => (duoNotice = null), 4000);
     }
+  }
+
+  async function toggleMic() {
+    if (!voice) return;
+    // (Le contexte audio doit être actif pour la voix spatialisée.)
+    audio.unlock();
+    const ok = await voice.setMic(!micOn);
+    if (!micOn && !ok) {
+      duoNotice = t('duo.micDenied');
+      window.setTimeout(() => (duoNotice = null), 5000);
+    }
+    micOn = voice.micOn;
   }
 
   function leaveDuo() {
@@ -222,7 +252,7 @@
     engine = e;
     progress.visit();
     observeVisit(e);
-    (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, audio, stats: () => e.stats(), openSheet, lobby, duo: () => session };
+    (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, audio, stats: () => e.stats(), openSheet, lobby, duo: () => session, voice: () => voice };
 
     if (!isTouchDevice()) {
       e.requestPointerLock();
@@ -412,6 +442,15 @@
         {/if}
       </svg>
     </button>
+    {#if duoState === 'active'}
+      <button class="hud-btn mic" class:on={micOn} class:talking={meSpeaking} aria-label={micOn ? t('duo.micOn') : t('duo.micOff')} aria-pressed={micOn} onclick={toggleMic}>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="3" width="6" height="11" rx="3" />
+          <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+          {#if !micOn}<path d="M4 4l16 16" />{/if}
+        </svg>
+      </button>
+    {/if}
   </div>
 
   {#if showLookHint && !menuOpen && !locked}
@@ -610,6 +649,14 @@
   }
   .hud-btn:hover {
     opacity: 1;
+  }
+  .hud-btn.mic.on {
+    opacity: 1;
+    border-color: #5fd4c4;
+    color: #5fd4c4;
+  }
+  .hud-btn.mic.talking {
+    box-shadow: 0 0 0 3px rgba(95, 212, 196, 0.35);
   }
   .theme-title {
     position: fixed;

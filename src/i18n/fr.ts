@@ -112,6 +112,9 @@ export const fr = {
   'duo.decline': 'Refuser',
   'duo.keys': 'O pour accepter · N pour refuser',
   'duo.left': '{name} a quitté la visite',
+  'duo.micOn': 'Couper le micro',
+  'duo.micOff': 'Parler (activer le micro)',
+  'duo.micDenied': 'Micro refusé : autorise-le dans les réglages du navigateur.',
 } as const;
 
 export type MessageKey = keyof typeof fr;

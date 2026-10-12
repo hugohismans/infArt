@@ -81,6 +81,14 @@ export class AudioEngine {
     this.master.gain.setTargetAtTime(muted ? 0 : CONFIG.audio.volume, this.ctx.currentTime, 0.15);
   }
 
+  /**
+   * Entrées pour une source extérieure (la voix de l'ami, visite à deux) : son direct et
+   * départ vers la réverbération de la salle. Null tant que le son n'est pas démarré.
+   */
+  externalInputs(): { ctx: AudioContext; dry: AudioNode; reverb: AudioNode } | null {
+    return this.ctx ? { ctx: this.ctx, dry: this.dry, reverb: this.reverb } : null;
+  }
+
   /** Onglet masqué : on suspend tout (batterie). */
   suspend(hidden: boolean): void {
     if (!this.ctx) return;

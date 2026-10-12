@@ -51,6 +51,7 @@ Sur l'accueil, un pseudo facultatif : avec, on apparaît dans la liste « Visite
 - **Chemin gardé** : les salles entre les deux visiteurs ne sont jamais effacées ; le reste disparaît comme d'habitude (l'hôte fait le ménage dans l'atlas).
 - **Jonction** : l'invité choisit une ouverture libre et invisible de chaque côté, déplace tout son monde d'un bloc pour qu'elles se fassent face, puis les relie. Rien ne bouge à l'écran.
 - **Firebase** (Realtime Database + connexion anonyme), chargé seulement à la connexion. Règles : `database.rules.json`. Configuration : `src/net/config.ts` (tant qu'elle est vide, la visite à deux est masquée).
+- **Chat vocal de proximité** (`src/net/Voice.ts`) : appel audio direct entre les deux navigateurs (WebRTC), mis en relation par la session Firebase. La voix sort de l'avatar (son spatialisé, réverbération de la salle), étouffée derrière un mur, plus faible d'une salle à l'autre, muette au-delà de deux salles. Bouton micro dans le HUD ; un anneau s'allume au-dessus de l'ami quand il parle. Relais TURN de Cloudflare (pour la 4G) servi par le Worker (`/turn`) quand les secrets `TURN_KEY_ID` et `TURN_KEY_API_TOKEN` sont présents ; sinon STUN seul (suffit en wifi).
 - **Essais en local** : `npm run emulators` (émulateurs Firebase, Java requis), puis `?emulator=1&pseudo=Alice` dans deux navigateurs.
 
 ## Phase 8, finitions (vague 1)

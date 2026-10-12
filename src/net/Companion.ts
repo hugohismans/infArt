@@ -60,6 +60,9 @@ export class Companion {
   private readonly pos = new THREE.Vector3();
   private yaw = 0;
   private placed = false;
+  /** Anneau au-dessus de la tête : l'ami parle. */
+  private readonly ring: THREE.Mesh;
+  speaking = false;
   private rebuild = 0;
 
   constructor(
@@ -80,8 +83,14 @@ export class Companion {
     nose.position.set(0, 1.42, -0.2);
     const label = makeLabel(name);
     label.position.y = 2.0;
-    this.avatar.add(body, head, nose, label);
-    this.owned.push(bodyGeo, headGeo, mat, nose.geometry, label.material.map!, label.material);
+    const ringGeo = new THREE.TorusGeometry(0.24, 0.025, 8, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9 });
+    this.ring = new THREE.Mesh(ringGeo, ringMat);
+    this.ring.rotation.x = Math.PI / 2;
+    this.ring.position.y = 1.7;
+    this.ring.visible = false;
+    this.avatar.add(body, head, nose, label, this.ring);
+    this.owned.push(bodyGeo, headGeo, mat, nose.geometry, label.material.map!, label.material, ringGeo, ringMat);
 
     this.lineMat = new THREE.MeshBasicMaterial({
       color: COLOR,
@@ -120,6 +129,9 @@ export class Companion {
       this.avatar.rotation.y = this.yaw;
     } else this.placed = false;
 
+    // L'ami parle : l'anneau pulse au-dessus de sa tête.
+    this.ring.visible = this.speaking;
+    if (this.speaking) this.ring.scale.setScalar(1 + 0.15 * Math.sin(performance.now() / 120));
     this.dash.offset.y -= dt * 0.9;
     this.rebuild -= dt;
     if (this.rebuild <= 0) {

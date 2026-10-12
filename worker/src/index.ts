@@ -195,6 +195,27 @@ async function handleImage(url: URL, ctx: ExecutionContext): Promise<Response> {
   return response;
 }
 
+/** Sites autorisés à obtenir un accès au relais TURN (le Worker ne l'offre pas à tout le Web). */
+const TURN_ORIGINS = [/^https:\/\/hugohismans\.github\.io$/, /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/];
+
+/**
+ * Visite à deux, chat vocal : accès temporaires (1 h) au relais TURN de Cloudflare,
+ * indispensable quand les deux appareils ne peuvent pas se joindre directement (4G).
+ * Inactif tant que les secrets TURN_KEY_ID et TURN_KEY_API_TOKEN manquent.
+ */
+async function handleTurn(request: Request, env: Env): Promise<Response> {
+  const origin = request.headers.get('Origin') ?? '';
+  if (!TURN_ORIGINS.some((r) => r.test(origin))) return json({ error: 'origine non autorisée' }, 403);
+  if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) return json({ error: 'relais non configuré' }, 404);
+  const res = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ttl: 3600 }),
+  });
+  if (!res.ok) return json({ error: `relais indisponible (HTTP ${res.status})` }, 502);
+  return json(await res.json());
+}
+
 export default {
   async fetch(request, env, ctx): Promise<Response> {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -212,6 +233,8 @@ export default {
           return await handleArtworks(url, env, ctx);
         case '/image':
           return await handleImage(url, ctx);
+        case '/turn':
+          return await handleTurn(request, env);
         default:
           return json({ error: 'introuvable' }, 404);
       }

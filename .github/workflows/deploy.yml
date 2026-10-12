@@ -56,9 +56,11 @@ jobs:
           EUROPEANA_KEY: ${{ secrets.EUROPEANA_KEY }}
           HARVARD_KEY: ${{ secrets.HARVARD_KEY }}
           SMITHSONIAN_KEY: ${{ secrets.SMITHSONIAN_KEY }}
+          TURN_KEY_ID: ${{ secrets.TURN_KEY_ID }}
+          TURN_KEY_API_TOKEN: ${{ secrets.TURN_KEY_API_TOKEN }}
         run: |
           node -e '
-            const names = ["TMDB_TOKEN","TWITCH_CLIENT_ID","TWITCH_CLIENT_SECRET","EUROPEANA_KEY","HARVARD_KEY","SMITHSONIAN_KEY"];
+            const names = ["TMDB_TOKEN","TWITCH_CLIENT_ID","TWITCH_CLIENT_SECRET","EUROPEANA_KEY","HARVARD_KEY","SMITHSONIAN_KEY","TURN_KEY_ID","TURN_KEY_API_TOKEN"];
             const out = Object.fromEntries(names.filter((n) => process.env[n]).map((n) => [n, process.env[n]]));
             require("fs").writeFileSync("secrets.json", JSON.stringify(out));
             console.log("Clés présentes :", Object.keys(out).join(", ") || "aucune");
