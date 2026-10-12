@@ -21,6 +21,12 @@ html, body, #app {
   font-family: var(--sans);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+  /* Pas de curseur de saisie hors des champs de texte (navigation au curseur, focus resté sur un bouton). */
+  caret-color: transparent;
+}
+
+input, textarea {
+  caret-color: auto;
 }
 
 .game-canvas {

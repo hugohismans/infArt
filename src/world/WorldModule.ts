@@ -11,6 +11,16 @@ import { Rng } from './random';
 import type { ResourceCache } from './resources';
 import { buildDecor } from '../decor';
 import type { ArtSlotDef } from './modules/defs';
+import type { Artwork } from '../../shared/artwork';
+
+/**
+ * Œuvres d'un module venu d'un autre visiteur (visite à deux) : celles qu'il a accrochées,
+ * par emplacement, et ses sculptures sur socle. Un emplacement encore inconnu attend.
+ */
+export interface RemoteArt {
+  walls: Map<number, Artwork>;
+  pedestals: Array<{ p: number; art: Artwork }>;
+}
 
 /** Modèle d'un couloir qui se répète. */
 export interface LoopSource {
@@ -100,6 +110,14 @@ export class WorldModule {
    * (même forme, mêmes œuvres, même décor) dans les `remaining` modules suivants.
    */
   loop: LoopSource | null = null;
+  /** Identifiant global (visite à deux) : unique d'un visiteur à l'autre. */
+  uid = '';
+  /** Module reçu d'un autre visiteur : ses œuvres (sinon on pioche dans sa propre réserve). */
+  remote: RemoteArt | null = null;
+  /** Œuvres murales, dans l'ordre des emplacements accrochés (index publié). */
+  readonly wallPieces: ArtPiece[] = [];
+  /** Sculptures, avec l'index de leur socle. */
+  readonly pedestalPieces: Array<{ p: number; piece: ArtPiece }> = [];
   /** Ouverture par laquelle le visiteur est entré (pour la murer derrière lui). */
   enteredFrom = -1;
   private seals: THREE.Mesh[] = [];
@@ -146,7 +164,7 @@ export class WorldModule {
     readonly def: ModuleDef,
     readonly transform: Transform2,
     /** Hauteur du sol à l'entrée du module (étages). */
-    readonly baseY: number,
+    public baseY: number,
     readonly preset: AmbiancePreset,
     /** Zone du Directeur à laquelle appartient le module. */
     readonly zone: ZoneState,
@@ -218,7 +236,8 @@ export class WorldModule {
     const emptied = odd === 'salle-vide' && this.def.kind === 'room';
     // La même œuvre, trois fois de suite (ou partout : labyrinthe de miroirs).
     const mirror = !!this.preset.art.mirror;
-    const triple = (odd === 'triple' && this.def.artSlots.length >= 3) || mirror ? artCtx?.library.take(this.preset.art.prefer) ?? null : null;
+    const remote = this.remote;
+    const triple = !remote && ((odd === 'triple' && this.def.artSlots.length >= 3) || mirror) ? artCtx?.library.take(this.preset.art.prefer) ?? null : null;
     let tripleLeft = triple ? (mirror ? Infinity : 3) : 0;
     const tripleTotal = tripleLeft;
     const oddIndex = rng.int(0, Math.max(0, this.def.artSlots.length - 1));
@@ -235,16 +254,21 @@ export class WorldModule {
         slot = { ...slot, hangY: 0, maxHeight: Math.min(2.2, this.preset.geometry.corridorWidth - 1) };
       }
       // Répétition d'un couloir déjà vu : la même œuvre au même endroit.
-      const copied = this.loopFrom?.pieces[index]?.artwork;
+      // (Module d'un autre visiteur : son œuvre, ou on attend qu'il la publie.)
+      const copied = remote ? remote.walls.get(index) : this.loopFrom?.pieces[index]?.artwork;
       if (copied) opts.artwork = copied;
+      else if (remote) opts.awaitRemote = true;
       if (triple && tripleLeft > 0 && !slot.hangY) {
         opts.ready = triple;
         // La première pièce possède la texture ; les autres l'empruntent.
         if (tripleLeft < tripleTotal) opts.borrowed = true;
         tripleLeft--;
       }
-      const art = new ArtPiece(slot, rng, this.preset, mats, wallHeight, artCtx, () => this.visible, opts);
+      // Chaque œuvre tire au sort avec sa propre graine : le choix des emplacements reste
+      // identique d'un visiteur à l'autre, quelles que soient les œuvres.
+      const art = new ArtPiece(slot, new Rng(this.seed, 'piece', index), this.preset, mats, wallHeight, artCtx, () => this.visible, opts);
       this.arts.push(art);
+      this.wallPieces.push(art);
       this.group.add(art.object);
     };
     for (const slot of emptied ? [] : this.def.artSlots) {
@@ -268,15 +292,26 @@ export class WorldModule {
 
     // Sculptures sur socle : seulement si une sculpture est prête (jamais de socle vide).
     const pedestalWalls: Segment[] = [];
-    if (artCtx && !emptied && !this.loopFrom) {
+    const placed: Array<{ p: number; opts: ArtOptions }> = [];
+    if (remote) {
+      for (const r of remote.pedestals) placed.push({ p: r.p, opts: { artwork: r.art, pedestal: true } });
+    } else if (artCtx && !emptied && !this.loopFrom) {
       const prng = new Rng(this.seed, 'socles');
-      for (const p of this.def.pedestals) {
+      for (let i = 0; i < this.def.pedestals.length; i++) {
         if (!prng.chance(CONFIG.art.pedestalChance)) continue;
         const ready = artCtx.library.takeSculpture();
         if (!ready) break;
+        placed.push({ p: i, opts: { ready, pedestal: true } });
+      }
+    }
+    for (const { p: index, opts } of placed) {
+      const p = this.def.pedestals[index];
+      if (!p) continue;
+      {
         const slot: ArtSlotDef = { pos: p.pos, y: this.def.floorAt(p.pos), normal: p.normal, maxWidth: 1.6, maxHeight: 1.5 };
-        const art = new ArtPiece(slot, prng, this.preset, mats, 6, artCtx, () => this.visible, { ready, pedestal: true });
+        const art = new ArtPiece(slot, new Rng(this.seed, 'socle', index), this.preset, mats, 6, artCtx, () => this.visible, opts);
         this.arts.push(art);
+        this.pedestalPieces.push({ p: index, piece: art });
         this.group.add(art.object);
         // Collision : le socle, un peu élargi.
         const h = 0.45;
@@ -435,6 +470,47 @@ export class WorldModule {
       mv(ad.portal.b);
     }
     this.group.position.set(this.transform.x, this.groupY, this.transform.z);
+    this.group.updateMatrix();
+    this.group.updateMatrixWorld(true);
+  }
+
+  /**
+   * Déplace le module d'un bloc : rotation et translation dans le plan (`t` appliquée aux
+   * coordonnées monde), et `dy` en hauteur. Sert à raccorder le monde d'un visiteur à celui
+   * d'un autre (visite à deux), sans que rien ne change à l'écran.
+   */
+  reframe(t: Transform2, dy: number): void {
+    const mv = (p: Vec2) => {
+      const q = applyTransform(t, p);
+      p.x = q.x;
+      p.z = q.z;
+    };
+    const pos = applyTransform(t, { x: this.transform.x, z: this.transform.z });
+    this.transform.x = pos.x;
+    this.transform.z = pos.z;
+    this.transform.angle += t.angle;
+    this.baseY += dy;
+    this.yRange[0] += dy;
+    this.yRange[1] += dy;
+    this.footprint.forEach(mv);
+    this.navPoints.forEach(mv);
+    for (const w of [...this.walls, ...this.decorWalls]) {
+      mv(w.a);
+      mv(w.b);
+    }
+    for (const c of this.connectors) {
+      mv(c.pos);
+      mv(c.portal.a);
+      mv(c.portal.b);
+      c.normal = rotate(c.normal, t.angle);
+      c.y += dy;
+    }
+    for (const ad of this.adapters.values()) {
+      mv(ad.portal.a);
+      mv(ad.portal.b);
+    }
+    this.group.position.set(this.transform.x, this.groupY, this.transform.z);
+    this.group.rotation.y = this.transform.angle;
     this.group.updateMatrix();
     this.group.updateMatrixWorld(true);
   }

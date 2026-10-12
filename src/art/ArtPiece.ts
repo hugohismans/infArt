@@ -46,6 +46,8 @@ export interface ArtOptions {
   ceiling?: boolean;
   /** Sculpture sur socle, au milieu de la salle (photo debout, visible des deux côtés). */
   pedestal?: boolean;
+  /** Visite à deux : l'œuvre sera choisie par l'autre visiteur (voile en attendant). */
+  awaitRemote?: boolean;
 }
 
 /** Une langue inventée : chaque lettre devient un glyphe, les mots gardent leur longueur. */
@@ -146,20 +148,13 @@ export class ArtPiece {
       return;
     }
     if (opts.artwork && ctx) {
-      // Une œuvre précise, déjà vue ailleurs : on recharge son image.
-      const art = opts.artwork;
+      // Une œuvre précise (déjà vue ailleurs, ou choisie par l'autre visiteur) : on charge son image.
+      if (!opts.pedestal) this.hangPlaceholder();
+      this.loadArtwork(opts.artwork);
+      return;
+    }
+    if (opts.awaitRemote && ctx) {
       this.hangPlaceholder();
-      const { promise, cancel } = ctx.loader.load(ctx.client.imageUrls(art, ctx.textureSize), ctx.textureSize, 2);
-      this.cancelWait = cancel;
-      promise.then(
-        (img) => {
-          this.cancelWait = null;
-          this.arrive({ artwork: art, texture: img.texture, aspect: img.naturalWidth / img.naturalHeight });
-        },
-        () => {
-          this.cancelWait = null;
-        },
-      );
       return;
     }
     const ready = opts.ready ?? ctx?.library.take(preset.art.prefer, opts.themeId) ?? null;
@@ -169,6 +164,42 @@ export class ArtPiece {
       this.hangPlaceholder();
       this.cancelWait = ctx.library.request((r) => this.arrive(r));
     }
+  }
+
+  /** Charge l'image d'une œuvre donnée, puis l'accroche. */
+  private loadArtwork(art: Artwork): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.cancelWait?.();
+    const { promise, cancel } = ctx.loader.load(ctx.client.imageUrls(art, ctx.textureSize), ctx.textureSize, 2);
+    this.cancelWait = cancel;
+    promise.then(
+      (img) => {
+        this.cancelWait = null;
+        this.arrive({ artwork: art, texture: img.texture, aspect: img.naturalWidth / img.naturalHeight });
+      },
+      () => {
+        this.cancelWait = null;
+      },
+    );
+  }
+
+  /** Visite à deux : l'autre visiteur a accroché cette œuvre ici. */
+  assignArtwork(art: Artwork): void {
+    if (this.disposed || this.artwork?.id === art.id || this.pendingId === art.id) return;
+    this.pendingId = art.id;
+    this.loadArtwork(art);
+  }
+  private pendingId: string | null = null;
+
+  /** Visite à deux : l'œuvre attendue n'arrive pas (l'autre est parti) : on pioche dans sa réserve. */
+  fallbackToLibrary(): void {
+    const ctx = this.ctx;
+    if (this.disposed || this.artwork || this.pendingId || !ctx) return;
+    this.pendingId = 'local';
+    const ready = ctx.library.take(this.preset.art.prefer, this.opts.themeId);
+    if (ready) this.arrive(ready);
+    else this.cancelWait = ctx.library.request((r) => this.arrive(r));
   }
 
   /** Le texte du cartel est affiché (une texture). */
@@ -328,7 +359,8 @@ export class ArtPiece {
       return;
     }
     const watched = this.isVisible() && (this.ctx?.viewer?.watching(this.object) ?? true);
-    if (!watched || !this.layout) {
+    // (Une œuvre déjà accrochée qu'on remplace : on raccroche, sans garder l'ancienne texture.)
+    if (!watched || !this.layout || this.artwork) {
       // Personne ne regarde : on raccroche à la bonne taille.
       this.clear();
       this.hang(ready);

@@ -136,6 +136,8 @@ export class Engine {
   onArtworkOpen: ((artwork: Artwork) => void) | null = null;
   /** L'œuvre visée au centre de l'écran change (PC, souris capturée). */
   onAimChange: ((artwork: Artwork | null) => void) | null = null;
+  /** À chaque image, même en pause (visite à deux : synchronisation, compagnon). Temps réel (s). */
+  onFrame: ((realDt: number) => void) | null = null;
   /** Le visiteur s'est arrêté devant une œuvre (au centre de l'écran, presque immobile). */
   onDwell: ((artwork: Artwork) => void) | null = null;
   /** Titre d'une aile thématique (chaîne vide : on l'efface). */
@@ -370,6 +372,13 @@ export class Engine {
     if (art) this.onArtworkOpen?.(art);
   }
 
+  /** Déplace le monde et le visiteur d'un bloc (raccordement à un autre visiteur). */
+  reframe(t: { x: number; z: number; angle: number }, dy: number): void {
+    this.world.reframe(t, dy);
+    this.player.reframe(t, dy);
+    this.autoWalk.reset();
+  }
+
   /** Distance parcourue depuis l'entrée (m). */
   get walked(): number {
     return this.distanceWalked;
@@ -495,6 +504,7 @@ export class Engine {
       // Mode auto : la résolution suit les fps (pas pendant une pause, où tout est fluide).
       if (!document.hidden) this.quality.update(realDt);
     }
+    this.onFrame?.(realDt);
     this.renderer.render(this.scene, this.camera);
     this.frameMs += (performance.now() - t0 - this.frameMs) * 0.1;
 

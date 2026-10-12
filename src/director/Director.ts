@@ -74,6 +74,11 @@ export class Director {
 
   private zoneCount = 0;
   private wingCount = 0;
+  /**
+   * Base des identifiants de zones et d'ailes : à deux visiteurs, chacun crée les siennes,
+   * elles ne doivent pas se confondre.
+   */
+  private readonly idBase = Math.floor(Math.random() * 2 ** 20) * 1000;
   /** Modules créés depuis la dernière aile thématique, la dernière étrangeté. */
   private sinceWing = 0;
   private sinceOddity = 0;
@@ -99,7 +104,7 @@ export class Director {
     const rng = new Rng(this.seed, 'depart');
     const d = CONFIG.director;
     const zone: Zone = {
-      id: this.zoneCount++,
+      id: this.idBase + this.zoneCount++,
       ambiance: this.start,
       from: null,
       transition: 'depart',
@@ -131,7 +136,7 @@ export class Director {
       const ambiance = this.ambiances[id] ?? this.start;
       this.history.push(id);
       out.push({
-        zone: { id: this.zoneCount++, ambiance, from: this.start, transition: 'depart', length: rng.int(d.hubZoneLength[0], d.hubZoneLength[1]), blendSteps: 0, tension: ambiance.tension },
+        zone: { id: this.idBase + this.zoneCount++, ambiance, from: this.start, transition: 'depart', length: rng.int(d.hubZoneLength[0], d.hubZoneLength[1]), blendSteps: 0, tension: ambiance.tension },
         step: 0,
       });
     }
@@ -182,7 +187,22 @@ export class Director {
     const theme = this.claimTheme?.();
     if (!theme) return undefined;
     this.sinceWing = 0;
-    return { id: this.wingCount++, theme, left: rng.int(d.wingLength[0], d.wingLength[1]) };
+    return { id: this.idBase + this.wingCount++, theme, left: rng.int(d.wingLength[0], d.wingLength[1]) };
+  }
+
+  /** Ambiance d'après son identifiant, y compris une étape de transition (« a>b@0.25 »). */
+  presetByKey(key: string): AmbiancePreset | null {
+    const direct = this.ambiances[key];
+    if (direct) return direct;
+    const m = key.match(/^(.+)>(.+)@([\d.]+)$/);
+    const a = m && this.ambiances[m[1]!], b = m && this.ambiances[m[2]!];
+    if (!m || !a || !b) return null;
+    let p = this.blends.get(key);
+    if (!p) {
+      p = blendPresets(a, b, Number(m[3]));
+      this.blends.set(key, p);
+    }
+    return p;
   }
 
   /** Ambiance effective d'un module (intermédiaire pendant une transition progressive). */
@@ -236,6 +256,6 @@ export class Director {
     const [minLen, maxLen] = ambiance.zoneLength ?? d.zoneLength;
     const length = rng.int(minLen, maxLen);
     const blendSteps = transition === 'progressive' ? Math.min(length - 1, rng.int(d.blendSteps[0], d.blendSteps[1])) : 0;
-    return { id: index, ambiance, from: prev.ambiance, transition, length, blendSteps, tension: target };
+    return { id: this.idBase + index, ambiance, from: prev.ambiance, transition, length, blendSteps, tension: target };
   }
 }

@@ -22,6 +22,22 @@ export class Player {
   /** Option « réduire les mouvements » : coupe le balancement de tête. */
   reduceMotion = false;
 
+  /**
+   * Le monde vient d'être déplacé d'un bloc (visite à deux) : le visiteur suit, l'image ne
+   * change pas. `t` : rotation (convention rotation.y) puis translation ; `dy` : hauteur.
+   */
+  reframe(t: { x: number; z: number; angle: number }, dy: number): void {
+    const r = (p: Vec2) => {
+      const c = Math.cos(t.angle), s = Math.sin(t.angle);
+      return { x: p.x * c + p.z * s, z: -p.x * s + p.z * c };
+    };
+    const p = r(this.position);
+    this.position = { x: p.x + t.x, z: p.z + t.z };
+    this.velocity = r(this.velocity);
+    this.yaw += t.angle;
+    this.floorY += dy;
+  }
+
   get forwardDir(): Vec2 {
     return { x: -Math.sin(this.yaw), z: -Math.cos(this.yaw) };
   }

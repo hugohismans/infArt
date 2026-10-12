@@ -6,6 +6,7 @@
   import { isTouchDevice } from '../engine/Engine';
   import type { QualitySetting } from '../engine/Quality';
   import type { MessageKey } from '../i18n/fr';
+  import DuoPanel from './DuoPanel.svelte';
 
   interface Props {
     seed: string;
@@ -19,6 +20,10 @@
     onResume: () => void;
     onNewVisit: () => void;
     onCollection: () => void;
+    /** Visite à deux disponible (Firebase connecté). */
+    duo: boolean;
+    duoJoining: boolean;
+    onLeaveDuo: () => void;
   }
   let {
     seed,
@@ -32,6 +37,9 @@
     onResume,
     onNewVisit,
     onCollection,
+    duo,
+    duoJoining,
+    onLeaveDuo,
   }: Props = $props();
 
   let copied = $state(false);
@@ -108,6 +116,8 @@
       <input type="checkbox" bind:checked={debugVisible} />
       <span>{t('menu.debug')}</span>
     </label>
+
+    {#if duo}<DuoPanel joining={duoJoining} onLeave={onLeaveDuo} />{/if}
 
     <div class="seed">
       <span>{t('menu.seed')} : <code>{seed}</code></span>

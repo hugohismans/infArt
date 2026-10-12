@@ -10,6 +10,10 @@
   import ArtworkSheet from './ArtworkSheet.svelte';
   import CollectionPanel from './CollectionPanel.svelte';
   import { progress } from '../progress/achievements.svelte';
+  import { lobby, type Pairing } from '../net/Lobby.svelte';
+  import { multiplayerAvailable } from '../net/config';
+  import type { Session } from '../net/Session';
+  import type { Companion } from '../net/Companion';
   import { readUrlParams } from './params';
   import { loadSettings, saveSettings } from './settings';
   import { CONFIG } from '../config';
@@ -103,9 +107,65 @@
   }
 
   let entering = false;
-  async function enter() {
+  // --- Visite à deux -------------------------------------------------------------------
+  const duoAvailable = multiplayerAvailable();
+  let session: Session | null = null;
+  let companion: Companion | null = null;
+  let duoState = $state<'joining' | 'active' | null>(null);
+  let duoRooms = $state<number | null>(null);
+  let duoNotice = $state<string | null>(null);
+  let friendAbsent = 0;
+
+  lobby.onPair = (p) => void startDuo(p);
+
+  async function startDuo(p: Pairing) {
+    if (!engine || !lobby.F || !lobby.database || !lobby.uid) return;
+    const [{ Session }, { Companion }] = await Promise.all([import('../net/Session'), import('../net/Companion')]);
+    const e = engine;
+    const s = new Session(lobby.F, lobby.database, p.sid, lobby.uid, p.friend.uid, p.role, e);
+    session = s;
+    companion = new Companion(e, s, p.friend.name);
+    duoState = 'joining';
+    friendAbsent = 0;
+    s.onState = (st) => {
+      if (st === 'ended') stopDuo(p.friend.name);
+      else duoState = st;
+    };
+    e.onFrame = (dt) => {
+      s.update(dt);
+      companion?.update(dt);
+      duoRooms = s.path.length > 0 ? s.path.length - 1 : null;
+      // L'ami ne donne plus de nouvelles (fermé, coupé) : on arrête après un moment.
+      friendAbsent = s.friend ? 0 : friendAbsent + dt;
+      if (s.state === 'active' && friendAbsent > 12) s.end(false);
+    };
+    await s.start();
+  }
+
+  function stopDuo(name: string | null) {
+    if (engine) engine.onFrame = null;
+    companion?.dispose();
+    companion = null;
+    session = null;
+    duoState = null;
+    duoRooms = null;
+    lobby.endPairing();
+    if (name) {
+      duoNotice = t('duo.left', { name });
+      window.setTimeout(() => (duoNotice = null), 4000);
+    }
+  }
+
+  function leaveDuo() {
+    session?.end(true);
+    stopDuo(null);
+  }
+
+  async function enter(pseudo: string | null = null) {
     if (entering) return;
     entering = true;
+    // Visite à deux : connexion (pseudo, ou anonyme) en arrière-plan.
+    if (duoAvailable) void lobby.login(pseudo);
     collectionOpen = false;
     sheetArtwork = null;
     seed = pendingSeed;
@@ -162,7 +222,7 @@
     engine = e;
     progress.visit();
     observeVisit(e);
-    (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, audio, stats: () => e.stats(), openSheet };
+    (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, audio, stats: () => e.stats(), openSheet, lobby, duo: () => session };
 
     if (!isTouchDevice()) {
       e.requestPointerLock();
@@ -249,6 +309,13 @@
   }
 
   function onKey(e: KeyboardEvent) {
+    // Invitation reçue : O pour accepter, N pour refuser (même souris capturée).
+    const inv = lobby.invitations[0];
+    if (inv && screen === 'visit' && !lobby.pairing && (e.code === 'KeyO' || e.code === 'KeyN')) {
+      if (e.code === 'KeyO') void lobby.accept(inv);
+      else void lobby.decline(inv);
+      return;
+    }
     if (e.code === 'Escape' && sheetArtwork) return closeSheet();
     if (e.code === 'Escape' && collectionOpen) return closeCollection();
     if (screen !== 'visit') return;
@@ -293,13 +360,17 @@
 
   function onLockChange() {
     locked = document.pointerLockElement !== null;
+    // Souris capturée : plus aucun élément de l'interface ne garde le focus (sinon le curseur
+    // de saisie de texte reste affiché au milieu de l'écran).
+    if (locked && document.activeElement instanceof HTMLElement) document.activeElement.blur();
   }
 
   function onCanvasPointer() {
     showLookHint = false;
   }
 
-  if (params.autoStart) queueMicrotask(() => enter());
+  // Essais : &pseudo=Alice se connecte avec ce pseudo au démarrage automatique.
+  if (params.autoStart) queueMicrotask(() => enter(new URLSearchParams(window.location.search).get('pseudo')));
 
   $effect(() => {
     document.addEventListener('pointerlockchange', onLockChange);
@@ -307,6 +378,7 @@
   });
 
   onDestroy(() => {
+    session?.end(true);
     clearInterval(observeTimer);
     engine?.dispose();
     library.dispose();
@@ -319,7 +391,7 @@
 <div class="overlay" bind:this={overlay}></div>
 
 {#if screen === 'home'}
-  <Home onEnter={enter} onCollection={openCollection} {library} {client} {loading} {reduceMotion} />
+  <Home onEnter={enter} onCollection={openCollection} {library} {client} {loading} {reduceMotion} duo={duoAvailable} />
 {:else}
   <div class="hud">
     <button class="hud-btn" aria-label={t('hud.menu')} onclick={openMenu}>
@@ -358,7 +430,7 @@
   {#if rupture}<div class="rupture {rupture}" aria-hidden="true"></div>{/if}
 
   {#if menuOpen}
-    <PauseMenu {seed} bind:autoWalk bind:reduceMotion bind:debugVisible bind:filterSensitive bind:quality bind:gyro bind:largeText onResume={resume} onNewVisit={newVisit} onCollection={openCollection} />
+    <PauseMenu {seed} bind:autoWalk bind:reduceMotion bind:debugVisible bind:filterSensitive bind:quality bind:gyro bind:largeText onResume={resume} onNewVisit={newVisit} onCollection={openCollection} duo={duoAvailable && lobby.connected} duoJoining={duoState === 'joining'} onLeaveDuo={leaveDuo} />
   {/if}
 
   {#if debugVisible && engine}
@@ -372,6 +444,24 @@
 {#if sheetArtwork}
   {#key sheetArtwork.id}<ArtworkSheet artwork={sheetArtwork} {client} onClose={closeSheet} onFavorite={(art) => library.noteInterest(art, CONFIG.interest.strength.favori)} />{/key}
 {/if}
+{#if screen === 'visit' && lobby.invitations[0] && !lobby.pairing}
+  {@const inv = lobby.invitations[0]}
+  <div class="invite" role="alertdialog" aria-label={t('duo.inviteFrom', { name: inv.name })}>
+    <p>{t('duo.inviteFrom', { name: inv.name })}</p>
+    <div class="invite-actions">
+      <button class="yes" onclick={() => lobby.accept(inv)}>{t('duo.accept')}</button>
+      <button onclick={() => lobby.decline(inv)}>{t('duo.decline')}</button>
+    </div>
+    {#if !isTouchDevice()}<p class="invite-keys">{t('duo.keys')}</p>{/if}
+  </div>
+{/if}
+{#if screen === 'visit' && (duoState || duoNotice)}
+  <div class="duo-chip" role="status" aria-live="polite">
+    {#if duoNotice}{duoNotice}
+    {:else if duoState === 'joining'}{t('duo.joining')}
+    {:else if lobby.pairing}<span class="dot-live"></span>{lobby.pairing.friend.name}{#if duoRooms !== null}&nbsp;·&nbsp;{duoRooms === 0 ? t('duo.sameRoom') : t('duo.rooms', { n: duoRooms })}{/if}{/if}
+  </div>
+{/if}
 {#if toast}
   {#key toast.id}
     <div class="toast" role="status" aria-live="polite">
@@ -382,6 +472,73 @@
 {/if}
 
 <style>
+  .invite {
+    position: fixed;
+    left: 50%;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 25;
+    width: min(380px, calc(100vw - 32px));
+    padding: 16px 18px;
+    background: var(--panel);
+    border: 1px solid rgba(95, 212, 196, 0.6);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    text-align: center;
+    animation: invite-in 0.3s ease-out;
+  }
+  @keyframes invite-in {
+    from { opacity: 0; transform: translate(-50%, 12px); }
+  }
+  .invite p {
+    margin: 0 0 12px;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+  }
+  .invite-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+  .invite button {
+    padding: 8px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: transparent;
+    cursor: pointer;
+  }
+  .invite .yes {
+    border-color: #5fd4c4;
+    color: #5fd4c4;
+  }
+  .invite .invite-keys {
+    margin: 10px 0 0;
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    color: var(--ink-dim);
+  }
+  .duo-chip {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: rgba(10, 8, 7, 0.45);
+    border: 1px solid rgba(95, 212, 196, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    font-size: 0.82rem;
+    pointer-events: none;
+  }
+  .dot-live {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #5fd4c4;
+  }
   .toast {
     position: fixed;
     top: max(16px, env(safe-area-inset-top));

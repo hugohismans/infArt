@@ -9,7 +9,9 @@
   import { ACHIEVEMENTS, progress } from '../progress/achievements.svelte';
 
   interface Props {
-    onEnter: () => void;
+    onEnter: (pseudo: string | null) => void;
+    /** Visite à deux possible : on propose un pseudo. */
+    duo: boolean;
     onCollection: () => void;
     library: ArtLibrary;
     client: ArtClient;
@@ -17,7 +19,16 @@
     loading: { ready: number; target: number } | null;
     reduceMotion: boolean;
   }
-  let { onEnter, onCollection, library, client, loading, reduceMotion }: Props = $props();
+  let { onEnter, onCollection, library, client, loading, reduceMotion, duo }: Props = $props();
+  let pseudo = $state(readPseudo());
+
+  function readPseudo(): string {
+    try {
+      return localStorage.getItem('galerie-infinie:pseudo') ?? '';
+    } catch {
+      return '';
+    }
+  }
 
   const touch = isTouchDevice();
   let readyCount = $state(0);
@@ -125,7 +136,13 @@
 
   function submit(e: SubmitEvent) {
     e.preventDefault();
-    onEnter();
+    const name = pseudo.trim().slice(0, 24);
+    try {
+      localStorage.setItem('galerie-infinie:pseudo', name);
+    } catch {
+      /* stockage indisponible */
+    }
+    onEnter(name || null);
   }
 </script>
 
@@ -154,6 +171,12 @@
         <div class="bar"><div class="fill" style="width: {(100 * loading.ready) / loading.target}%"></div></div>
       </div>
     {:else}
+      {#if duo}
+        <label class="pseudo">
+          <input type="text" bind:value={pseudo} maxlength="24" placeholder={t('home.pseudo')} autocomplete="nickname" spellcheck="false" />
+          <span>{t('home.pseudoHint')}</span>
+        </label>
+      {/if}
       <button class="enter" type="submit">{t('home.enter')}</button>
       <p class="status">{readyCount > 0 ? t('home.ready', { n: readyCount }) : t('home.preparing')}</p>
     {/if}
@@ -319,6 +342,27 @@
     background: var(--accent);
     color: #0d0c0b;
     box-shadow: 0 0 40px rgba(201, 161, 74, 0.35);
+  }
+  .pseudo {
+    display: grid;
+    gap: 6px;
+    width: min(320px, 86vw);
+    animation: rise 1.4s 0.4s ease-out both;
+  }
+  .pseudo input {
+    font: inherit;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    text-align: center;
+    padding: 9px 12px;
+    background: rgba(10, 8, 6, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: var(--ink);
+  }
+  .pseudo span {
+    font-size: 0.7rem;
+    color: var(--ink-dim);
+    line-height: 1.4;
   }
   .status {
     font-size: 0.75rem;

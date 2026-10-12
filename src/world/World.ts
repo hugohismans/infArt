@@ -6,7 +6,7 @@ import { makeModuleDefs, type ModuleDef } from './modules/defs';
 import { Rng } from './random';
 import { isOpenAir, ResourceCache } from './resources';
 import { computeVisibility, modulesContaining, type VisibilityResult } from './visibility';
-import { WorldModule, type LoopSource } from './WorldModule';
+import { WorldModule, type LoopSource, type RemoteArt } from './WorldModule';
 import type { ArtContext } from '../art/ArtPiece';
 import { AMBIANCES } from '../ambiances';
 import { Director, type ZoneState } from '../director/Director';
@@ -42,6 +42,35 @@ export interface WorldStats {
 }
 
 /**
+ * Visite à deux : accès à l'atlas partagé (voir net/Session). Le monde le consulte avant
+ * de générer, et le prévient de ce qu'il crée et détruit.
+ */
+export interface WorldNet {
+  /**
+   * L'ouverture est déjà raccordée dans l'atlas : la session importe le module partagé
+   * (ou attend qu'il arrive) et renvoie vrai ; le monde ne génère alors rien.
+   */
+  linked(parent: WorldModule, connector: number): boolean;
+  /** Une salle de l'atlas, non chargée ici, occupe-t-elle cet espace ? */
+  blocked(poly: Vec2[], y0: number, y1: number): boolean;
+  created(parent: WorldModule, connector: number, child: WorldModule): void;
+  destroyed(m: WorldModule): void;
+}
+
+/** Description d'un module à instancier (reçu de l'atlas partagé). */
+export interface ModuleSpec {
+  uid: string;
+  defId: string;
+  preset: AmbiancePreset;
+  /** Repère local (déjà converti depuis le repère absolu). */
+  transform: { x: number; z: number; angle: number };
+  baseY: number;
+  zone: ZoneState;
+  seed: string;
+  remote: RemoteArt;
+}
+
+/**
  * Le monde : un graphe de modules généré devant le visiteur et détruit derrière lui.
  *
  * Règles :
@@ -59,6 +88,14 @@ export class World {
   readonly director: Director;
   readonly cache = new ResourceCache();
   private nextId = 0;
+  /** Préfixe des identifiants globaux de modules (unique pour ce visiteur). */
+  readonly uidPrefix = Math.random().toString(36).slice(2, 8);
+  /** Modules chargés, par identifiant global. */
+  private readonly byUidMap = new Map<string, WorldModule>();
+  /** Décalage cumulé de l'origine flottante : position absolue = locale − offset. */
+  readonly offset = { x: 0, z: 0 };
+  /** Visite à deux (null en solo). */
+  net: WorldNet | null = null;
   private current: WorldModule | null = null;
   private lastVisibility: VisibilityResult = { modules: new Set(), openConnectors: [] };
   private counters = { created: 0, destroyed: 0, urgentFills: 0, popIns: 0, originShifts: 0, evictions: 0, capRetries: 0, seals: 0 };
@@ -209,6 +246,8 @@ export class World {
     if (Math.hypot(player.x, player.z) > cfg.floatingOriginThreshold) {
       const shift = { x: -Math.round(player.x), z: -Math.round(player.z) };
       for (const m of this.modules) m.shift(shift.x, shift.z);
+      this.offset.x += shift.x;
+      this.offset.z += shift.z;
       this.counters.originShifts++;
       return shift;
     }
@@ -303,6 +342,8 @@ export class World {
    * désormais coupé du reste et invisible, sera détruit comme les autres.
    */
   seal(m: WorldModule, index: number): void {
+    // (Pas à deux : l'autre visiteur pourrait se retrouver enfermé, ou passer à travers.)
+    if (this.net) return;
     const c = m.connectors[index];
     if (!c || c.sealed) return;
     const n = c.neighbor;
@@ -448,6 +489,12 @@ export class World {
     if (!parent.alive) return;
     const c = parent.connectors[connector]!;
     if (c.neighbor || c.sealed) return;
+    // Visite à deux : ce passage existe peut-être déjà dans l'atlas partagé.
+    if (this.net?.linked(parent, connector)) return;
+    const place = (child: WorldModule) => {
+      this.link(parent, connector, child, 0);
+      this.net?.created(parent, connector, child);
+    };
     const transform = { x: c.pos.x, z: c.pos.z, angle: angleOf(c.normal) };
     const baseY = c.y;
     const rng = new Rng(this.seed, 'pick', this.nextId);
@@ -477,7 +524,7 @@ export class World {
     if (loop && loop.remaining > 0 && !forceSas && parent.def.connectors.length === 2 && connector === 1) {
       const def = this.defsFor(parent.preset)[loop.def.id];
       if (def && this.overlapping(def, parent.preset, transform, baseY, parent).length === 0) {
-        this.link(parent, connector, this.createModule(def, transform, baseY, { ...parent.zone, oddity: undefined }, parent.preset, loop));
+        place(this.createModule(def, transform, baseY, { ...parent.zone, oddity: undefined }, parent.preset, loop));
         return;
       }
     }
@@ -495,7 +542,7 @@ export class World {
       weights[id] = 0;
       const obstacles = this.overlapping(def, preset, transform, baseY, parent);
       if (obstacles.length === 0) {
-        this.link(parent, connector, this.createModule(def, transform, baseY, zone, preset));
+        place(this.createModule(def, transform, baseY, zone, preset));
         return;
       }
       if (!fallback && obstacles.every((m) => this.canEvict(m, parent))) fallback = { def, obstacles };
@@ -504,13 +551,13 @@ export class World {
       for (const m of fallback.obstacles) this.destroyModule(m);
       this.counters.evictions += fallback.obstacles.length;
       if (!parent.alive) return;
-      this.link(parent, connector, this.createModule(fallback.def, transform, baseY, zone, preset));
+      place(this.createModule(fallback.def, transform, baseY, zone, preset));
       return;
     }
     // Rien ne rentre sans toucher à ce que le visiteur voit : bouchon (toujours placé),
     // aux dimensions du parent pour fermer exactement son ouverture.
     const capPreset = parent.preset;
-    this.link(parent, connector, this.createModule(this.defsFor(capPreset)['cap']!, transform, baseY, parent.zone, capPreset));
+    place(this.createModule(this.defsFor(capPreset)['cap']!, transform, baseY, parent.zone, capPreset));
   }
 
   /**
@@ -526,6 +573,9 @@ export class World {
     const H = def.ceilingHeight ?? preset.geometry.ceilingHeight * def.ceilingScale;
     const y0 = baseY + Math.min(0, def.rise), y1 = baseY + Math.max(0, def.rise) + H;
     const out: WorldModule[] = [];
+    // Visite à deux : une salle de l'atlas non chargée ici est un obstacle indélogeable
+    // (le parent, qu'on ne peut pas effacer, sert de marqueur).
+    if (this.net?.blocked(poly, y0 + 0.3, y1 - 0.3)) return [parent];
     for (const m of this.modules) {
       if (m === parent) continue;
       // Marge verticale : l'épaisseur du plancher entre deux étages.
@@ -546,23 +596,79 @@ export class World {
     );
   }
 
-  private link(parent: WorldModule, connector: number, child: WorldModule): void {
-    parent.connectors[connector]!.neighbor = { module: child, connector: 0 };
-    child.connectors[0]!.neighbor = { module: parent, connector };
-    child.graphDistance = parent.graphDistance + 1;
+  private link(parent: WorldModule, connector: number, child: WorldModule, entry: number): void {
+    parent.connectors[connector]!.neighbor = { module: child, connector: entry };
+    child.connectors[entry]!.neighbor = { module: parent, connector };
+    child.graphDistance = Math.min(child.graphDistance, parent.graphDistance + 1);
     // Ouvertures de tailles différentes (autre ambiance, sas) : chacun referme l'écart de son côté.
-    const a = parent.opening(connector), b = child.opening(0);
+    const a = parent.opening(connector), b = child.opening(entry);
     parent.applyAdapter(connector, b);
-    child.applyAdapter(0, a);
+    child.applyAdapter(entry, a);
+  }
+
+  // --- Visite à deux -----------------------------------------------------------------
+
+  /** Module chargé d'après son identifiant global. */
+  byUid(uid: string): WorldModule | undefined {
+    return this.byUidMap.get(uid);
+  }
+
+  /** Catalogue de modules d'une ambiance (pour reconstruire un module reçu). */
+  defById(preset: AmbiancePreset, id: string): ModuleDef | undefined {
+    return this.defsFor(preset)[id];
+  }
+
+  /** Instancie un module reçu de l'atlas ; s'il a un parent chargé, le raccorde. */
+  instantiate(spec: ModuleSpec, parent?: { module: WorldModule; connector: number; entry: number }): WorldModule | null {
+    const existing = this.byUidMap.get(spec.uid);
+    if (existing) {
+      if (parent) this.linkModules(parent.module, parent.connector, existing, parent.entry);
+      return existing;
+    }
+    const def = this.defsFor(spec.preset)[spec.defId];
+    if (!def) return null;
+    const m = new WorldModule(this.nextId++, def, { ...spec.transform }, spec.baseY, spec.preset, spec.zone, spec.seed, this.cache);
+    m.uid = spec.uid;
+    m.remote = spec.remote;
+    m.build(this.artCtx);
+    this.root.add(m.group);
+    this.modules.add(m);
+    this.byUidMap.set(m.uid, m);
+    this.counters.created++;
+    if (parent) this.link(parent.module, parent.connector, m, parent.entry);
+    return m;
+  }
+
+  /** Cette ouverture vide était-elle visible lors de la dernière vérification ? */
+  isOpenConnectorVisible(m: WorldModule, connector: number): boolean {
+    return this.lastVisibility.openConnectors.some((o) => o.module === m && o.connector === connector);
+  }
+
+  /** Raccorde deux modules chargés (lien de l'atlas entre deux modules déjà présents). */
+  linkModules(a: WorldModule, ca: number, b: WorldModule, cb: number): void {
+    if (a.connectors[ca]?.neighbor || b.connectors[cb]?.neighbor) return;
+    this.link(a, ca, b, cb);
+  }
+
+  /** Retire un module chargé (remplacé par la version de l'atlas, ou plus nécessaire). */
+  remove(m: WorldModule): void {
+    this.destroyModule(m);
+  }
+
+  /** Déplace tout le monde d'un bloc (raccordement à un autre visiteur) ; le joueur suit (Engine). */
+  reframe(t: { x: number; z: number; angle: number }, dy: number): void {
+    for (const m of this.modules) m.reframe(t, dy);
   }
 
   private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number, zone: ZoneState, preset: AmbiancePreset, loop: LoopSource | null = null): WorldModule {
     const id = this.nextId++;
     // Une copie de couloir reprend la graine de l'original : même tirage, même décor.
     const m = new WorldModule(id, def, { ...transform }, baseY, preset, zone, loop ? loop.seed : `${this.seed}:${id}`, this.cache, loop);
+    m.uid = `${this.uidPrefix}${id}`;
     m.build(this.artCtx);
     this.root.add(m.group);
     this.modules.add(m);
+    this.byUidMap.set(m.uid, m);
     this.counters.created++;
     return m;
   }
@@ -571,6 +677,8 @@ export class World {
     if (m === this.current || !m.alive) return;
     m.dispose();
     this.modules.delete(m);
+    this.byUidMap.delete(m.uid);
     this.counters.destroyed++;
+    this.net?.destroyed(m);
   }
 }

@@ -43,6 +43,16 @@ Le Directeur les saupoudre rarement, un peu plus quand la tension monte (`CONFIG
 
 Pour en essayer une : `?oddity=porte-muree`.
 
+## Visite à deux (en cours)
+
+Sur l'accueil, un pseudo facultatif : avec, on apparaît dans la liste « Visite à deux » du menu et on peut être invité ; sans, on reste anonyme (on peut quand même inviter). Une invitation acceptée **raccorde les deux musées** sans téléportation, et une **ligne au sol** mène à l'ami, d'ouverture en ouverture ; son avatar porte son pseudo.
+
+- **Atlas partagé** (`src/net/Session.ts`) : chacun génère autour de lui comme en solo, mais publie chaque salle (forme, ambiance, graine, zone) et réclame chaque ouverture par une transaction. Une salle de l'atlas se reconstruit à l'identique chez l'autre ; son créateur publie les œuvres accrochées. Les salles de l'atlas non chargées sont des obstacles pour la génération.
+- **Chemin gardé** : les salles entre les deux visiteurs ne sont jamais effacées ; le reste disparaît comme d'habitude (l'hôte fait le ménage dans l'atlas).
+- **Jonction** : l'invité choisit une ouverture libre et invisible de chaque côté, déplace tout son monde d'un bloc pour qu'elles se fassent face, puis les relie. Rien ne bouge à l'écran.
+- **Firebase** (Realtime Database + connexion anonyme), chargé seulement à la connexion. Règles : `database.rules.json`. Configuration : `src/net/config.ts` (tant qu'elle est vide, la visite à deux est masquée).
+- **Essais en local** : `npm run emulators` (émulateurs Firebase, Java requis), puis `?emulator=1&pseudo=Alice` dans deux navigateurs.
+
 ## Phase 8, finitions (vague 1)
 
 - **Qualité adaptative** : niveaux bas / moyen / haut (résolution de rendu, densité des particules), détectés selon l'appareil ; en mode *Automatique* (par défaut), la résolution baisse par paliers quand les fps passent sous la cible (30 sur mobile, 55 sur PC) et remonte quand il y a de la marge. Réglable dans le menu ; `CONFIG.quality`.
