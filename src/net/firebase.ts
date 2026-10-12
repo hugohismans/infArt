@@ -21,7 +21,7 @@ export function connect(): Promise<Firebase> {
   if (ready) return ready;
   ready = (async () => {
     const [{ initializeApp }, auth, database] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/database')]);
-    const config = FIREBASE_CONFIG ?? {
+    const config = !USE_EMULATOR && FIREBASE_CONFIG ? FIREBASE_CONFIG : {
       apiKey: 'demo-key',
       projectId: 'demo-ailleurs',
       databaseURL: 'http://127.0.0.1:9000?ns=demo-ailleurs',
