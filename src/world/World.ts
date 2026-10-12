@@ -246,7 +246,10 @@ export class World {
       for (const child of m.group.children) {
         if (child instanceof THREE.Mesh) out.push(child);
       }
-      for (const art of m.artPieces) if (art.canvasMesh) out.push(art.canvasMesh);
+      for (const art of m.artPieces) {
+        if (art.canvasMesh) out.push(art.canvasMesh);
+        if (art.backMesh) out.push(art.backMesh);
+      }
     }
     return out;
   }

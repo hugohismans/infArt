@@ -44,6 +44,8 @@ export interface ArtOptions {
   artwork?: Artwork;
   /** Accrochée au plafond, face vers le bas. */
   ceiling?: boolean;
+  /** Sculpture sur socle, au milieu de la salle (photo debout, visible des deux côtés). */
+  pedestal?: boolean;
 }
 
 /** Une langue inventée : chaque lettre devient un glyphe, les mots gardent leur longueur. */
@@ -94,6 +96,8 @@ export class ArtPiece {
   artwork: Artwork | null = null;
   /** Maillage cliquable (la toile). */
   canvasMesh: THREE.Mesh | null = null;
+  /** Revers de la photo d'une sculpture (cliquable aussi). */
+  backMesh: THREE.Mesh | null = null;
 
   private layout: Layout | null = null;
   private baseTexture: THREE.Texture | null = null;
@@ -122,7 +126,7 @@ export class ArtPiece {
     this.object.rotation.y = Math.atan2(slot.normal.x, slot.normal.z);
     if (slot.offset) this.object.translateX(slot.offset);
     // Forêt : accrochée sur la face avant du tronc (rayon un peu réduit à hauteur d'yeux, le tronc s'affine).
-    this.object.translateZ(CONFIG.world.wallGap + (preset.decor.trunksBehindArt && !slot.hangY ? CONFIG.decor.trunkRadius * 1.9 : 0));
+    if (!opts.pedestal) this.object.translateZ(CONFIG.world.wallGap + (preset.decor.trunksBehindArt && !slot.hangY ? CONFIG.decor.trunkRadius * 1.9 : 0));
     if (opts.ceiling) {
       // Étrangeté : au plafond, à un peu plus d'un mètre du mur, face vers le bas.
       const d = Math.min(1.3, preset.geometry.corridorWidth / 2 - 0.4);
@@ -436,6 +440,11 @@ export class ArtPiece {
       return mesh;
     };
 
+    if (this.opts.pedestal) {
+      this.buildPedestal(L, texture);
+      this.object.updateMatrixWorld(true);
+      return;
+    }
     if (style.mount === 'record' || style.mount === 'book') {
       this.buildOnLedge(L, texture);
     } else {
@@ -500,6 +509,42 @@ export class ArtPiece {
       this.holder.rotation.z = Math.PI;
     }
     this.object.updateMatrixWorld(true);
+  }
+
+  /**
+   * Sculpture : socle blanc, photo debout dessus (visible des deux côtés), cartel sur la
+   * face avant du socle. Pas de modèle 3D : la photo de musée tient lieu de volume.
+   */
+  private buildPedestal(L: Layout, texture: THREE.Texture | null): void {
+    const m = this.mats;
+    const ph = CONFIG.art.pedestalHeight, pd = CONFIG.art.pedestalDepth;
+    // Une statuette de 15 cm serait invisible : la photo garde une présence (55 cm à 1,3 m).
+    const k = Math.min(Math.max(1, 0.55 / L.h), 1.3 / L.h, 1.2 / L.w);
+    L = { ...L, w: L.w * k, h: L.h * k };
+    const pw = Math.max(pd, Math.min(L.w + 0.12, 1.1));
+    const plinth = new THREE.Mesh(m.unitBox, m.frameKinds.white);
+    plinth.scale.set(pw, ph, pd);
+    plinth.position.set(0, ph / 2, 0);
+    this.holder.add(plinth);
+    // Tranche sombre entre les deux faces de la photo.
+    const edge = new THREE.Mesh(m.unitBox, m.frameKinds.black);
+    edge.scale.set(L.w + 0.02, L.h + 0.02, 0.012);
+    edge.position.set(0, ph + L.h / 2 + 0.01, 0);
+    this.holder.add(edge);
+    const canvas = this.makeCanvas(texture, L.w, L.h, ph + L.h / 2 + 0.01, 0.0075);
+    this.holder.add(canvas);
+    const back = new THREE.Mesh(m.unitPlane, canvas.material);
+    back.scale.set(L.w, L.h, 1);
+    back.position.set(0, ph + L.h / 2 + 0.01, -0.0075);
+    back.rotation.y = Math.PI;
+    back.userData.artPiece = this;
+    this.backMesh = back;
+    this.holder.add(back);
+    const plate = new THREE.Mesh(m.unitBox, m.cartelBlank);
+    plate.scale.set(CARTEL_W, CARTEL_H, 0.008);
+    plate.position.set(0, ph - CARTEL_H / 2 - 0.08, pd / 2 + 0.005);
+    this.cartelMesh = plate;
+    this.holder.add(plate);
   }
 
   /**
@@ -655,6 +700,7 @@ export class ArtPiece {
     if (!this.opts.borrowed) this.baseTexture?.dispose();
     this.baseTexture = null;
     this.canvasMesh = null;
+    this.backMesh = null;
     this.cartelMesh = null;
     this.holder.clear();
     this.holder.position.set(0, 0, 0);

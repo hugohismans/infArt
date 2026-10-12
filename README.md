@@ -50,6 +50,12 @@ Pour en essayer une : `?oddity=porte-muree`.
 - **Gyroscope** (mobile, option) : regarder en bougeant le téléphone, en plus du doigt ; l'autorisation des capteurs est demandée au moment de l'activer (iOS).
 - Le carnet (collection) et la graine partageable (URL, lien du menu) étaient déjà là.
 
+### Vague 2 : sculptures
+
+- Nouveau type `sculpture` (Art Institute of Chicago, Cleveland, V&A), une petite part du mélange.
+- Posées sur un **socle** blanc au centre de la rotonde et dans les coins des salles : la photo de musée se dresse sur le socle, visible des deux côtés, cartel sur la face avant ; taille réelle quand elle est connue, entre 55 cm et 1,30 m. On ne les accroche jamais au mur, et un socle n'est installé que si une sculpture est prête (jamais de socle vide).
+- Pas encore de vrais modèles 3D : les sources ouvertes (Smithsonian 3D, Sketchfab) demandent des clés ou des formats lourds pour un téléphone.
+
 ## Collection et succès
 
 - **Ma collection** : depuis la fiche d'une œuvre, le bouton ♡ la garde dans une collection personnelle, consultable à tout moment (bouton ♡ en haut à gauche, menu pause, ou lien sur l'accueil), filtrable par type ; chaque vignette rouvre la fiche.
@@ -289,4 +295,4 @@ Le déploiement sur GitHub Pages se fait automatiquement à chaque push sur `mai
 5. ~~Plus de sources : affiches, jaquettes, pochettes, livres~~
 6. ~~Décors procéduraux et son~~
 7. ~~Toutes les ambiances et étrangetés~~
-8. Finitions (vague 1 : qualité adaptative, accessibilité, gyroscope ; vague 2 : sculptures)
+8. ~~Finitions : qualité adaptative, accessibilité, gyroscope, sculptures sur socle~~

@@ -56,7 +56,7 @@ export interface Artwork {
 export const WALL_TYPES: ArtType[] = ['peinture', 'estampe', 'dessin', 'photographie'];
 
 /** Types gérés par la galerie (phase 5 : culture populaire comprise). */
-export const SUPPORTED_TYPES: ArtType[] = [...WALL_TYPES, 'affiche', 'affiche-film', 'jaquette-jeu', 'pochette-disque', 'couverture-livre'];
+export const SUPPORTED_TYPES: ArtType[] = [...WALL_TYPES, 'sculpture', 'affiche', 'affiche-film', 'jaquette-jeu', 'pochette-disque', 'couverture-livre'];
 
 /** Pondération des types dans un lot (mode mélange). */
 export type TypeWeights = Partial<Record<ArtType, number>>;

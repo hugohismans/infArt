@@ -25,6 +25,7 @@ const TYPE_IDS: Partial<Record<ArtType, number[]>> = {
   estampe: [18],
   dessin: [14],
   photographie: [2],
+  sculpture: [3],
 };
 
 const FIELDS = [

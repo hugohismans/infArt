@@ -19,6 +19,7 @@ const TYPE_NAMES: Partial<Record<ArtType, string>> = {
   estampe: 'Print',
   dessin: 'Drawing',
   photographie: 'Photograph',
+  sculpture: 'Sculpture',
 };
 
 type Dim = { width?: number; height?: number; depth?: number };

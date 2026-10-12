@@ -88,6 +88,8 @@ export interface ModuleDef {
   /** Points libres pour l'itinéraire de l'auto-marche (contourner les obstacles). */
   navPoints: Vec2[];
   artSlots: ArtSlotDef[];
+  /** Emplacements de socles (sculptures), au sol, face à `normal`. */
+  pedestals: Array<{ pos: Vec2; normal: Vec2 }>;
 }
 
 export function wallNormal(seg: Segment): Vec2 {
@@ -181,8 +183,8 @@ function obstacleWalls(o: ObstacleDef, hangable: boolean): WallDef[] {
 
 const entrance = (w: number): ConnectorDef => ({ pos: v2(0, 0), y: 0, normal: v2(0, -1), width: w });
 
-function base(id: string, kind: ModuleKind): Pick<ModuleDef, 'id' | 'kind' | 'hasFloor' | 'ceilingScale' | 'rise' | 'floorAt' | 'lintels' | 'obstacles' | 'navPoints'> {
-  return { id, kind, hasFloor: true, ceilingScale: 1, rise: 0, floorAt: flat, lintels: [], obstacles: [], navPoints: [] };
+function base(id: string, kind: ModuleKind): Pick<ModuleDef, 'id' | 'kind' | 'hasFloor' | 'ceilingScale' | 'rise' | 'floorAt' | 'lintels' | 'obstacles' | 'navPoints' | 'pedestals'> {
+  return { id, kind, hasFloor: true, ceilingScale: 1, rise: 0, floorAt: flat, lintels: [], obstacles: [], navPoints: [], pedestals: [] };
 }
 
 function straight(id: string, w: number, length: number): ModuleDef {
@@ -290,8 +292,19 @@ function room(id: string, w: number, width: number, depth: number, exits: Array<
     const x = (i - (nStrips - 1) / 2) * (width / nStrips);
     lightStrips.push({ a: v2(x, 1), b: v2(x, depth - 1) });
   }
+  // Socles dans les coins du fond (et de l'entrée dans les grandes salles), loin des portes ;
+  // pas avec les jardinières, qui occupent déjà les coins.
+  const pedestals: ModuleDef['pedestals'] = [];
+  if (furniture !== 'jardinieres') {
+    const px = hx - 1.7;
+    for (const x of [-px, px]) {
+      pedestals.push({ pos: v2(x, depth - 1.7), normal: v2(0, -1) });
+      if (width > 10) pedestals.push({ pos: v2(x, 1.7), normal: v2(0, 1) });
+    }
+  }
   return {
     ...base(id, 'room'),
+    pedestals,
     ceilingScale: 1.4,
     footprint: rect(-hx, hx, 0, depth),
     connectors,
@@ -433,7 +446,9 @@ function rotonde(id: string, w: number): ModuleDef {
       { a: v2(-r + 1.5, r), b: v2(r - 1.5, r) },
       { a: v2(0, 1.5), b: v2(0, 2 * r - 1.5) },
     ],
-    navPoints: [c],
+    navPoints: [v2(0, r * 0.55), v2(-2, r), v2(2, r)],
+    // Une sculpture au centre, face à l'entrée.
+    pedestals: [{ pos: c, normal: v2(0, -1) }],
     artSlots: computeArtSlots(walls, flat),
   };
 }

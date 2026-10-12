@@ -260,6 +260,30 @@ export class WorldModule {
       }
     }
 
+    // Sculptures sur socle : seulement si une sculpture est prête (jamais de socle vide).
+    const pedestalWalls: Segment[] = [];
+    if (artCtx && !emptied && !this.loopFrom) {
+      const prng = new Rng(this.seed, 'socles');
+      for (const p of this.def.pedestals) {
+        if (!prng.chance(CONFIG.art.pedestalChance)) continue;
+        const ready = artCtx.library.takeSculpture();
+        if (!ready) break;
+        const slot: ArtSlotDef = { pos: p.pos, y: this.def.floorAt(p.pos), normal: p.normal, maxWidth: 1.6, maxHeight: 1.5 };
+        const art = new ArtPiece(slot, prng, this.preset, mats, 6, artCtx, () => this.visible, { ready, pedestal: true });
+        this.arts.push(art);
+        this.group.add(art.object);
+        // Collision : le socle, un peu élargi.
+        const h = 0.45;
+        const c = [
+          { x: p.pos.x - h, z: p.pos.z - h },
+          { x: p.pos.x + h, z: p.pos.z - h },
+          { x: p.pos.x + h, z: p.pos.z + h },
+          { x: p.pos.x - h, z: p.pos.z + h },
+        ];
+        for (let i = 0; i < 4; i++) pedestalWalls.push({ a: c[i]!, b: c[(i + 1) % 4]! });
+      }
+    }
+
     // Œuvre réservée pour « trois fois la même » mais jamais accrochée : on la libère.
     if (triple && tripleLeft === tripleTotal) triple.texture.dispose();
 
@@ -294,7 +318,7 @@ export class WorldModule {
     own(decor.solid, mats.trims);
     own(decor.glow, mats.decorGlow);
     own(decor.shafts, mats.shaft, 2);
-    this.decorWalls = decor.collisions.map((w) => ({ a: applyTransform(this.transform, w.a), b: applyTransform(this.transform, w.b) }));
+    this.decorWalls = [...decor.collisions, ...pedestalWalls].map((w) => ({ a: applyTransform(this.transform, w.a), b: applyTransform(this.transform, w.b) }));
     const dripRng = new Rng(this.seed, 'drip');
     for (const d of decor.drips) {
       const mesh = new THREE.Mesh(mats.unitSphere, mats.water);

@@ -53,6 +53,11 @@ interface ThemePool {
   interest: boolean;
 }
 
+/** Œuvre en volume : posée sur un socle. */
+function onPedestal(r: ReadyArt): boolean {
+  return r.artwork.type === 'sculpture';
+}
+
 interface Interest {
   theme: ArtTheme;
   score: number;
@@ -136,21 +141,33 @@ export class ArtLibrary {
    * (affinités de l'ambiance). Le demandeur devient responsable de sa texture.
    */
   take(prefer?: readonly string[], themeId?: string): ReadyArt | null {
+    // (Les sculptures vont sur les socles, jamais au mur.)
     if (themeId) {
       const pool = this.activePools.find((p) => p.theme.id === themeId);
-      const art = pool?.ready.shift();
-      if (pool && art) {
+      const i = pool ? pool.ready.findIndex((r) => !onPedestal(r)) : -1;
+      if (pool && i >= 0) {
         pool.lastTake = performance.now();
+        const art = pool.ready.splice(i, 1)[0]!;
         this.pump();
         return art;
       }
     }
-    let index = 0;
+    let index = this.ready.findIndex((r) => !onPedestal(r));
+    if (index < 0) return null;
     if (prefer && prefer.length > 0 && Math.random() < 0.75) {
-      const i = this.ready.findIndex((r) => prefer.includes(r.artwork.type));
+      const i = this.ready.findIndex((r) => prefer.includes(r.artwork.type) && !onPedestal(r));
       if (i >= 0) index = i;
     }
     const art = this.ready.splice(index, 1)[0] ?? null;
+    this.pump();
+    return art;
+  }
+
+  /** Une sculpture prête pour un socle, s'il y en a (sinon le socle n'est pas installé). */
+  takeSculpture(): ReadyArt | null {
+    const i = this.ready.findIndex(onPedestal);
+    if (i < 0) return null;
+    const art = this.ready.splice(i, 1)[0]!;
     this.pump();
     return art;
   }
@@ -418,6 +435,12 @@ export class ArtLibrary {
         const ready: ReadyArt = { artwork: art, texture: img.texture, aspect };
         if (pool) {
           pool.ready.push(ready);
+          return;
+        }
+        if (onPedestal(ready)) {
+          // Réserve de sculptures bornée : elles n'attendent que les socles.
+          if (this.ready.filter(onPedestal).length >= CONFIG.art.sculptureStock) ready.texture.dispose();
+          else this.ready.push(ready);
           return;
         }
         const waiter = this.waiters.shift();

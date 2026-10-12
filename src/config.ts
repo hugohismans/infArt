@@ -167,6 +167,7 @@ export const CONFIG = {
       // Jaquettes exposées en grand format, comme des tirages.
       'jaquette-jeu': [0.5, 0.72],
       'couverture-livre': [0.2, 0.26],
+      sculpture: [0.45, 1.0],
       autre: [0.22, 0.5],
     } as Record<string, [number, number]>,
     /** Agrandissement des livres (une couverture de 13 cm serait illisible au mur). */
@@ -187,7 +188,15 @@ export const CONFIG = {
       'jaquette-jeu': 0.05,
       'pochette-disque': 0.05,
       'couverture-livre': 0.05,
+      // Pour les socles (jamais au mur).
+      sculpture: 0.06,
     } as TypeWeights,
+    /** Socles : probabilité qu'un emplacement de socle reçoive une sculpture, réserve maximale. */
+    pedestalChance: 0.7,
+    sculptureStock: 4,
+    /** Socle : hauteur et profondeur (m). */
+    pedestalHeight: 0.9,
+    pedestalDepth: 0.5,
     /** Ailes thématiques : œuvres prêtes avant d'ouvrir une aile, et réserve visée. */
     themeMinReady: 5,
     themeBufferTarget: 7,

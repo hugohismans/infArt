@@ -18,6 +18,7 @@ const OBJECT_TYPES: Partial<Record<ArtType, { q: string; match: RegExp; years: [
   dessin: { q: 'Drawing', match: /drawing|watercolour|sketch/i, years: [1500, 1930] },
   photographie: { q: 'Photograph', match: /photograph/i, years: [1845, 1940] },
   affiche: { q: 'Poster', match: /poster/i, years: [1880, 1990] },
+  sculpture: { q: 'Sculpture', match: /sculpt|statue|statuette|figure|bust|relief/i, years: [1300, 1900] },
 };
 
 interface VamRecord {
