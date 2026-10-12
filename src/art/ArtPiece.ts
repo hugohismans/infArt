@@ -511,6 +511,14 @@ export class ArtPiece {
     this.object.updateMatrixWorld(true);
   }
 
+  /** Dos du tableau en bois brut : un cadre vu de derrière (chevalet, flottant) n'est pas doré. */
+  private addBackBoard(L: Layout): void {
+    const board = new THREE.Mesh(this.mats.unitBox, this.mats.frameKinds.wood);
+    board.scale.set(L.totalW - 0.01, L.totalH - 0.01, 0.006);
+    board.position.set(0, L.centerY, -0.004);
+    this.holder.add(board);
+  }
+
   /**
    * Sculpture : socle blanc, photo debout dessus (visible des deux côtés), cartel sur la
    * face avant du socle. Pas de modèle 3D : la photo de musée tient lieu de volume.
@@ -566,7 +574,8 @@ export class ArtPiece {
     };
     switch (mount) {
       case 'chevalet': {
-        // Le tableau repose sur la traverse du chevalet, légèrement incliné vers l'arrière.
+        // Le tableau repose sur la traverse, devant les pieds et le mât, le tout incliné
+        // vers l'arrière ; un montant arrière part du haut du chevalet jusqu'au sol.
         const z = CONFIG.art.easelDistance;
         const tilt = 0.1;
         this.holder.position.set(0, 0, z);
@@ -574,15 +583,31 @@ export class ArtPiece {
         const legTop = top + 0.18;
         const wood = m.frameKinds.wood;
         const half = Math.min(L.totalW / 2 - 0.05, 0.45);
-        for (const x of [-half, half]) bar(wood, 0.035, legTop, 0.035, x, legTop / 2, z + 0.12, -tilt);
-        // Montant arrière.
-        bar(wood, 0.035, legTop * 1.02, 0.035, 0, legTop / 2, z - 0.25, 0.32);
-        // Traverse qui porte le tableau.
-        bar(wood, Math.max(L.totalW, 0.5) + 0.08, 0.04, 0.09, 0, bottom - 0.02, z + 0.07 + bottom * Math.sin(tilt) * 0.02);
+        // Dans le repère incliné du tableau : pieds et mât juste derrière le dos du cadre.
+        const back = -0.04;
+        const inHolder = (sx: number, sy: number, sz: number, x: number, y: number, zz: number) => {
+          const mesh = new THREE.Mesh(m.unitBox, wood);
+          mesh.scale.set(sx, sy, sz);
+          mesh.position.set(x, y, zz);
+          this.holder.add(mesh);
+        };
+        for (const x of [-half, half]) inHolder(0.035, legTop, 0.035, x, legTop / 2, back);
+        inHolder(0.04, legTop + 0.1, 0.035, 0, (legTop + 0.1) / 2, back);
+        // Traverse qui porte le tableau (elle dépasse devant).
+        inHolder(Math.max(L.totalW, 0.5) + 0.08, 0.04, 0.14, 0, bottom - 0.02, 0.02);
+        // Montant arrière : du haut du mât (repère du tableau) jusqu'au sol, en arrière.
+        const ty = legTop * 0.92;
+        const topY = ty * Math.cos(tilt) + back * Math.sin(tilt);
+        const topZ = z - ty * Math.sin(tilt) + back * Math.cos(tilt);
+        const footZ = z - 0.75;
+        const len = Math.hypot(topY, topZ - footZ);
+        bar(wood, 0.035, len, 0.035, 0, topY / 2, (topZ + footZ) / 2, Math.atan2(topZ - footZ, topY));
+        this.addBackBoard(L);
         break;
       }
       case 'flottant':
         this.holder.position.set(0, 0, CONFIG.art.floatDistance);
+        this.addBackBoard(L);
         break;
       case 'sol': {
         // Posé par terre, appuyé contre le mur.

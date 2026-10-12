@@ -269,7 +269,8 @@ export function buildModuleGeometries(def: ModuleDef, preset: AmbiancePreset): M
   }
 
   // Linteaux : le mur au-dessus des portes d'une salle plus haute que les couloirs.
-  for (const l of def.lintels) {
+  // (En plein air, les murs sont invisibles : pas de linteau ni de rebord qui flotterait.)
+  for (const l of preset.surfaces.wall === 'brume' ? [] : def.lintels) {
     if (H - Hc < 0.01) break;
     strip(walls, l, baseOf(l), Hc, H - moldH, wallTop, wallTop);
     if (trimsOn) strip(trims, offsetSegment(l, moldD), baseOf(l), H - moldH, H, molding, molding);

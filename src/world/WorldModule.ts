@@ -198,7 +198,13 @@ export class WorldModule {
     const mats = this.cache.acquireMaterials(this.preset);
     const geos = this.cache.acquireGeometries(this.def, this.preset);
     this.mats = mats;
-    if (geos.walls) this.group.add(new THREE.Mesh(geos.walls, mats.walls));
+    if (geos.walls) {
+      const walls = new THREE.Mesh(geos.walls, mats.walls);
+      // Murs invisibles (ciel ouvert) : dessinés avant tout le reste, pour qu'ils masquent
+      // bien ce qui est derrière eux (sinon une salle voisine se voit « de l'extérieur »).
+      if (!mats.walls.colorWrite) walls.renderOrder = -2;
+      this.group.add(walls);
+    }
     if (geos.trims) this.group.add(new THREE.Mesh(geos.trims, mats.trims));
     if (geos.ceiling) this.group.add(new THREE.Mesh(geos.ceiling, mats.ceiling));
     if (geos.floor) this.group.add(new THREE.Mesh(geos.floor, mats.floor));
@@ -455,6 +461,7 @@ export class WorldModule {
     let mesh: THREE.Mesh | null = null;
     if (geometry && this.mats) {
       mesh = new THREE.Mesh(geometry, this.mats.walls);
+      if (!this.mats.walls.colorWrite) mesh.renderOrder = -2;
       mesh.matrixAutoUpdate = false;
       this.group.add(mesh);
       this.group.updateMatrixWorld(true);
