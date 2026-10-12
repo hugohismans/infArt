@@ -180,7 +180,8 @@ async function handleImage(url: URL, ctx: ExecutionContext): Promise<Response> {
   });
   const type = upstream.headers.get('Content-Type') ?? '';
   if (!upstream.ok || !type.startsWith('image/')) {
-    return json({ error: `image indisponible (HTTP ${upstream.status})` }, 502);
+    // L'hôte final (après redirections) aide à savoir qui refuse.
+    return json({ error: `image indisponible (HTTP ${upstream.status}, ${upstream.url ? new URL(upstream.url).hostname : '?'}${upstream.redirected ? ', redirigée' : ''})` }, 502);
   }
   const response = new Response(upstream.body, {
     headers: {
