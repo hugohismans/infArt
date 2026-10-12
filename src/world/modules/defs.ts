@@ -59,7 +59,7 @@ export interface ArtSlotDef {
   offset?: number;
 }
 
-export type ModuleKind = 'straight' | 'turn' | 'junction' | 'room' | 'stairs' | 'deadend' | 'sas' | 'cap';
+export type ModuleKind = 'straight' | 'turn' | 'junction' | 'room' | 'stairs' | 'deadend' | 'sas' | 'cap' | 'rotonde';
 
 export interface ModuleDef {
   id: string;
@@ -389,6 +389,55 @@ function cap(id: string, w: number): ModuleDef {
   };
 }
 
+/**
+ * Rotonde de départ : salle octogonale, haute de plafond, percée de quatre portes
+ * (une par point cardinal, l'entrée comprise) ; les quatre pans en biais portent des œuvres.
+ * Elle n'est jamais tirée au hasard : le monde la place au départ (voir World.init).
+ */
+function rotonde(id: string, w: number): ModuleDef {
+  const sides = 8;
+  const half = Math.PI / sides;
+  // Pans assez larges pour une porte et deux jambages d'au moins 1,2 m.
+  const r = Math.max(7, (w + 2.4) / (2 * Math.tan(half)));
+  const s = r * Math.tan(half);
+  const c = v2(0, r);
+  const walls: WallDef[] = [];
+  const connectors: ConnectorDef[] = [];
+  const lintels: Segment[] = [];
+  const footprint: Vec2[] = [];
+  for (let k = 0; k < sides; k++) {
+    const th = -Math.PI / 2 + k * 2 * half;
+    const n = v2(Math.cos(th), Math.sin(th));
+    const t = v2(-n.z, n.x);
+    const mid = v2(c.x + n.x * r, c.z + n.z * r);
+    const at = (u: number) => v2(mid.x + t.x * u, mid.z + t.z * u);
+    footprint.push(at(-s));
+    // Parcours dans le sens qui tourne la normale du mur vers l'intérieur.
+    if (k % 2 === 0) {
+      const dw = w / 2;
+      walls.push({ seg: { a: at(s), b: at(dw) }, hangable: false }, { seg: { a: at(-dw), b: at(-s) }, hangable: false });
+      lintels.push({ a: at(dw), b: at(-dw) });
+      connectors.push({ pos: k === 0 ? v2(0, 0) : mid, y: 0, normal: n, width: w });
+    } else {
+      walls.push({ seg: { a: at(s), b: at(-s) }, hangable: true });
+    }
+  }
+  return {
+    ...base(id, 'rotonde'),
+    ceilingScale: 1.6,
+    footprint,
+    connectors,
+    walls,
+    lintels,
+    lightStrips: [
+      { a: v2(-r + 1.5, r), b: v2(r - 1.5, r) },
+      { a: v2(0, 1.5), b: v2(0, 2 * r - 1.5) },
+    ],
+    navPoints: [c],
+    artSlots: computeArtSlots(walls, flat),
+  };
+}
+
 /** Construit le catalogue des modules pour une largeur de couloir et un mobilier donnés. */
 export function makeModuleDefs(corridorWidth: number, furniture: { small: RoomFurniture; large: RoomFurniture }): Record<string, ModuleDef> {
   const w = corridorWidth;
@@ -410,6 +459,7 @@ export function makeModuleDefs(corridorWidth: number, furniture: { small: RoomFu
     deadend('deadend', w, 5.4),
     sas('sas', 3.2),
     cap('cap', w),
+    rotonde('rotonde', w),
   ];
   return Object.fromEntries(defs.map((d) => [d.id, d]));
 }

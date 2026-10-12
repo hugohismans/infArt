@@ -9,6 +9,8 @@ Un musée infini, explorable à la première personne sur PC et sur mobile. Le b
 ### 33 ambiances
 Chaque ambiance reste un simple fichier de données (`src/ambiances/presets/`). Le Directeur les choisit selon leur rareté, la courbe de tension et leurs affinités. Pour en essayer une directement : `?ambiance=foret` (identifiants ci-dessous).
 
+La visite commence dans une **rotonde** : quatre portes, chacune ouvrant sur une ambiance différente, pour montrer d'emblée qu'il y a des mondes à explorer. La rotonde n'existe qu'au départ : une fois loin et hors de vue, elle est détruite comme le reste, et le chemin du retour mène ailleurs.
+
 | Famille | Ambiances |
 |---|---|
 | Musées « réels » | beaux-arts, white-cube, `baroque` (damas, marbre, plafond peint, accrochage serré jusqu'au plafond), `galerie-japonaise` (tatamis, shoji, lanternes, bonsaïs), `cabinet` (boiseries sombres, vitrines de curiosités), `musee-nuit` (lampe torche, veilleuses, sorties de secours) |
@@ -211,7 +213,8 @@ Le clavier est lu par **position physique** des touches (`KeyboardEvent.code`) :
 - `&timescale=3` : accélère la simulation (tests).
 - `&api=https://…` : utilise un autre Worker (par exemple `http://localhost:8787` en local).
 - `&mix=affiche:1,couverture-livre:1` : force les types d'œuvres tirés (essais).
-- `&ambiance=foret` : démarre dans une ambiance donnée.
+- `&ambiance=foret` : démarre dans une ambiance donnée (sans la rotonde).
+- `&rotonde=0` : démarre dans un couloir, sans la rotonde.
 - `&oddity=salle-vide` : impose une étrangeté à chaque module (essais).
 
 ## Comment ça marche

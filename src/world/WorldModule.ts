@@ -91,6 +91,8 @@ export class WorldModule {
   private steam: { x: number; y: number; z: number } | null = null;
   private steamPuffs: THREE.Mesh[] = [];
   private steamTime = 0;
+  /** Rotonde de départ : zone imposée à chacune de ses ouvertures (une ambiance par porte). */
+  exitZones: ZoneState[] | null = null;
   /** Étrangeté « porte murée » : l'entrée sera murée derrière le visiteur. */
   sealEntrance = false;
   /**

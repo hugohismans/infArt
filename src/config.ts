@@ -228,6 +228,8 @@ export const CONFIG = {
   director: {
     /** Durée de la zone de départ (musée classique), en modules. */
     firstZoneLength: [9, 13] as [number, number],
+    /** Durée des ailes qui partent de la rotonde de départ, en modules. */
+    hubZoneLength: [6, 10] as [number, number],
     /** Durée des zones suivantes. */
     zoneLength: [3, 15] as [number, number],
     /** Nombre de modules d'une transition progressive. */

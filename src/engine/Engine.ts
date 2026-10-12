@@ -24,6 +24,8 @@ const DEG = Math.PI / 180;
 export interface EngineOptions {
   seed: string;
   ambiance: AmbiancePreset;
+  /** Départ dans une rotonde aux portes ouvrant sur plusieurs ambiances. */
+  startHub?: boolean;
   /** Accélère la simulation (tests automatisés uniquement). */
   timeScale?: number;
   autoWalk?: boolean;
@@ -164,7 +166,7 @@ export class Engine {
     this.scene.add(this.ground.mesh);
     // La lampe suit la caméra ; sa cible est placée devant à chaque image.
     this.scene.add(this.flashlight, this.flashlight.target);
-    const start = this.world.init();
+    const start = this.world.init(options.startHub ?? false);
     this.player.position = start.position;
     this.player.yaw = start.yaw;
     // Pré-génère les environs avant la première image.

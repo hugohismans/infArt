@@ -130,12 +130,17 @@ function ledge(b: GeometryBuilder, seg: Segment, base: Base, h: number, depth: n
   );
 }
 
-/** Rectangle horizontal (ou incliné : hauteur donnée par `yAt`) couvrant l'empreinte. */
+/**
+ * Surface horizontale (ou inclinée : hauteur donnée par `yAt`) couvrant l'empreinte convexe :
+ * un éventail de quadrilatères depuis le premier sommet (le dernier peut être un triangle).
+ */
 function surface(b: GeometryBuilder, poly: Vec2[], yAt: (p: Vec2) => number, facing: 1 | -1, color: THREE.Color, uvScale: number): void {
-  if (poly.length !== 4) throw new Error('Surface : 4 sommets attendus');
-  const p = poly.map((v) => [v.x, yAt(v), v.z] as V3) as [V3, V3, V3, V3];
+  const p = poly.map((v) => [v.x, yAt(v), v.z] as V3);
   const uv = poly.map((v) => [v.x * uvScale, v.z * uvScale] as [number, number]);
-  b.quad(p, [0, facing, 0], four(color), uv);
+  for (let i = 1; i + 1 < poly.length; i += 2) {
+    const j = Math.min(i + 2, poly.length - 1);
+    b.quad([p[0]!, p[i]!, p[i + 1]!, p[j]!], [0, facing, 0], four(color), [uv[0]!, uv[i]!, uv[i + 1]!, uv[j]!]);
+  }
 }
 
 /** Boîte alignée sur les axes : quatre faces latérales et le dessus. */

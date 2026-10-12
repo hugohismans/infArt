@@ -110,6 +110,33 @@ export class Director {
   }
 
   /**
+   * Zones des sorties de la rotonde de départ : une ambiance différente par porte,
+   * toutes distinctes de celle de la rotonde, pour montrer d'emblée qu'il y a des mondes
+   * à explorer. Le début de chaque aile reste calme (comme un départ : ni étrangeté ni bifurcation).
+   */
+  hubExits(count: number): ZoneState[] {
+    const rng = new Rng(this.seed, 'rotonde');
+    const d = CONFIG.director;
+    const pool: Record<string, number> = {};
+    for (const a of Object.values(this.ambiances)) {
+      if (a.id === this.start.id || a.rarity === 'tres-rare') continue;
+      pool[a.id] = RARITY_WEIGHT[a.rarity];
+    }
+    const out: ZoneState[] = [];
+    for (let i = 0; i < count; i++) {
+      const id = Object.keys(pool).length > 0 ? rng.weighted(pool) : this.start.id;
+      delete pool[id];
+      const ambiance = this.ambiances[id] ?? this.start;
+      this.history.push(id);
+      out.push({
+        zone: { id: this.zoneCount++, ambiance, from: this.start, transition: 'depart', length: rng.int(d.hubZoneLength[0], d.hubZoneLength[1]), blendSteps: 0, tension: ambiance.tension },
+        step: 0,
+      });
+    }
+    return out;
+  }
+
+  /**
    * État de zone d'un nouveau module raccordé à `parent`.
    * @param key identifiant stable du raccord (graine du tirage)
    * @param branch le raccord est une sortie latérale d'un embranchement

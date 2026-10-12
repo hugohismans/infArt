@@ -118,10 +118,13 @@
     library.startTarget = 0;
 
     screen = 'visit';
+    // Essais : &ambiance=foret démarre dans une ambiance donnée (sans rotonde) ; &rotonde=0 la retire.
+    const query = new URLSearchParams(window.location.search);
+    const forced = AMBIANCES[query.get('ambiance') ?? ''];
     const e = new Engine(container, overlay, {
       seed,
-      // Essais : &ambiance=foret démarre dans une ambiance donnée.
-      ambiance: AMBIANCES[new URLSearchParams(window.location.search).get('ambiance') ?? ''] ?? DEFAULT_AMBIANCE,
+      ambiance: forced ?? DEFAULT_AMBIANCE,
+      startHub: !forced && query.get('rotonde') !== '0',
       autoWalk,
       timeScale: params.timeScale,
       art: artCtx,

@@ -100,9 +100,23 @@ export class World {
     return defs;
   }
 
-  /** Crée le premier module ; renvoie la position et l'orientation de départ du joueur. */
-  init(): { position: Vec2; yaw: number } {
+  /**
+   * Crée le premier module ; renvoie la position et l'orientation de départ du joueur.
+   * Avec `hub`, on part d'une rotonde dont chaque porte ouvre sur une autre ambiance.
+   * Elle n'existe qu'au départ : une fois loin et hors de vue, elle est détruite comme
+   * le reste, et le chemin du retour mène ailleurs.
+   */
+  init(hub = false): { position: Vec2; yaw: number } {
     const zone = this.director.initial();
+    if (hub) {
+      const def = this.defsFor(this.startPreset)['rotonde']!;
+      const rotonde = this.createModule(def, { x: 0, z: 0, angle: 0 }, 0, zone, this.startPreset);
+      rotonde.exitZones = this.director.hubExits(def.connectors.length);
+      this.current = rotonde;
+      // Un peu en deçà du centre, face à la porte du fond : les portes latérales sont dans le champ.
+      const c = def.navPoints[0]!;
+      return { position: applyTransform(rotonde.transform, { x: 0, z: c.z * 0.55 }), yaw: Math.PI };
+    }
     const first = this.createModule(this.defsFor(this.startPreset)['straight-l']!, { x: 0, z: 0, angle: 0 }, 0, zone, this.startPreset);
     // Le joueur commence au milieu du premier couloir, face à +Z.
     const mid = applyTransform(first.transform, { x: 0, z: 9.9 });
@@ -434,7 +448,7 @@ export class World {
 
     // Le Directeur décide de la zone (et donc de l'ambiance) du nouveau module.
     const branch = parent.connectors.length >= 3 && connector >= 2;
-    const zone = this.director.next(parent.zone, `${parent.id}:${connector}`, branch);
+    const zone = parent.exitZones?.[connector] ?? this.director.next(parent.zone, `${parent.id}:${connector}`, branch);
     const preset = this.director.presetFor(zone);
     const defs = this.defsFor(preset);
 
