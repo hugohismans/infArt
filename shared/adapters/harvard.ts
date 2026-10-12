@@ -65,11 +65,12 @@ export const harvard: SourceAdapter = {
     if (!cls || !keys?.HARVARD_KEY) return [];
     const base = `${API}?apikey=${keys.HARVARD_KEY}&classification=${encodeURIComponent(cls)}&hasimage=1&q=imagepermissionlevel:0` + (theme?.q ? `&title=${encodeURIComponent(theme.q)}` : '');
     const head = (await fetchJson(`${base}&size=1&fields=id`, { ttl: 86400 })) as HarvardResponse;
-    if (!head.info?.totalrecords) return [];
+    if (!head.info?.totalrecords) throw new Error(`aucun résultat (champs : ${Object.keys(head ?? {}).join(', ')})`);
     const start = randomPageStart(rng, head.info.totalrecords, PAGE, MAX_RESULTS - PAGE);
     const page = (await fetchJson(`${base}&size=${PAGE}&page=${start / PAGE + 1}&fields=${FIELDS}`, { ttl: 86400 * 7 })) as HarvardResponse;
-    return rng
-      .shuffle(page.records ?? [])
+    const records = page.records ?? [];
+    const found = rng
+      .shuffle(records)
       .map((o): Artwork | null => {
         const title = clean(o.title);
         const iiif = o.images?.[0]?.iiifbaseuri;
@@ -103,6 +104,9 @@ export const harvard: SourceAdapter = {
       })
       .filter((a): a is Artwork => a !== null)
       .slice(0, count);
+    // Diagnostic : une page sans œuvre exploitable est signalée (sans la clé).
+    if (!found.length) throw new Error(`page ${start / PAGE + 1} sur ${head.info.totalrecords} : ${records.length} objets, aucun exploitable (${records[0] ? JSON.stringify(records[0]).slice(0, 200) : `champs : ${Object.keys(page ?? {}).join(', ')}`})`);
+    return found;
   },
 
   imageForWidth(art, width) {
