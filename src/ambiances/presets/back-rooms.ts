@@ -7,8 +7,10 @@ import type { AmbiancePreset } from '../types';
  */
 export const backRooms: AmbiancePreset = {
   id: 'back-rooms',
-  rarity: 'commune',
+  rarity: 'rare',
   tension: 0.85,
+  // On s'y perd un moment, puis on en ressort : des zones courtes.
+  zoneLength: [3, 6],
   affinities: { 'white-cube': 1.2, 'beaux-arts': 0.9, serre: 0.8 },
   geometry: { ceilingHeight: 2.75, corridorWidth: 3.8 },
   palette: {

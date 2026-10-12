@@ -6,7 +6,7 @@ export const serre: AmbiancePreset = {
   name: 'Jardin d’hiver',
   rarity: 'commune',
   tension: 0.1,
-  affinities: { 'beaux-arts': 1.3, 'white-cube': 1, 'back-rooms': 0.7 },
+  affinities: { 'beaux-arts': 1.3, 'white-cube': 1, 'back-rooms': 0.4 },
   geometry: { ceilingHeight: 5.2, corridorWidth: 5 },
   palette: {
     background: '#c9d6c4',

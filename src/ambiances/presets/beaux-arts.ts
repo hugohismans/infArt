@@ -6,7 +6,7 @@ export const beauxArts: AmbiancePreset = {
   name: 'Musée des beaux-arts',
   rarity: 'commune',
   tension: 0,
-  affinities: { 'white-cube': 1.2, serre: 1.3, 'back-rooms': 0.8 },
+  affinities: { 'white-cube': 1.2, serre: 1.3, 'back-rooms': 0.5 },
   geometry: { ceilingHeight: 4.2, corridorWidth: 4.4 },
   palette: {
     background: '#14100d',

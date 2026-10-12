@@ -6,7 +6,7 @@ export const whiteCube: AmbiancePreset = {
   name: 'Galerie contemporaine',
   rarity: 'commune',
   tension: 0.15,
-  affinities: { 'beaux-arts': 1.1, 'back-rooms': 1.3, serre: 0.9 },
+  affinities: { 'beaux-arts': 1.1, 'back-rooms': 0.8, serre: 0.9 },
   geometry: { ceilingHeight: 4.8, corridorWidth: 5.6 },
   palette: {
     background: '#e8e8e5',

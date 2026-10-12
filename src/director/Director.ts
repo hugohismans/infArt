@@ -104,7 +104,8 @@ export class Director {
 
   /** Tension visée pour la n-ième zone : une houle lente, un peu bruitée. */
   private targetTension(index: number, rng: Rng): number {
-    const wave = 0.5 + 0.42 * Math.sin(index * 0.85 + this.phase);
+    // Centrée vers le calme : les pics d'étrangeté restent des moments.
+    const wave = 0.35 + 0.35 * Math.sin(index * 0.85 + this.phase);
     return Math.min(1, Math.max(0, wave + rng.range(-0.15, 0.15)));
   }
 
@@ -134,7 +135,8 @@ export class Director {
       seuil: d.transitionWeights.seuil,
       rupture: d.transitionWeights.rupture * (jump > 0.5 ? 2 : 0.5),
     }) as TransitionKind;
-    const length = rng.int(d.zoneLength[0], d.zoneLength[1]);
+    const [minLen, maxLen] = ambiance.zoneLength ?? d.zoneLength;
+    const length = rng.int(minLen, maxLen);
     const blendSteps = transition === 'progressive' ? Math.min(length - 1, rng.int(d.blendSteps[0], d.blendSteps[1])) : 0;
     return { id: index, ambiance, from: prev.ambiance, transition, length, blendSteps, tension: target };
   }

@@ -24,6 +24,8 @@ export interface AmbiancePreset {
   tension: number;
   /** Ambiances qui peuvent lui succéder, avec un multiplicateur (absente = 1). */
   affinities?: Partial<Record<string, number>>;
+  /** Durée d'une zone de cette ambiance, en modules (sinon : CONFIG.director.zoneLength). */
+  zoneLength?: [number, number];
 
   geometry: {
     ceilingHeight: number;
