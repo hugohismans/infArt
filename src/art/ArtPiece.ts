@@ -121,7 +121,8 @@ export class ArtPiece {
     this.object.position.set(slot.pos.x, slot.y, slot.pos.z);
     this.object.rotation.y = Math.atan2(slot.normal.x, slot.normal.z);
     if (slot.offset) this.object.translateX(slot.offset);
-    this.object.translateZ(CONFIG.world.wallGap);
+    // Forêt : accrochée sur la face avant du tronc (rayon un peu réduit à hauteur d'yeux, le tronc s'affine).
+    this.object.translateZ(CONFIG.world.wallGap + (preset.decor.trunksBehindArt && !slot.hangY ? CONFIG.decor.trunkRadius * 1.9 : 0));
     if (opts.ceiling) {
       // Étrangeté : au plafond, à un peu plus d'un mètre du mur, face vers le bas.
       const d = Math.min(1.3, preset.geometry.corridorWidth / 2 - 0.4);

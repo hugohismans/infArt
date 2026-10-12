@@ -219,6 +219,8 @@ export const CONFIG = {
     /** Poussière en suspension : nombre de grains (PC / mobile) et taille (m). */
     dustCount: { desktop: 420, mobile: 220 },
     dustSize: 0.022,
+    /** Forêt : rayon (m) des troncs auxquels les œuvres sont accrochées. */
+    trunkRadius: 0.32,
     /** Fuites : intervalle entre deux gouttes (s) et durée de chute. */
     dripInterval: [1.4, 3.2] as [number, number],
   },

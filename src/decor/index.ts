@@ -128,10 +128,14 @@ export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hun
   if (d.trunksBehindArt) {
     for (const slot of hung) {
       if (slot.hangY) continue;
+      // Tronc devant le mur (invisible mais opaque) ; l'œuvre est sur sa face avant (voir ArtPiece).
+      const r = CONFIG.decor.trunkRadius, z = r + CONFIG.world.wallGap;
+      placed.push(footprint(slot.pos, slot.normal, 2 * r + 0.3, 2 * z + 0.15));
+      out.collisions.push(...edges(footprint(slot.pos, slot.normal, 2 * r, 2 * z)));
       k.place(slot.pos.x, slot.y, slot.pos.z, angleOf(slot.normal));
       const seed = rng.int(0, 1000);
-      k.cyl(0.32, ceiling + 1, 0, (ceiling + 1) / 2, 0.02, '#3b2c22', 9, 0.7);
-      k.blob(1.4, 0, ceiling + 1.2, 0.4, [new THREE.Color('#1d3320'), new THREE.Color('#25402a'), new THREE.Color('#183020')], seed);
+      k.cyl(r, ceiling + 1, 0, (ceiling + 1) / 2, z, '#3b2c22', 9, 0.7);
+      k.blob(1.4, 0, ceiling + 1.2, z + 0.4, [new THREE.Color('#1d3320'), new THREE.Color('#25402a'), new THREE.Color('#183020')], seed);
     }
   }
 

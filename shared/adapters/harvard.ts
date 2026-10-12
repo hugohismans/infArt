@@ -105,7 +105,12 @@ export const harvard: SourceAdapter = {
       .filter((a): a is Artwork => a !== null)
       .slice(0, count);
     // Diagnostic : une page sans œuvre exploitable est signalée (sans la clé).
-    if (!found.length) throw new Error(`page ${start / PAGE + 1} sur ${head.info.totalrecords} : ${records.length} objets, aucun exploitable (${records[0] ? JSON.stringify(records[0]).slice(0, 200) : `champs : ${Object.keys(page ?? {}).join(', ')}`})`);
+    if (!found.length) {
+      // Diagnostic : quel critère écarte les objets ? (sans la clé)
+      const r0 = records[0] as unknown as Record<string, unknown> | undefined;
+      const stats = `sans titre ${records.filter((o) => !clean(o.title)).length}, sans iiif ${records.filter((o) => !o.images?.[0]?.iiifbaseuri).length}, droits≠0 ${records.filter((o) => o.imagepermissionlevel !== 0).length}`;
+      throw new Error(`page ${start / PAGE + 1} : ${records.length} objets, aucun exploitable (${stats} ; champs ${r0 ? Object.keys(r0).join(',') : '-'} ; images[0] ${JSON.stringify(records[0]?.images?.[0] ?? null).slice(0, 160)})`);
+    }
     return found;
   },
 
