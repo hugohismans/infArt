@@ -161,8 +161,9 @@ export class World {
         m.exitZones = this.director.hubExits(def.connectors.length);
         // Première visite : une des portes porte un thème choisi pour le visiteur (voix off).
         if (firstTheme) {
+          // La porte du fond, pile en face du visiteur (il regarde vers +Z) : il la voit en arrivant.
           const exits = def.connectors.map((_, i) => i).filter((i) => i > 0 && signSpot(def, this.startPreset, i));
-          const exit = new Rng(this.seed, 'premier-theme').pick(exits);
+          const exit = exits.reduce((best, i) => (def.connectors[i]!.normal.z > def.connectors[best]!.normal.z ? i : best), exits[0]!);
           m.exitZones[exit] = { ...m.exitZones[exit]!, wing: this.director.makeWing(firstTheme, 5) };
           m.signs = [{ connector: exit, title: firstTheme.title, themeId: firstTheme.id }];
         }
