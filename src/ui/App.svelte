@@ -319,13 +319,7 @@
 <div class="overlay" bind:this={overlay}></div>
 
 {#if screen === 'home'}
-  <Home onEnter={enter} onCollection={openCollection} {library} />
-  {#if loading}
-    <div class="loading" role="status" aria-live="polite">
-      <p>{t('home.loading')}</p>
-      <div class="bar"><div class="fill" style="width: {(100 * loading.ready) / loading.target}%"></div></div>
-    </div>
-  {/if}
+  <Home onEnter={enter} onCollection={openCollection} {library} {client} {loading} {reduceMotion} />
 {:else}
   <div class="hud">
     <button class="hud-btn" aria-label={t('hud.menu')} onclick={openMenu}>
@@ -430,32 +424,6 @@
   .stage {
     position: fixed;
     inset: 0;
-  }
-  .loading {
-    position: fixed;
-    inset: 0;
-    display: grid;
-    place-content: center;
-    gap: 18px;
-    justify-items: center;
-    background: var(--bg);
-    font-family: var(--serif);
-    font-style: italic;
-    color: var(--ink-dim);
-    z-index: 20;
-  }
-  .loading p {
-    margin: 0;
-  }
-  .bar {
-    width: min(260px, 70vw);
-    height: 2px;
-    background: rgba(255, 255, 255, 0.12);
-  }
-  .fill {
-    height: 100%;
-    background: rgba(201, 161, 74, 0.9);
-    transition: width 0.25s ease-out;
   }
   .overlay {
     position: fixed;

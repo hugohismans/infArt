@@ -163,6 +163,11 @@ export class ArtLibrary {
     return art;
   }
 
+  /** Aperçu (écran d'accueil) : œuvres murales prêtes ou en file, sans les consommer. */
+  preview(n: number): Artwork[] {
+    return [...this.ready.map((r) => r.artwork), ...this.queued].filter((a) => a.type !== 'sculpture').slice(0, n);
+  }
+
   /** Une sculpture prête pour un socle, s'il y en a (sinon le socle n'est pas installé). */
   takeSculpture(): ReadyArt | null {
     const i = this.ready.findIndex(onPedestal);
