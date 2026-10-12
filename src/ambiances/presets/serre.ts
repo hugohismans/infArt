@@ -29,6 +29,17 @@ export const serre: AmbiancePreset = {
     flicker: 0,
   },
   furniture: { small: 'jardinieres', large: 'jardinieres' },
+  decor: {
+    density: 2,
+    pool: { plante: 4, seau: 1, escabeau: 0.5, chaise: 0.6 },
+    ropes: 0,
+    exitSigns: 0.1,
+    leaves: 14,
+    stains: 0,
+    lightShafts: 0.9,
+    dust: 0.55,
+  },
+  sound: { roomTone: 0.3, hvac: 0, hum: 0, rain: 0.6, birds: 0.6, distantSteps: 0.15, reverb: 0.35 },
   art: { density: 0.75, frames: 'classique', prefer: ['peinture', 'dessin'] },
   modules: { 'room-l': 2.2, 'room-s': 1.6, 'room-s-side': 1.4, 'straight-l': 0.7 },
 };

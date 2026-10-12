@@ -13,6 +13,8 @@ import { Rng } from '../world/random';
 import type { Artwork } from '../../shared/artwork';
 import type { ArtContext, ArtPiece } from '../art/ArtPiece';
 import type { LibraryStats } from '../art/ArtLibrary';
+import type { AudioEngine } from '../audio/AudioEngine';
+import { DustField } from '../decor/dust';
 
 const DEG = Math.PI / 180;
 
@@ -24,6 +26,8 @@ export interface EngineOptions {
   autoWalk?: boolean;
   /** Vraies œuvres (sinon œuvres factices). */
   art?: ArtContext;
+  /** Son (partagé entre les visites ; démarré au premier geste du visiteur). */
+  audio?: AudioEngine;
 }
 
 export interface EngineStats {
@@ -92,6 +96,10 @@ export class Engine {
   private readonly frustum = new THREE.Frustum();
   private readonly projView = new THREE.Matrix4();
   private readonly sphere = new THREE.Sphere();
+  private readonly dust: DustField;
+  /** Dernier pas sonorisé (demi-foulées parcourues). */
+  private lastStep = 0;
+  private readonly forward = new THREE.Vector3();
 
   /** Appelé quand le visiteur demande le menu (Échap, perte du pointer lock). */
   onMenuRequest: (() => void) | null = null;
@@ -137,6 +145,9 @@ export class Engine {
     if (options.art) options.art.viewer = this;
     this.world = new World(options.seed, amb, options.art ?? null);
     this.scene.add(this.world.root);
+    this.world.onDrip = (x, y, z) => options.audio?.drip(x, y, z);
+    this.dust = new DustField(CONFIG.decor.dustCount[mobile ? 'mobile' : 'desktop']);
+    this.scene.add(this.dust.points);
     const start = this.world.init();
     this.player.position = start.position;
     this.player.yaw = start.yaw;
@@ -254,6 +265,25 @@ export class Engine {
 
   private readonly tmpColor = new THREE.Color();
 
+  /** Poussière, sons d'ambiance et pas du visiteur, selon l'ambiance du module courant. */
+  private updateAmbience(dt: number): void {
+    const m = this.world.currentModule;
+    if (!m) return;
+    const p = m.preset;
+    this.dust.update(dt, this.camera.position, this.player.floorY, p.decor.dust);
+    const audio = this.options.audio;
+    if (!audio?.started) return;
+    this.camera.getWorldDirection(this.forward);
+    audio.setListener(this.camera.position.x, this.camera.position.y, this.camera.position.z, this.forward.x, this.forward.z);
+    audio.update(dt, p.sound, p.lighting.flicker, this.camera.position);
+    // Un pas toutes les demi-foulées, tant que le visiteur avance vraiment.
+    const step = this.player.steps;
+    if (step !== this.lastStep) {
+      this.lastStep = step;
+      if (this.player.speed > 0.4) audio.footstep(p.surfaces.floor, this.player.speed > CONFIG.player.walkSpeed * 1.2);
+    }
+  }
+
   private openAt(ndcX: number, ndcY: number): void {
     if (this.paused) return;
     const art = this.pick(ndcX, ndcY);
@@ -311,6 +341,7 @@ export class Engine {
     this.mouse.dispose();
     this.touch.dispose();
     this.world.dispose();
+    this.dust.dispose();
     if (this.options.art?.viewer === this) this.options.art.viewer = null;
     this.renderer.dispose();
     this.renderer.domElement.remove();
@@ -346,6 +377,7 @@ export class Engine {
 
   private readonly onVisibility = () => {
     if (document.hidden && !this.paused) this.onMenuRequest?.();
+    this.options.audio?.suspend(document.hidden);
     this.lastTime = performance.now();
   };
 
@@ -426,6 +458,7 @@ export class Engine {
     this.frustum.setFromProjectionMatrix(this.projView);
 
     this.world.updateArts(dt, this.player.position);
+    this.updateAmbience(dt);
     this.pumpTimer -= dt;
     if (this.pumpTimer <= 0) {
       this.pumpTimer = 0.25;

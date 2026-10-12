@@ -31,6 +31,11 @@ export class Player {
   }
 
   /** Hauteur des yeux, balancement compris. */
+  /** Nombre de demi-foulées parcourues (un pas sonore à chaque incrément). */
+  get steps(): number {
+    return Math.floor(this.bobDistance / (CONFIG.headBob.strideLength / 2));
+  }
+
   get eyeY(): number {
     if (this.reduceMotion || !CONFIG.headBob.enabled) return CONFIG.player.eyeHeight;
     const phase = (this.bobDistance / CONFIG.headBob.strideLength) * Math.PI * 2;

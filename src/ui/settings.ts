@@ -2,6 +2,8 @@
 export interface Settings {
   reduceMotion: boolean;
   filterSensitive: boolean;
+  /** Son activé (le bouton du coin de l'écran). */
+  sound: boolean;
 }
 
 const KEY = 'galerie-infinie:settings';
@@ -10,6 +12,7 @@ export function loadSettings(): Settings {
   const defaults: Settings = {
     reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     filterSensitive: true,
+    sound: true,
   };
   try {
     const raw = localStorage.getItem(KEY);

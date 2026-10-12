@@ -4,7 +4,35 @@ Un musée infini, explorable à la première personne sur PC et sur mobile. Le b
 
 **Version en ligne** : https://hugohismans.github.io/infArt/
 
-## État : phase 5, toutes les sources
+## État : phase 6, décors et son
+
+### Décors procéduraux (`src/decor/`)
+Chaque module tire ses décors dans le pool de son ambiance (`decor` dans les presets), avec la graine du module :
+- **mobilier et objets** : chaises de gardien, corbeilles, extincteurs, radiateurs, plantes en pot, socles vides, escabeaux, caisses de transport, cartons, seaux sous une fuite du plafond ;
+- **cordons de sécurité** devant certaines œuvres, **panneaux « sortie »** lumineux près des ouvertures ;
+- **au sol** : feuilles mortes (serre), taches (back rooms) ; **rayons de lumière** sous la verrière ; **poussière en suspension** autour du visiteur ;
+- **gouttes** qui tombent du plafond dans les seaux, avec leur son.
+
+Règles :
+- les objets restent contre les murs, jamais devant une ouverture ni contre un obstacle ;
+- les objets hauts ne se placent que là où aucune œuvre n'est accrochée ; seuls les objets bas se glissent sous un tableau ;
+- ils ont des collisions, et l'auto-marche les contourne ;
+- tout le décor d'un module tient en trois géométries fusionnées (low poly, couleurs par sommet), libérées avec le module.
+
+### Son (`src/audio/`)
+Entièrement synthétisé avec la Web Audio API : aucun fichier, aucune licence.
+- **Ambiance par lieu** (`sound` dans les presets), en fondu enchaîné aux transitions :
+  - souffle grave de la pièce et pas lointains d'autres visiteurs (beaux-arts) ;
+  - ventilation (white cube) ;
+  - bourdonnement et grésillement des néons, synchronisés avec leur vacillement (back rooms) ;
+  - pluie sur la verrière et oiseaux (serre).
+- **Réverbération** générée, plus ou moins présente selon le lieu.
+- **Pas du visiteur** selon le sol : le parquet sonne sourd, le béton et le carrelage claquent, la moquette étouffe.
+- **Sons spatialisés** (gouttes, pas lointains, oiseaux).
+- Le son démarre au clic sur « Entrer » (contrainte des navigateurs). Un bouton dans le coin le coupe, et le réglage est mémorisé.
+- Réglages : `CONFIG.audio` (volumes, durée des fondus) et `CONFIG.decor`.
+
+## Phase 5, toutes les sources
 
 ### Culture populaire et mélange
 - **Nouveaux types d'œuvres**, chacun avec son support :
@@ -193,6 +221,6 @@ Le déploiement sur GitHub Pages se fait automatiquement à chaque push sur `mai
 3. ~~Embranchements : T, carrefours, salles, escaliers, impasses~~
 4. ~~Ambiances et Directeur~~
 5. ~~Plus de sources : affiches, jaquettes, pochettes, livres~~
-6. Décors procéduraux et son
+6. ~~Décors procéduraux et son~~
 7. Toutes les ambiances et étrangetés
 8. Finitions

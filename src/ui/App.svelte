@@ -15,6 +15,7 @@
   import { ImageLoader } from '../art/ImageLoader';
   import { ArtLibrary } from '../art/ArtLibrary';
   import type { ArtContext } from '../art/ArtPiece';
+  import { AudioEngine } from '../audio/AudioEngine';
   import { parseWeights, type Artwork } from '../../shared/artwork';
 
   const params = readUrlParams();
@@ -41,7 +42,11 @@
     viewer: null,
   };
 
+  // Le son ne démarre qu'au clic sur « Entrer » (contrainte des navigateurs).
+  const audio = new AudioEngine();
+
   let screen = $state<'home' | 'visit'>('home');
+  let sound = $state(settings.sound);
   let menuOpen = $state(false);
   let debugVisible = $state(params.debug);
   let autoWalk = $state(params.autoWalk);
@@ -73,12 +78,15 @@
     window.history.replaceState(null, '', url);
 
     screen = 'visit';
+    audio.setMuted(!sound);
+    audio.unlock();
     const e = new Engine(container, overlay, {
       seed,
       ambiance: DEFAULT_AMBIANCE,
       autoWalk,
       timeScale: params.timeScale,
       art: artCtx,
+      audio,
     });
     e.setReduceMotion(reduceMotion);
     e.onMenuRequest = () => openMenu();
@@ -101,7 +109,7 @@
     };
     e.start();
     engine = e;
-    (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, stats: () => e.stats(), openSheet };
+    (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, audio, stats: () => e.stats(), openSheet };
 
     if (isTouchDevice()) {
       // Plein écran sur mobile (Android) pour l'immersion ; ignoré si refusé.
@@ -168,7 +176,8 @@
   });
   $effect(() => {
     library.filterSensitive = filterSensitive;
-    saveSettings({ reduceMotion, filterSensitive });
+    audio.setMuted(!sound);
+    saveSettings({ reduceMotion, filterSensitive, sound });
   });
 
   function onLockChange() {
@@ -204,6 +213,16 @@
     <button class="hud-btn" aria-label={t('hud.menu')} onclick={openMenu}>
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
         <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+    </button>
+    <button class="hud-btn" aria-label={sound ? t('hud.soundOff') : t('hud.soundOn')} aria-pressed={!sound} onclick={() => (sound = !sound)}>
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" />
+        {#if sound}
+          <path d="M15.5 9a4 4 0 0 1 0 6M17.8 6.8a7 7 0 0 1 0 10.4" />
+        {:else}
+          <path d="M16 9.5l5 5M21 9.5l-5 5" />
+        {/if}
       </svg>
     </button>
   </div>

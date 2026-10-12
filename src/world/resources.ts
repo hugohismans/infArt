@@ -39,6 +39,13 @@ export interface PresetMaterials {
   unitPlane: THREE.PlaneGeometry;
   /** Disque de rayon 0,5 et d'épaisseur 1 (vinyles). */
   unitDisc: THREE.CylinderGeometry;
+  /** Décors lumineux (panneaux « sortie »), couleurs par sommet. */
+  decorGlow: THREE.MeshBasicMaterial;
+  /** Rayons de lumière : additifs, dégradés par les couleurs de sommet. */
+  shaft: THREE.MeshBasicMaterial;
+  /** Gouttes d'eau. */
+  water: THREE.MeshBasicMaterial;
+  unitSphere: THREE.SphereGeometry;
 }
 
 export type FrameMaterialKey = 'gold' | 'goldDark' | 'wood' | 'black' | 'white' | 'alu' | 'vinyl';
@@ -169,6 +176,17 @@ export class ResourceCache {
           unitBox: new THREE.BoxGeometry(1, 1, 1),
           unitPlane: new THREE.PlaneGeometry(1, 1),
           unitDisc: new THREE.CylinderGeometry(0.5, 0.5, 1, 40),
+          decorGlow: new THREE.MeshBasicMaterial({ vertexColors: true }),
+          shaft: new THREE.MeshBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+            fog: true,
+          }),
+          water: new THREE.MeshBasicMaterial({ color: '#cfe3ef', transparent: true, opacity: 0.85 }),
+          unitSphere: new THREE.SphereGeometry(0.5, 6, 4),
         },
       };
       this.presets.set(preset.id, entry);
@@ -187,10 +205,11 @@ export class ResourceCache {
     m.ceiling.map?.dispose();
     m.glow.map?.dispose();
     m.drape.map?.dispose();
-    for (const mat of [m.walls, m.trims, m.ceiling, m.floor, m.lights, m.glow, m.mat, m.drape, m.cartelBlank, ...m.frames, ...Object.values(m.frameKinds)]) mat.dispose();
+    for (const mat of [m.walls, m.trims, m.ceiling, m.floor, m.lights, m.glow, m.mat, m.drape, m.cartelBlank, m.decorGlow, m.shaft, m.water, ...m.frames, ...Object.values(m.frameKinds)]) mat.dispose();
     m.unitBox.dispose();
     m.unitPlane.dispose();
     m.unitDisc.dispose();
+    m.unitSphere.dispose();
     this.presets.delete(preset.id);
   }
 

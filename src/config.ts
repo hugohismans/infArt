@@ -176,6 +176,28 @@ export const CONFIG = {
     themeMaxBatches: 4,
   },
 
+  audio: {
+    /** Volume général. */
+    volume: 0.8,
+    /** Durée des fondus d'ambiance aux transitions (s). */
+    crossfade: 3,
+    /** Niveau de chaque nappe pour une intensité 1 dans le profil de l'ambiance. */
+    layers: { roomTone: 0.32, hvac: 0.1, hum: 0.05, rain: 0.08 },
+    footsteps: 0.22,
+    drips: 0.35,
+    birds: 0.05,
+  },
+
+  decor: {
+    /** Multiplicateur global du nombre d'objets de décor (0 = aucun). */
+    density: 1,
+    /** Poussière en suspension : nombre de grains (PC / mobile) et taille (m). */
+    dustCount: { desktop: 420, mobile: 220 },
+    dustSize: 0.022,
+    /** Fuites : intervalle entre deux gouttes (s) et durée de chute. */
+    dripInterval: [1.4, 3.2] as [number, number],
+  },
+
   director: {
     /** Durée de la zone de départ (musée classique), en modules. */
     firstZoneLength: [9, 13] as [number, number],

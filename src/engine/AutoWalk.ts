@@ -135,7 +135,7 @@ export class AutoWalk {
     // Depuis le point de départ, le visiteur peut déjà frôler un mur : marge réduite.
     const clear = (a: Vec2, b: Vec2) => {
       const r = a === start || b === start ? 0.3 : CLEARANCE;
-      return !m.walls.some((w) => segmentDistance(a, b, w.a, w.b) < r);
+      return !m.walls.some((w) => segmentDistance(a, b, w.a, w.b) < r) && !m.decorWalls.some((w) => segmentDistance(a, b, w.a, w.b) < r);
     };
     const goalIndex = nodes.length - 1;
     if (clear(start, goal)) return [goal];

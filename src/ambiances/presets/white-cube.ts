@@ -29,6 +29,17 @@ export const whiteCube: AmbiancePreset = {
     flicker: 0,
   },
   furniture: { small: 'aucun', large: 'cimaise' },
+  decor: {
+    density: 1.3,
+    pool: { extincteur: 2, caisse: 1.2, escabeau: 0.8, cartons: 1, socle: 1.3, chaise: 0.6, poubelle: 0.4 },
+    ropes: 0.04,
+    exitSigns: 0.35,
+    leaves: 0,
+    stains: 0,
+    lightShafts: 0,
+    dust: 0.1,
+  },
+  sound: { roomTone: 0.4, hvac: 0.75, hum: 0, rain: 0, birds: 0, distantSteps: 0.3, reverb: 0.6 },
   art: { density: 0.7, frames: 'moderne', prefer: ['photographie', 'dessin', 'estampe'] },
   modules: { 'room-l': 3, 'room-s': 1.8, 'room-s-side': 1.5, 'straight-l': 0.6, deadend: 1.4 },
 };

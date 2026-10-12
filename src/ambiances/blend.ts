@@ -39,5 +39,7 @@ export function blendPresets(a: AmbiancePreset, b: AmbiancePreset, t: number): A
       flicker: lerp(a.lighting.flicker, b.lighting.flicker, t),
     },
     art: { ...discrete.art, density: lerp(a.art.density, b.art.density, t) },
+    decor: { ...discrete.decor, dust: lerp(a.decor.dust, b.decor.dust, t) },
+    sound: Object.fromEntries(Object.entries(a.sound).map(([k, v]) => [k, lerp(v, b.sound[k as keyof AmbiancePreset['sound']], t)])) as unknown as AmbiancePreset['sound'],
   };
 }

@@ -29,5 +29,16 @@ export const beauxArts: AmbiancePreset = {
     flicker: 0,
   },
   furniture: { small: 'banc', large: 'cimaise' },
+  decor: {
+    density: 1.7,
+    pool: { chaise: 3, poubelle: 1, extincteur: 1.5, radiateur: 1.6, plante: 0.7, socle: 0.6 },
+    ropes: 0.12,
+    exitSigns: 0.25,
+    leaves: 0,
+    stains: 0,
+    lightShafts: 0,
+    dust: 0.35,
+  },
+  sound: { roomTone: 0.7, hvac: 0.2, hum: 0, rain: 0, birds: 0, distantSteps: 0.6, reverb: 0.5 },
   art: { density: 1, frames: 'classique', prefer: ['peinture'] },
 };

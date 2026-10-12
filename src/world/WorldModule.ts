@@ -9,6 +9,19 @@ import type { ZoneState } from '../director/Director';
 import type { PresetMaterials } from './resources';
 import { Rng } from './random';
 import type { ResourceCache } from './resources';
+import { buildDecor } from '../decor';
+import type { ArtSlotDef } from './modules/defs';
+
+/** Fuite au plafond : une goutte tombe à intervalles irréguliers (repère du module). */
+interface Drip {
+  x: number;
+  z: number;
+  top: number;
+  bottom: number;
+  mesh: THREE.Mesh;
+  /** Temps avant la prochaine goutte (négatif : la goutte tombe depuis -t secondes). */
+  timer: number;
+}
 
 export interface Connector {
   /** Centre de l'ouverture (monde). */
@@ -34,6 +47,10 @@ export class WorldModule {
   readonly footprint: Vec2[];
   readonly connectors: Connector[];
   readonly walls: Segment[];
+  /** Contours des décors au sol (monde) : collisions et auto-marche, pas la visibilité. */
+  decorWalls: Segment[] = [];
+  private drips: Drip[] = [];
+  private ownedGeometries: THREE.BufferGeometry[] = [];
   /** Points libres pour l'itinéraire de l'auto-marche (monde). */
   readonly navPoints: Vec2[];
   /** Étendue verticale occupée [bas, haut] : deux modules peuvent se superposer s'ils ne se recoupent pas. */
@@ -108,6 +125,7 @@ export class WorldModule {
 
     const rng = new Rng(this.seed, 'art');
     const density = CONFIG.art.density * this.preset.art.density;
+    const hung: ArtSlotDef[] = [];
     for (const slot of this.def.artSlots) {
       // Une impasse (ou un bouchon) expose toujours son œuvre unique.
       const always = this.def.kind === 'cap' || this.def.kind === 'deadend';
@@ -115,7 +133,30 @@ export class WorldModule {
       const wallHeight = slot.wallHeight ?? this.preset.geometry.ceilingHeight * this.def.ceilingScale;
       const art = new ArtPiece(slot, rng, this.preset, mats, wallHeight, artCtx, () => this.visible, this.zone.wing?.theme.id);
       this.arts.push(art);
+      hung.push(slot);
       this.group.add(art.object);
+    }
+
+    // Décors (géométries propres au module : chaque module tire les siens).
+    const decor = buildDecor(this.def, this.preset, new Rng(this.seed, 'decor'), hung);
+    const own = (g: THREE.BufferGeometry | null, mat: THREE.Material, order = 0) => {
+      if (!g) return;
+      this.ownedGeometries.push(g);
+      const mesh = new THREE.Mesh(g, mat);
+      mesh.renderOrder = order;
+      this.group.add(mesh);
+    };
+    own(decor.solid, mats.trims);
+    own(decor.glow, mats.decorGlow);
+    own(decor.shafts, mats.shaft, 2);
+    this.decorWalls = decor.collisions.map((w) => ({ a: applyTransform(this.transform, w.a), b: applyTransform(this.transform, w.b) }));
+    const dripRng = new Rng(this.seed, 'drip');
+    for (const d of decor.drips) {
+      const mesh = new THREE.Mesh(mats.unitSphere, mats.water);
+      mesh.scale.set(0.022, 0.034, 0.022);
+      mesh.visible = false;
+      this.group.add(mesh);
+      this.drips.push({ ...d, mesh, timer: dripRng.range(0, CONFIG.decor.dripInterval[1]) });
     }
 
     this.group.position.set(this.transform.x, this.baseY, this.transform.z);
@@ -124,6 +165,31 @@ export class WorldModule {
     // Le module ne bouge jamais (sauf recentrage) : inutile de recalculer ses matrices à chaque frame.
     this.group.matrixAutoUpdate = false;
     this.group.traverse((o) => (o.matrixAutoUpdate = false));
+    for (const d of this.drips) d.mesh.matrixAutoUpdate = true;
+  }
+
+  /** Décor animé : gouttes qui tombent. `onDrip` reçoit le point d'impact (monde). */
+  animateDecor(dt: number, onDrip: (x: number, y: number, z: number) => void): void {
+    const g = 9.81;
+    for (const d of this.drips) {
+      d.timer -= dt;
+      if (d.timer > 0) continue;
+      const t = -d.timer;
+      const y = d.top - 0.5 * g * t * t;
+      if (y <= d.bottom) {
+        d.mesh.visible = false;
+        d.timer = CONFIG.decor.dripInterval[0] + Math.random() * (CONFIG.decor.dripInterval[1] - CONFIG.decor.dripInterval[0]);
+        const p = applyTransform(this.transform, { x: d.x, z: d.z });
+        onDrip(p.x, this.baseY + d.bottom, p.z);
+      } else {
+        d.mesh.visible = true;
+        d.mesh.position.set(d.x, y, d.z);
+      }
+    }
+  }
+
+  get hasAnimatedDecor(): boolean {
+    return this.drips.length > 0;
   }
 
   get alive(): boolean {
@@ -160,7 +226,7 @@ export class WorldModule {
     this.transform.z += dz;
     this.footprint.forEach(mv);
     this.navPoints.forEach(mv);
-    for (const w of this.walls) {
+    for (const w of [...this.walls, ...this.decorWalls]) {
       mv(w.a);
       mv(w.b);
     }
@@ -236,6 +302,10 @@ export class WorldModule {
     for (const i of [...this.adapters.keys()]) this.clearAdapter(i);
     for (const art of this.arts) art.dispose();
     this.arts = [];
+    for (const g of this.ownedGeometries) g.dispose();
+    this.ownedGeometries = [];
+    this.drips = [];
+    this.decorWalls = [];
     this.group.removeFromParent();
     this.group.clear();
     this.cache.releaseGeometries(this.def, this.preset);

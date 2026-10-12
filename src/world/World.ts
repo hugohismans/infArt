@@ -194,6 +194,10 @@ export class World {
    * Œuvres proches du visiteur : fondus à chaque frame, niveaux de détail
    * (cartels, haute résolution) quelques fois par seconde.
    */
+  /** Une goutte vient de tomber (position monde) : le moteur en fait un son. */
+  onDrip: ((x: number, y: number, z: number) => void) | null = null;
+  private readonly dripHandler = (x: number, y: number, z: number) => this.onDrip?.(x, y, z);
+
   updateArts(dt: number, player: Vec2): void {
     this.lodTimer -= dt;
     const doLod = this.lodTimer <= 0;
@@ -201,6 +205,7 @@ export class World {
     for (const m of this.modules) {
       // Au-delà de deux modules, les cartels et la HD sont forcément trop loin ou cachés.
       const near = m.graphDistance <= 2;
+      if (m.hasAnimatedDecor && m.graphDistance <= 3) m.animateDecor(dt, this.dripHandler);
       for (const art of m.artPieces) {
         art.animate(dt);
         if (doLod) art.updateLod(near ? player.x : Infinity, near ? player.z : Infinity);
@@ -245,7 +250,7 @@ export class World {
       for (const c of r.connectors) if (c.neighbor) near.add(c.neighbor.module);
     }
     for (const m of near) {
-      out.push(...m.walls);
+      out.push(...m.walls, ...m.decorWalls);
       // Une ouverture non générée se comporte comme un mur (filet de sécurité).
       for (const c of m.connectors) if (!c.neighbor) out.push(c.portal);
     }

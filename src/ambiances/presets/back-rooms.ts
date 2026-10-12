@@ -34,6 +34,17 @@ export const backRooms: AmbiancePreset = {
     flicker: 0.04,
   },
   furniture: { small: 'aucun', large: 'aucun' },
+  decor: {
+    density: 0.55,
+    pool: { seau: 2, cartons: 1, chaise: 0.6, extincteur: 0.3 },
+    ropes: 0,
+    exitSigns: 0.06,
+    leaves: 0,
+    stains: 2.5,
+    lightShafts: 0,
+    dust: 0.25,
+  },
+  sound: { roomTone: 0.5, hvac: 0.3, hum: 1, rain: 0, birds: 0, distantSteps: 0.04, reverb: 0.15 },
   art: { density: 0.12, frames: 'bon-marche' },
   modules: {
     'straight-l': 3,
