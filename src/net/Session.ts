@@ -15,6 +15,8 @@ export interface PlayerState {
   z: number;
   y: number;
   yaw: number;
+  /** Inclinaison de la tête (absente chez les anciens clients). */
+  pt?: number;
 }
 
 type Footprint = { poly: Vec2[]; y0: number; y1: number; minX: number; maxX: number; minZ: number; maxZ: number };
@@ -159,7 +161,7 @@ export class Session implements WorldNet {
       this.timers.player = 0.2;
       const p = this.engine.player;
       const off = this.world.offset;
-      void this.F.set(this.ref(`players/${this.me}`), { m: cur.uid, x: p.position.x - off.x, z: p.position.z - off.z, y: p.floorY, yaw: p.yaw });
+      void this.F.set(this.ref(`players/${this.me}`), { m: cur.uid, x: p.position.x - off.x, z: p.position.z - off.z, y: p.floorY, yaw: p.yaw, pt: Math.round(p.pitch * 100) / 100 });
     }
     if (this.timers.holds <= 0) {
       this.timers.holds = 2;

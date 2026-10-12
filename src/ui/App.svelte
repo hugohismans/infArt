@@ -128,7 +128,7 @@
     const e = engine;
     const s = new Session(lobby.F, lobby.database, p.sid, lobby.uid, p.friend.uid, p.role, e);
     session = s;
-    companion = new Companion(e, s, p.friend.name);
+    companion = new Companion(e, s, p.friend.name, p.friend.uid);
     duoState = 'joining';
     friendAbsent = 0;
     const v = new Voice(lobby.F, lobby.database, s, e, audio, apiUrl ? `${apiUrl}/turn` : null);
