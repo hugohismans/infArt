@@ -121,6 +121,7 @@ export class ArtPiece {
     this.object.position.set(slot.pos.x, slot.y, slot.pos.z);
     this.object.rotation.y = Math.atan2(slot.normal.x, slot.normal.z);
     if (slot.offset) this.object.translateX(slot.offset);
+    this.object.translateZ(CONFIG.world.wallGap);
     if (opts.ceiling) {
       // Étrangeté : au plafond, à un peu plus d'un mètre du mur, face vers le bas.
       const d = Math.min(1.3, preset.geometry.corridorWidth / 2 - 0.4);

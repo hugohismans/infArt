@@ -76,6 +76,12 @@ export const CONFIG = {
     visibilityMargin: 12,
     /** Écart minimal (m) entre deux modules non voisins : rien ne doit traverser les murs. */
     moduleClearance: 0.02,
+    /**
+     * Décollement (m) des œuvres et objets accrochés au mur. Deux salles voisines partagent
+     * le même plan de mur (épaisseur nulle) : sans cet écart, le dos d'un cadre d'un côté
+     * scintille contre le mur de l'autre côté.
+     */
+    wallGap: 0.015,
     /** Une apparition est jugée perceptible quand le brouillard masque moins de cette fraction. */
     popInFogThreshold: 0.85,
     /** Recentrage du monde quand le joueur s'éloigne trop de l'origine (précision flottante). */

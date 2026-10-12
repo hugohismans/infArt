@@ -110,6 +110,8 @@ export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hun
   const d = preset.decor;
   const ceiling = def.ceilingHeight ?? preset.geometry.ceilingHeight * def.ceilingScale;
   const angleOf = (n: Vec2) => Math.atan2(n.x, n.z);
+  // Objet contre un mur : décollé de quelques millimètres (le mur voisin est au même plan).
+  const placeOnWall = (p: Vec2, y: number, n: Vec2) => k.place(p.x + n.x * CONFIG.world.wallGap, y, p.z + n.z * CONFIG.world.wallGap, angleOf(n));
   const placed: Vec2[][] = [];
   const free = (poly: Vec2[]) => !placed.some((p) => p.some((v) => pointInConvex(v, poly)) || poly.some((v) => pointInConvex(v, p)));
 
@@ -140,7 +142,7 @@ export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hun
       const w = Math.min(slot.maxWidth, rng.range(0.4, 1.3)), h = rng.range(0.45, 1.2);
       const cy = Math.max(1.55, h / 2 + 0.6);
       k.place(slot.pos.x, slot.y, slot.pos.z, angleOf(slot.normal));
-      k.box(w, h, 0.003, 0, cy, 0.002, ghost);
+      k.box(w, h, 0.003, 0, cy, 0.008, ghost);
       k.cyl(0.006, 0.035, 0, cy + h / 2 - 0.1, 0.02, '#2a2622', 6, 1, { x: Math.PI / 2 });
     }
   }
@@ -164,7 +166,7 @@ export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hun
       if (spot) {
         spots.splice(spots.indexOf(spot), 1);
         placed.push(footprint(spot.pos, spot.n, 0.5, 0.6, 0.15));
-        k.place(spot.pos.x, def.floorAt(spot.pos), spot.pos.z, angleOf(spot.n));
+        placeOnWall(spot.pos, def.floorAt(spot.pos), spot.n);
         CATALOG.chaise.build(k, rng, ceiling, true);
         // Veste sur le dossier, gobelet sur l'assise.
         k.box(0.48, 0.42, 0.06, 0, 0.72, 0.07, jacket);
@@ -190,7 +192,7 @@ export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hun
     if (!spot) continue;
     const poly = footprint(spot.pos, spot.n, item.width, item.depth);
     placed.push(footprint(spot.pos, spot.n, item.width, item.depth, 0.15));
-    k.place(spot.pos.x, def.floorAt(spot.pos), spot.pos.z, angleOf(spot.n));
+    placeOnWall(spot.pos, def.floorAt(spot.pos), spot.n);
     item.build(k, rng, ceiling, preset.surfaces.ceiling !== 'verriere');
     if (!item.flat) out.collisions.push(...edges(poly));
     if (item.drip) {
