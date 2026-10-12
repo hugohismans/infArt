@@ -1,5 +1,5 @@
 import { ADAPTERS_BY_ID, DIRECT_ADAPTERS, type FetchJson } from '../../shared/adapters';
-import type { Artwork } from '../../shared/artwork';
+import { formatWeights, type Artwork, type TypeWeights } from '../../shared/artwork';
 import { gatherArtworks } from '../../shared/select';
 import type { ArtTheme } from '../../shared/themes';
 
@@ -26,14 +26,35 @@ export class ArtClient {
     return this.apiUrl && !this.workerDown ? 'worker' : 'direct';
   }
 
+  /** Types d'œuvres que les sources actives peuvent fournir (selon les clés du Worker). */
+  availableTypes = new Set<string>(DIRECT_ADAPTERS.flatMap((a) => a.types));
+
+  /** Interroge le Worker sur ses sources actives (clés présentes). */
+  async probe(): Promise<void> {
+    if (this.mode !== 'worker') return;
+    try {
+      const res = await fetch(`${this.apiUrl}/health`);
+      const data = (await res.json()) as { sources?: Array<{ types: string[]; active?: boolean }> };
+      const types = (data.sources ?? []).filter((s) => s.active !== false).flatMap((s) => s.types);
+      if (types.length > 0) this.availableTypes = new Set(types);
+    } catch {
+      // Sans réponse, on garde les types du mode direct.
+    }
+  }
+
   setSeed(seed: string): void {
     this.seed = seed;
   }
 
-  async fetchBatch(batch: number, count: number, theme?: ArtTheme): Promise<Artwork[]> {
+  /** @param weights mode mélange : part de chaque type */
+  async fetchBatch(batch: number, count: number, opts: { theme?: ArtTheme; weights?: TypeWeights } = {}): Promise<Artwork[]> {
+    const { theme, weights } = opts;
     if (this.mode === 'worker') {
       try {
-        const url = `${this.apiUrl}/artworks?count=${count}&seed=${encodeURIComponent(this.seed)}&batch=${batch}${theme ? `&theme=${theme.id}` : ''}`;
+        const url =
+          `${this.apiUrl}/artworks?count=${count}&seed=${encodeURIComponent(this.seed)}&batch=${batch}` +
+          (theme ? `&theme=${theme.id}` : '') +
+          (weights ? `&weights=${formatWeights(weights)}` : '');
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as { artworks: Artwork[]; errors: string[] };
@@ -45,7 +66,7 @@ export class ArtClient {
         this.workerDown = true;
       }
     }
-    const result = await gatherArtworks({ adapters: DIRECT_ADAPTERS, fetchJson: this.directFetch, seed: this.seed, batch, count, ...(theme ? { theme } : {}) });
+    const result = await gatherArtworks({ adapters: DIRECT_ADAPTERS, fetchJson: this.directFetch, seed: this.seed, batch, count, ...(theme ? { theme } : {}), ...(weights ? { weights } : {}) });
     this.lastErrors = result.errors;
     return result.artworks;
   }

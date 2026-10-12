@@ -8,6 +8,7 @@ export type ArtType =
   | 'estampe'
   | 'sculpture'
   | 'photographie'
+  | 'affiche'
   | 'affiche-film'
   | 'jaquette-jeu'
   | 'pochette-disque'
@@ -51,8 +52,32 @@ export interface Artwork {
   credit: string;
 }
 
-/** Types « muraux » gérés depuis la phase 2. */
+/** Types présentés au mur (cadres). */
 export const WALL_TYPES: ArtType[] = ['peinture', 'estampe', 'dessin', 'photographie'];
+
+/** Types gérés par la galerie (phase 5 : culture populaire comprise). */
+export const SUPPORTED_TYPES: ArtType[] = [...WALL_TYPES, 'affiche', 'affiche-film', 'jaquette-jeu', 'pochette-disque', 'couverture-livre'];
+
+/** Pondération des types dans un lot (mode mélange). */
+export type TypeWeights = Partial<Record<ArtType, number>>;
+
+/** « peinture:0.5,affiche:0.1 » ⇄ pondération (paramètre d'URL du Worker). */
+export function formatWeights(w: TypeWeights): string {
+  return Object.entries(w)
+    .filter(([, v]) => (v ?? 0) > 0)
+    .map(([k, v]) => `${k}:${Math.round(v! * 1000) / 1000}`)
+    .join(',');
+}
+
+export function parseWeights(s: string | null | undefined): TypeWeights {
+  const out: TypeWeights = {};
+  for (const part of (s ?? '').split(',')) {
+    const [k, v] = part.split(':');
+    const n = Number(v);
+    if (k && (SUPPORTED_TYPES as string[]).includes(k) && Number.isFinite(n) && n > 0) out[k as ArtType] = Math.min(n, 100);
+  }
+  return out;
+}
 
 /** Retire les balises HTML et normalise les espaces. */
 export function stripHtml(html: string | null | undefined): string | undefined {

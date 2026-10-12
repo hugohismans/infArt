@@ -225,8 +225,8 @@ export class ArtPiece {
       w = Math.sqrt(area * aspect);
       h = w / aspect;
     } else {
-      const longSide =
-        art.type === 'peinture' ? this.rng.range(0.45, 1.3) : art.type === 'photographie' ? this.rng.range(0.18, 0.35) : this.rng.range(0.22, 0.5);
+      const [lo, hi] = CONFIG.art.longSide[art.type] ?? CONFIG.art.longSide.autre!;
+      const longSide = this.rng.range(lo, hi);
       if (aspect >= 1) {
         w = longSide;
         h = w / aspect;
@@ -234,6 +234,10 @@ export class ArtPiece {
         h = longSide;
         w = h * aspect;
       }
+    }
+    if (art.type === 'couverture-livre') {
+      w *= CONFIG.art.bookScale;
+      h *= CONFIG.art.bookScale;
     }
     const min = CONFIG.art.minSize;
     if (Math.min(w, h) < min) {
@@ -246,13 +250,16 @@ export class ArtPiece {
 
   /** Réduit l'œuvre si l'ensemble encadré dépasse le mur disponible. */
   private fit(w: number, h: number, style: FrameStyle): Layout {
+    // Une pochette de disque prend plus de place : le vinyle dépasse, la tablette déborde.
+    const extra = style.mount === 'record' ? 0.52 * w : style.mount === 'book' ? 0.1 : 0;
     const pad = 2 * (style.mat + style.border);
-    const maxW = Math.max(0.3, this.slot.maxWidth) - pad;
+    const maxW = Math.max(0.3, this.slot.maxWidth) - pad - extra;
     const maxH = this.wallHeight - 1.25 - pad;
     const k = Math.min(1, maxW / w, maxH / h);
     w *= k;
     h *= k;
-    const totalW = w + pad, totalH = h + pad;
+    const totalW = w + pad + (style.mount === 'record' ? 0.52 * w : style.mount === 'book' ? 0.1 : 0);
+    const totalH = h + pad;
     // Ligne d'accrochage : centre à hauteur d'yeux, mais jamais trop près du sol.
     const centerY = Math.max(CONFIG.art.hangHeight, totalH / 2 + 0.55);
     const frontZ = style.depth + (style.lip ? 0.012 : 0);
@@ -287,25 +294,41 @@ export class ArtPiece {
       return mesh;
     };
 
-    if (style.border > 0) {
-      box(m.frameKinds[style.material], totalW, totalH, style.depth, style.depth / 2);
-      if (style.lip) {
-        // Ressaut intérieur, légèrement en avant : donne du relief au cadre doré.
-        const lw = w + 2 * style.mat + style.border * 0.7;
-        const lh = h + 2 * style.mat + style.border * 0.7;
-        box(m.frameKinds.goldDark, lw, lh, style.depth + 0.012, (style.depth + 0.012) / 2);
-      }
+    if (style.mount === 'record' || style.mount === 'book') {
+      this.buildOnLedge(L, texture);
     } else {
-      // Toile sur châssis, sans cadre : on voit la tranche.
-      box(m.frameKinds.white, w, h, style.depth, style.depth / 2);
+      if (style.border > 0) {
+        box(m.frameKinds[style.material], totalW, totalH, style.depth, style.depth / 2);
+        if (style.lip) {
+          // Ressaut intérieur, légèrement en avant : donne du relief au cadre doré.
+          const lw = w + 2 * style.mat + style.border * 0.7;
+          const lh = h + 2 * style.mat + style.border * 0.7;
+          box(m.frameKinds.goldDark, lw, lh, style.depth + 0.012, (style.depth + 0.012) / 2);
+        }
+      } else {
+        // Toile sur châssis, sans cadre : on voit la tranche.
+        box(m.frameKinds.white, w, h, style.depth, style.depth / 2);
+      }
+      if (style.mat > 0) {
+        const mat = new THREE.Mesh(m.unitPlane, m.mat);
+        mat.scale.set(w + 2 * style.mat, h + 2 * style.mat, 1);
+        mat.position.set(0, centerY, L.frontZ + 0.003);
+        this.object.add(mat);
+      }
+      this.object.add(this.makeCanvas(texture, w, h, centerY, L.frontZ + 0.006));
+      if (style.mount === 'clip') {
+        // Affiche tenue par quatre pinces métalliques, qui mordent sur les coins.
+        const cw = Math.min(0.05, w * 0.12), ch = 0.014;
+        for (const sx of [-1, 1]) {
+          for (const sy of [-1, 1]) {
+            const clip = new THREE.Mesh(m.unitBox, m.frameKinds.alu);
+            clip.scale.set(cw, ch, 0.006);
+            clip.position.set(sx * (w / 2 - cw / 2 + 0.004), centerY + sy * (h / 2 - ch / 2 + 0.004), L.frontZ + 0.009);
+            this.object.add(clip);
+          }
+        }
+      }
     }
-    if (style.mat > 0) {
-      const mat = new THREE.Mesh(m.unitPlane, m.mat);
-      mat.scale.set(w + 2 * style.mat, h + 2 * style.mat, 1);
-      mat.position.set(0, centerY, L.frontZ + 0.003);
-      this.object.add(mat);
-    }
-    this.object.add(this.makeCanvas(texture, w, h, centerY, L.frontZ + 0.006));
 
     // Pas de halo sur une cimaise : il déborderait au-dessus de la cloison.
     if (this.preset.lighting.artGlow > 0 && this.wallHeight > 3.2) {
@@ -322,6 +345,53 @@ export class ArtPiece {
 
     this.addCartel(L);
     this.object.updateMatrixWorld(true);
+  }
+
+  /**
+   * Pochette de disque ou livre : posé sur une petite tablette, légèrement incliné contre
+   * le mur. Le vinyle dépasse de sa pochette ; le livre montre la tranche de ses pages.
+   */
+  private buildOnLedge(L: Layout, texture: THREE.Texture | null): void {
+    const { w, h, centerY } = L;
+    const m = this.mats;
+    const record = L.style.mount === 'record';
+    const thickness = record ? 0.004 : L.style.depth;
+    // Le vinyle dépasse à droite : on décale l'ensemble pour rester centré.
+    const overhang = record ? w * 0.42 : 0;
+    const x0 = -overhang / 2;
+    const ledgeDepth = thickness + 0.09;
+    const bottom = centerY - h / 2;
+
+    const ledge = new THREE.Mesh(m.unitBox, m.frameKinds.wood);
+    ledge.scale.set(w + overhang + 0.1, 0.022, ledgeDepth);
+    ledge.position.set(0, bottom - 0.011, ledgeDepth / 2);
+    this.object.add(ledge);
+
+    // Pivot au bas de l'objet, côté avant de la tablette ; le haut s'appuie vers le mur.
+    const lean = new THREE.Group();
+    lean.position.set(x0, bottom, ledgeDepth - 0.035);
+    lean.rotation.x = -CONFIG.art.leanAngle;
+    this.object.add(lean);
+
+    const body = new THREE.Mesh(m.unitBox, record ? m.frameKinds.white : m.mat);
+    body.scale.set(w, h, thickness);
+    body.position.set(0, h / 2, -thickness / 2);
+    lean.add(body);
+    if (record) {
+      const disc = new THREE.Mesh(m.unitDisc, m.frameKinds.vinyl);
+      disc.scale.set(w * 0.96, 0.002, w * 0.96);
+      disc.rotation.x = Math.PI / 2;
+      disc.position.set(overhang, h / 2, -thickness - 0.003);
+      lean.add(disc);
+    } else {
+      // Dos du livre : une bande sombre sur la tranche gauche.
+      const spine = new THREE.Mesh(m.unitBox, m.frameKinds.black);
+      spine.scale.set(0.006, h + 0.004, thickness + 0.004);
+      spine.position.set(-w / 2 - 0.002, h / 2, -thickness / 2);
+      lean.add(spine);
+    }
+    const cover = this.makeCanvas(texture, w, h, h / 2, 0.0015);
+    lean.add(cover);
   }
 
   /** Plaque du cartel : à droite de l'œuvre si la place le permet, sinon dessous. */

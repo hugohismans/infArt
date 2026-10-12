@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { Artwork } from '../../shared/artwork';
+import type { Artwork, TypeWeights } from '../../shared/artwork';
 import { isSensitive } from '../../shared/filter';
 import { THEMES, type ArtTheme } from '../../shared/themes';
 import { CONFIG } from '../config';
@@ -63,7 +63,8 @@ export class ArtLibrary {
   private queued: Artwork[] = [];
   private waiters: Waiter[] = [];
   private loading = 0;
-  private fetching = false;
+  /** Lots en cours de téléchargement. */
+  private fetching = 0;
   private batch = 0;
   private consecutiveFailures = 0;
   private retryAt = 0;
@@ -82,12 +83,16 @@ export class ArtLibrary {
   private recentThemes: string[] = [];
   /** Filtre de contenu sensible (réglage). */
   filterSensitive = true;
+  /** Mode mélange : part de chaque type (paramètre d'URL `mix` pour les essais). */
+  mix: TypeWeights = CONFIG.art.mix;
 
   constructor(
     readonly client: ArtClient,
     readonly loader: ImageLoader,
     private readonly textureSize: number,
-  ) {}
+  ) {
+    void client.probe();
+  }
 
   /** Plus aucun lot n'arrive (réseau coupé, sources en panne) : on passe aux œuvres factices. */
   get offline(): boolean {
@@ -105,7 +110,7 @@ export class ArtLibrary {
     this.batch = 0;
     this.seen.clear();
     this.consecutiveFailures = 0;
-    this.fetching = false;
+    this.fetching = 0;
     this.dropAllPools();
     this.recentThemes = [];
     this.pump();
@@ -170,7 +175,9 @@ export class ArtLibrary {
       this.loadNext();
     }
     // Lots : on en redemande avant d'être à court.
-    if (!this.fetching && this.queued.length < CONFIG.art.batchSize / 2 && this.ready.length + this.loading < target && performance.now() >= this.retryAt) {
+    // Un lot à la fois ; deux si des emplacements attendent déjà (lot lent, réserve vide).
+    const maxInFlight = this.waiters.length > 0 && this.consecutiveFailures === 0 ? 2 : 1;
+    if (this.fetching < maxInFlight && this.queued.length < CONFIG.art.batchSize / 2 && this.ready.length + this.loading < target && performance.now() >= this.retryAt) {
       void this.fetchNextBatch();
     }
     this.pumpThemes();
@@ -199,7 +206,9 @@ export class ArtLibrary {
   }
 
   private newPool(): ThemePool {
-    const choices = THEMES.filter((t) => !this.recentThemes.includes(t.id));
+    // Pas d'aile « cinéma » sans source d'affiches de films (clé absente, mode direct…).
+    const available = (t: ArtTheme) => !t.types || t.types.some((type) => this.client.availableTypes.has(type));
+    const choices = THEMES.filter((t) => !this.recentThemes.includes(t.id) && available(t));
     const theme = choices[Math.floor(Math.random() * choices.length)] ?? THEMES[0]!;
     this.recentThemes.push(theme.id);
     if (this.recentThemes.length > Math.min(8, THEMES.length - 1)) this.recentThemes.shift();
@@ -225,7 +234,7 @@ export class ArtLibrary {
     p.fetching = true;
     const gen = this.generation;
     try {
-      const arts = await this.client.fetchBatch(p.batch++, CONFIG.art.batchSize, p.theme);
+      const arts = await this.client.fetchBatch(p.batch++, CONFIG.art.batchSize, { theme: p.theme, weights: this.mix });
       if (gen !== this.generation || p.dropped) return;
       const added = arts.filter((a) => this.accept(a));
       p.queued.push(...added);
@@ -291,11 +300,11 @@ export class ArtLibrary {
   }
 
   private async fetchNextBatch(): Promise<void> {
-    this.fetching = true;
+    this.fetching++;
     const gen = this.generation;
     const batch = this.batch++;
     try {
-      const arts = await this.client.fetchBatch(batch, CONFIG.art.batchSize);
+      const arts = await this.client.fetchBatch(batch, CONFIG.art.batchSize, { weights: this.mix });
       if (gen !== this.generation) return;
       let added = 0;
       for (const a of arts) {
@@ -309,7 +318,7 @@ export class ArtLibrary {
       this.consecutiveFailures++;
     } finally {
       if (gen === this.generation) {
-        this.fetching = false;
+        this.fetching--;
         // Attente croissante après des échecs (2 s, 4 s, 8 s… max 30 s).
         if (this.consecutiveFailures > 0) this.retryAt = performance.now() + Math.min(30000, 1000 * 2 ** this.consecutiveFailures);
         this.pump();

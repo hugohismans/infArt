@@ -4,7 +4,19 @@ Un musée infini, explorable à la première personne sur PC et sur mobile. Le b
 
 **Version en ligne** : https://hugohismans.github.io/infArt/
 
-## État : phase 4, ambiances et Directeur
+## État : phase 5, toutes les sources
+
+### Culture populaire et mélange
+- **Nouveaux types d'œuvres**, chacun avec son support :
+  - affiches (anciennes ou de cinéma) : tenues par quatre pinces sur une baguette alu ;
+  - jaquettes de jeux vidéo : grand format, baguette noire ;
+  - pochettes de disques : posées sur une tablette, inclinées contre le mur, le vinyle dépasse ;
+  - couvertures de livres : le livre debout sur une tablette, dos et tranche visibles.
+- **Mode mélange** (`CONFIG.art.mix`) : environ deux tiers de beaux-arts, le reste en affiches, jaquettes, pochettes et livres. Un type sans source disponible (clé absente) est simplement ignoré. Pour essayer : `&mix=pochette-disque:1,couverture-livre:1`.
+- **Ailes thématiques** pop : cinéma, jeux vidéo et musique par décennie, affiches, bibliothèque. Elles ne sont proposées que si une source peut les remplir.
+- **Lots** : une source trop lente (plus de 7 s) est ignorée pour le lot en cours. Quand des emplacements attendent, deux lots sont demandés en parallèle.
+
+## Phase 4, ambiances et Directeur
 
 ### Ambiances
 Chaque ambiance est un preset de données (`src/ambiances/presets/`) : dimensions, couleurs, motifs (murs, plafond, sol), brouillard, lumière, mobilier, style de cadres, types d'œuvres préférés, poids des modules, rareté, tension et affinités. Ajouter une ambiance = écrire un preset et l'inscrire dans `src/ambiances/index.ts`.
@@ -52,8 +64,19 @@ Chaque ambiance est un preset de données (`src/ambiances/presets/`) : dimension
 | [Cleveland Museum of Art](https://openaccess-api.clevelandart.org/) | non | sans CORS : via le Worker | CC0 | |
 | [The Met](https://metmuseum.github.io/) | non | sans CORS : via le Worker | CC0 | recherche `v1.1` paginée (la `v1` a été retirée le 01/10/2026), plafonnée à 10 000 résultats : fenêtres de dates aléatoires |
 | [SMK – Statens Museum for Kunst](https://open.smk.dk/) | non | IIIF, CORS | domaine public | |
+| [Victoria and Albert Museum](https://developers.vam.ac.uk/) | non | IIIF, CORS | usage non commercial, « © V&A » | peintures, estampes, dessins, photos, affiches ; fenêtres de dates (10 000 résultats max) |
+| [Wikidata](https://query.wikidata.org) + Wikimedia Commons | non | CORS | domaine public (reproductions Commons) | peintures de 16 grands musées (Rijksmuseum, Louvre, Orsay, Prado, National Gallery, Ermitage, musées belges de Bruxelles, Anvers et Gand…) ; titres en français ; vignettes calculées (MD5) sans l'API Commons, qui limite vite le débit |
+| [Europeana](https://pro.europeana.eu/page/search) | **oui** (`EUROPEANA_KEY`) | vignettes 400 px, CORS | licences ouvertes seulement | agrégateur européen ; images d'origine dans la fiche |
+| [Harvard Art Museums](https://github.com/harvardartmuseums/api-docs) | **oui** (`HARVARD_KEY`) | IIIF, via le Worker | usage non commercial | |
+| [Smithsonian Open Access](https://www.si.edu/openaccess/devtools) | **oui** (`SMITHSONIAN_KEY`, api.data.gov) | CORS | CC0 | |
+| [TMDB](https://developer.themoviedb.org/docs) | **oui** (`TMDB_TOKEN`) | CORS | illustration, attribution obligatoire | affiches de films ; « Ce produit utilise l'API TMDB mais n'est ni approuvé ni certifié par TMDB » |
+| [IGDB](https://api-docs.igdb.com) (Twitch) | **oui** (`TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`) | CORS | illustration, attribution | jaquettes de jeux ; requêtes POST, jeton Twitch mis en cache |
+| [MusicBrainz](https://musicbrainz.org/doc/MusicBrainz_API) + Cover Art Archive | non | CORS | données CC0, pochettes en illustration | User-Agent identifiable, 1 requête/s : recherches en cache 30 jours ; ~25 % des albums n'ont pas de pochette (sautés) |
+| [Open Library](https://openlibrary.org/developers/api) | non | CORS | données CC0, couvertures en illustration | couvertures par identifiant (sans limite de débit) |
 
-Chaque source est un adaptateur indépendant dans `shared/adapters/`, avec la même interface. Ajouter une source = ajouter un fichier et l'inscrire dans `shared/adapters/index.ts`. Seules les œuvres du domaine public sont retenues. Le crédit et la licence apparaissent sur le cartel et dans la fiche.
+**Écartées** : Rijksmuseum (sa nouvelle API Linked Art demande 4 à 5 requêtes par œuvre, trop pour le quota du Worker ; ses peintures arrivent par Wikidata), Brooklyn Museum (bloqué par une protection anti-robots), Library of Congress (répondait 503), National Gallery of Art (pas d'API, seulement des fichiers CSV), Paris Musées (jeton requis).
+
+Chaque source est un adaptateur indépendant dans `shared/adapters/`, avec la même interface. Ajouter une source = ajouter un fichier et l'inscrire dans `shared/adapters/index.ts`. Une source qui exige une clé la déclare (`keys`) : sans le secret correspondant dans le Worker, elle reste inactive. Pour les musées, seules les images libres sont retenues ; les affiches, jaquettes, pochettes et couvertures sont reproduites à titre d'illustration, avec crédit. Le crédit et la licence apparaissent sur le cartel et dans la fiche.
 
 ### Deux modes
 - **Avec le Worker** (`worker/`, Cloudflare) : toutes les sources, réponses mises en cache, et relais des images sans CORS (indispensable pour en faire des textures WebGL).
@@ -85,7 +108,19 @@ Le déploiement est automatique (GitHub Actions) dès que deux secrets sont pré
    - `CLOUDFLARE_ACCOUNT_ID` : l'identifiant.
 5. **Relancer le déploiement** : *Actions → Déploiement → Run workflow*, ou simplement pousser un commit.
 
-Le workflow déploie le Worker (`galerie-infinie-api`), récupère son URL et construit le site avec (`VITE_API_URL`). Sans les secrets, ou si le déploiement du Worker échoue, le site est quand même publié, en mode direct.
+Le workflow déploie le Worker (`galerie-infinie-api`), récupère son URL et construit le site avec (`VITE_API_URL`).
+
+**Clés d'API des sources** (facultatives, à ajouter de la même façon dans les secrets du dépôt) : le workflow les transmet au Worker (`wrangler secret bulk`). Chaque source reste inactive tant que sa clé manque.
+
+| Secret | Source | Où l'obtenir |
+|---|---|---|
+| `TMDB_TOKEN` | affiches de films | themoviedb.org → *Settings → API* → **API Read Access Token** |
+| `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` | jaquettes (IGDB) | dev.twitch.tv/console → *Register Your Application* (client *Confidential*) |
+| `EUROPEANA_KEY` | Europeana | pro.europeana.eu/page/get-api |
+| `HARVARD_KEY` | Harvard Art Museums | harvardartmuseums.org/collections/api |
+| `SMITHSONIAN_KEY` | Smithsonian | api.data.gov/signup |
+
+`/health` indique les sources actives. Sans les secrets, ou si le déploiement du Worker échoue, le site est quand même publié, en mode direct.
 
 Pour tester : `https://galerie-infinie-api.<sous-domaine>.workers.dev/health`, puis `/artworks?count=5` (ou `&theme=chats`).
 
@@ -109,6 +144,7 @@ Le clavier est lu par **position physique** des touches (`KeyboardEvent.code`) :
 - `&debug=1` : affiche le panneau de debug.
 - `&timescale=3` : accélère la simulation (tests).
 - `&api=https://…` : utilise un autre Worker (par exemple `http://localhost:8787` en local).
+- `&mix=affiche:1,couverture-livre:1` : force les types d'œuvres tirés (essais).
 
 ## Comment ça marche
 
@@ -139,7 +175,7 @@ npm install
 npm run dev        # serveur de développement (accessible sur le réseau local)
 npm run build      # vérification des types + build de production dans dist/
 npm run test:leak  # test de fuite mémoire (après build), 10 min par défaut
-npm run worker:dev # Worker local sous Node (http://localhost:8787), sans compte Cloudflare
+npm run worker:dev # Worker local sous Node (http://localhost:8787), sans compte Cloudflare (clés lues dans l'environnement)
 npm run try:adapters -- met peinture   # essai direct d'un adaptateur
 npx tsx scripts/try-themes.ts chats    # rendement d'un thème, toutes sources
 ```
@@ -156,7 +192,7 @@ Le déploiement sur GitHub Pages se fait automatiquement à chaque push sur `mai
 2. ~~Vraies œuvres : Worker Cloudflare, adaptateurs de musées, cartels, fiche détaillée~~
 3. ~~Embranchements : T, carrefours, salles, escaliers, impasses~~
 4. ~~Ambiances et Directeur~~
-5. Plus de sources : affiches, jaquettes, pochettes, livres
+5. ~~Plus de sources : affiches, jaquettes, pochettes, livres~~
 6. Décors procéduraux et son
 7. Toutes les ambiances et étrangetés
 8. Finitions

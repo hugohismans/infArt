@@ -1,3 +1,5 @@
+import type { TypeWeights } from '../shared/artwork';
+
 /**
  * Constantes de « ressenti » regroupées ici pour être ajustées facilement.
  * Toutes les distances sont en mètres, les durées en secondes, les angles en degrés
@@ -138,6 +140,35 @@ export const CONFIG = {
     fadeDuration: 0.9,
     /** Distance max (m) pour ouvrir la fiche d'une œuvre. */
     pickDistance: 7,
+    /** Grand côté (m) tiré au hasard quand la source ne donne pas les dimensions. */
+    longSide: {
+      peinture: [0.45, 1.3],
+      photographie: [0.18, 0.35],
+      affiche: [0.7, 1.2],
+      // Jaquettes exposées en grand format, comme des tirages.
+      'jaquette-jeu': [0.5, 0.72],
+      'couverture-livre': [0.2, 0.26],
+      autre: [0.22, 0.5],
+    } as Record<string, [number, number]>,
+    /** Agrandissement des livres (une couverture de 13 cm serait illisible au mur). */
+    bookScale: 1.3,
+    /** Inclinaison (rad) des pochettes et livres posés sur une tablette. */
+    leanAngle: 0.1,
+    /**
+     * Mode mélange : part de chaque type d'œuvre dans les lots (majorité de beaux-arts).
+     * Un type sans source disponible (clé manquante, mode direct) est simplement ignoré.
+     */
+    mix: {
+      peinture: 0.42,
+      estampe: 0.14,
+      dessin: 0.1,
+      photographie: 0.08,
+      affiche: 0.06,
+      'affiche-film': 0.05,
+      'jaquette-jeu': 0.05,
+      'pochette-disque': 0.05,
+      'couverture-livre': 0.05,
+    } as TypeWeights,
     /** Ailes thématiques : œuvres prêtes avant d'ouvrir une aile, et réserve visée. */
     themeMinReady: 5,
     themeBufferTarget: 7,

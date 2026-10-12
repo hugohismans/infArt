@@ -37,9 +37,11 @@ export interface PresetMaterials {
   /** Géométries unitaires partagées pour les œuvres (mises à l'échelle par mesh). */
   unitBox: THREE.BoxGeometry;
   unitPlane: THREE.PlaneGeometry;
+  /** Disque de rayon 0,5 et d'épaisseur 1 (vinyles). */
+  unitDisc: THREE.CylinderGeometry;
 }
 
-export type FrameMaterialKey = 'gold' | 'goldDark' | 'wood' | 'black' | 'white';
+export type FrameMaterialKey = 'gold' | 'goldDark' | 'wood' | 'black' | 'white' | 'alu' | 'vinyl';
 
 interface Counted<T> {
   value: T;
@@ -146,6 +148,8 @@ export class ResourceCache {
             wood: new THREE.MeshLambertMaterial({ color: '#4a3320' }),
             black: new THREE.MeshLambertMaterial({ color: '#1a1816' }),
             white: new THREE.MeshLambertMaterial({ color: '#ebe7df' }),
+            alu: new THREE.MeshLambertMaterial({ color: '#b9bcc1', emissive: '#1c1d20' }),
+            vinyl: new THREE.MeshLambertMaterial({ color: '#111113' }),
           },
           mat: new THREE.MeshLambertMaterial({ color: '#f3eee3' }),
           drape: new THREE.MeshLambertMaterial({ map: makeDrapeTexture() }),
@@ -164,6 +168,7 @@ export class ResourceCache {
           }),
           unitBox: new THREE.BoxGeometry(1, 1, 1),
           unitPlane: new THREE.PlaneGeometry(1, 1),
+          unitDisc: new THREE.CylinderGeometry(0.5, 0.5, 1, 40),
         },
       };
       this.presets.set(preset.id, entry);
@@ -185,6 +190,7 @@ export class ResourceCache {
     for (const mat of [m.walls, m.trims, m.ceiling, m.floor, m.lights, m.glow, m.mat, m.drape, m.cartelBlank, ...m.frames, ...Object.values(m.frameKinds)]) mat.dispose();
     m.unitBox.dispose();
     m.unitPlane.dispose();
+    m.unitDisc.dispose();
     this.presets.delete(preset.id);
   }
 

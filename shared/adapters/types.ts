@@ -7,7 +7,20 @@ import type { ArtTheme } from '../themes';
  * côté navigateur (mode direct) : simple fetch, les en-têtes non standards étant ignorés
  * pour éviter les requêtes de pré-vérification CORS.
  */
-export type FetchJson = (url: string, opts?: { ttl?: number; headers?: Record<string, string> }) => Promise<unknown>;
+export type FetchJson = (
+  url: string,
+  opts?: {
+    ttl?: number;
+    headers?: Record<string, string>;
+    /** Requête POST (IGDB) : le corps fait partie de la clé de cache. */
+    body?: string;
+    /** Ne pas mettre en cache (jeton d'authentification…). */
+    noCache?: boolean;
+  },
+) => Promise<unknown>;
+
+/** Clés d'API (secrets du Worker). Jamais côté navigateur. */
+export type Keys = Readonly<Record<string, string | undefined>>;
 
 export interface BatchRequest {
   fetchJson: FetchJson;
@@ -16,6 +29,8 @@ export interface BatchRequest {
   type: ArtType;
   /** Aile thématique : recherche par mot-clé dans les titres. */
   theme?: ArtTheme;
+  /** Secrets disponibles (Worker uniquement). */
+  keys?: Keys;
 }
 
 export interface SourceAdapter {
@@ -27,8 +42,8 @@ export interface SourceAdapter {
   dataCors: boolean;
   /** Les images ont des en-têtes CORS (utilisables comme textures sans proxy). */
   imageCors: boolean;
-  /** Une clé d'API est nécessaire (jamais côté client). */
-  needsKey: boolean;
+  /** Secrets nécessaires (noms des variables du Worker) ; la source est inactive sans eux. */
+  keys?: string[];
   /** Types fournis par la source. */
   types: ArtType[];
   /** Poids relatif dans le mélange. */
@@ -48,4 +63,9 @@ export function randomPageStart(rng: Rng, total: number, pageSize: number, maxSt
 /** Tire `n` éléments distincts d'une liste. */
 export function sample<T>(rng: Rng, items: readonly T[], n: number): T[] {
   return rng.shuffle(items).slice(0, n);
+}
+
+/** La source est-elle utilisable avec ces secrets ? */
+export function hasKeys(adapter: SourceAdapter, keys: Keys | undefined): boolean {
+  return (adapter.keys ?? []).every((k) => !!keys?.[k]);
 }

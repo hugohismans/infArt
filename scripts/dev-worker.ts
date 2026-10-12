@@ -1,6 +1,7 @@
 /**
  * Fait tourner le Worker sous Node (sans compte Cloudflare), sur http://localhost:8787.
  * Utile pour tester localement : `npx tsx scripts/dev-worker.ts` puis ouvrir le site avec ?api=http://localhost:8787
+ * Les clés d'API sont lues dans les variables d'environnement (TMDB_TOKEN=… npx tsx …).
  * (`npx wrangler dev --config worker/wrangler.jsonc` fait la même chose avec le vrai moteur Workers).
  */
 import { createServer } from 'node:http';
@@ -24,7 +25,7 @@ const ctx = { waitUntil: (p: Promise<unknown>) => void p.catch(() => undefined),
 
 createServer(async (req, res) => {
   try {
-    const response = await worker.fetch(new Request(`http://localhost:${port}${req.url}`, { method: req.method }) as never, {} as never, ctx as never);
+    const response = await worker.fetch(new Request(`http://localhost:${port}${req.url}`, { method: req.method }) as never, process.env as never, ctx as never);
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(Buffer.from(await response.arrayBuffer()));
   } catch (e) {

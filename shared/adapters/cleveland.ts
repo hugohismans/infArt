@@ -92,14 +92,13 @@ export const cleveland: SourceAdapter = {
   homepage: 'https://www.clevelandart.org',
   dataCors: true,
   imageCors: false,
-  needsKey: false,
   types: Object.keys(TYPE_NAMES) as ArtType[],
   weight: 1,
 
   async fetchBatch({ fetchJson, rng, count, type, theme }) {
     const name = TYPE_NAMES[type];
     if (!name) return [];
-    const title = theme ? `title=${encodeURIComponent(theme.q)}&` : '';
+    const title = theme?.q ? `title=${encodeURIComponent(theme.q)}&` : '';
     const head = (await fetchJson(url(name, `${title}limit=1`), { ttl: 86400 })) as ClevelandResponse;
     if (!head.info.total) return [];
     const skip = randomPageStart(rng, head.info.total, PAGE);

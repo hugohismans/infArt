@@ -17,6 +17,11 @@ export interface FrameStyle {
   material: FrameMaterialKey;
   /** Ressaut intérieur plus sombre (cadres dorés anciens). */
   lip: boolean;
+  /**
+   * Présentation particulière : affiche tenue par des pinces, pochette de disque ou
+   * livre posés sur une tablette (sinon : un cadre classique).
+   */
+  mount?: 'clip' | 'record' | 'book';
 }
 
 const PAPER = new Set(['estampe', 'dessin', 'photographie']);
@@ -24,6 +29,21 @@ const PAPER = new Set(['estampe', 'dessin', 'photographie']);
 export function chooseFrame(art: Artwork, w: number, h: number, rng: Rng, bias: FrameBias = 'classique'): FrameStyle {
   const size = Math.max(w, h);
   const year = art.year;
+
+  // Culture populaire : le support dépend de l'objet, pas de l'époque.
+  switch (art.type) {
+    case 'affiche':
+    case 'affiche-film':
+      return { border: 0.006, depth: 0.012, mat: 0, material: 'alu', lip: false, mount: 'clip' };
+    case 'jaquette-jeu':
+      return { border: 0.012, depth: 0.03, mat: 0, material: 'black', lip: false };
+    case 'pochette-disque':
+      return { border: 0, depth: 0.004, mat: 0, material: 'white', lip: false, mount: 'record' };
+    case 'couverture-livre':
+      return { border: 0, depth: 0.028, mat: 0, material: 'white', lip: false, mount: 'book' };
+    default:
+      break;
+  }
 
   if (bias === 'moderne') {
     // Galerie contemporaine : toile nue ou baguette noire fine, papier sous passe-partout blanc.

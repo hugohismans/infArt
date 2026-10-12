@@ -44,6 +44,28 @@ jobs:
           echo "Worker : ${url:-URL introuvable}"
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
+      - name: Clés d'API du Worker
+        # Chaque source qui exige une clé reste inactive tant que son secret manque.
+        if: steps.worker.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          EUROPEANA_KEY: ${{ secrets.EUROPEANA_KEY }}
+          HARVARD_KEY: ${{ secrets.HARVARD_KEY }}
+          SMITHSONIAN_KEY: ${{ secrets.SMITHSONIAN_KEY }}
+        run: |
+          node -e '
+            const names = ["TMDB_TOKEN","TWITCH_CLIENT_ID","TWITCH_CLIENT_SECRET","EUROPEANA_KEY","HARVARD_KEY","SMITHSONIAN_KEY"];
+            const out = Object.fromEntries(names.filter((n) => process.env[n]).map((n) => [n, process.env[n]]));
+            require("fs").writeFileSync("secrets.json", JSON.stringify(out));
+            console.log("Clés présentes :", Object.keys(out).join(", ") || "aucune");
+          '
+          if [ "$(cat secrets.json)" != "{}" ]; then npx wrangler secret bulk secrets.json --config worker/wrangler.jsonc; fi
+          rm -f secrets.json
+
       - name: Construire le site
         run: npm run build
         env:

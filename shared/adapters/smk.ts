@@ -95,7 +95,6 @@ export const smk: SourceAdapter = {
   homepage: 'https://open.smk.dk',
   dataCors: true,
   imageCors: true,
-  needsKey: false,
   types: Object.keys(OBJECT_NAMES) as ArtType[],
   weight: 1,
 
@@ -103,7 +102,7 @@ export const smk: SourceAdapter = {
     const names = OBJECT_NAMES[type];
     if (!names) return [];
     const name = rng.pick(names);
-    const keys = theme?.q ?? '*';
+    const keys = theme?.q || '*';
     const head = (await fetchJson(url(name, 0, 0, keys), { ttl: 86400 })) as SmkResponse;
     if (!head.found) return [];
     const page = (await fetchJson(url(name, randomPageStart(rng, head.found, PAGE), PAGE, keys), { ttl: 86400 * 7 })) as SmkResponse;

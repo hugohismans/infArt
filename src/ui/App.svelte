@@ -15,7 +15,7 @@
   import { ImageLoader } from '../art/ImageLoader';
   import { ArtLibrary } from '../art/ArtLibrary';
   import type { ArtContext } from '../art/ArtPiece';
-  import type { Artwork } from '../../shared/artwork';
+  import { parseWeights, type Artwork } from '../../shared/artwork';
 
   const params = readUrlParams();
   const settings = loadSettings();
@@ -27,6 +27,9 @@
   const client = new ArtClient(pendingSeed, apiUrl);
   const loader = new ImageLoader();
   const library = new ArtLibrary(client, loader, mobile ? CONFIG.art.textureSize.mobile : CONFIG.art.textureSize.desktop);
+  // Essais : &mix=pochette-disque:1,couverture-livre:1 force les types tirés.
+  const mixParam = parseWeights(new URLSearchParams(window.location.search).get('mix'));
+  if (Object.keys(mixParam).length > 0) library.mix = mixParam;
   library.filterSensitive = settings.filterSensitive;
   library.pump();
   const artCtx: ArtContext = {

@@ -108,14 +108,13 @@ export const aic: SourceAdapter = {
   homepage: 'https://www.artic.edu',
   dataCors: true,
   imageCors: true,
-  needsKey: false,
   types: Object.keys(TYPE_IDS) as ArtType[],
   weight: 1,
 
   async fetchBatch({ fetchJson, rng, count, type, theme }) {
     const ids = TYPE_IDS[type];
     if (!ids) return [];
-    if (theme) {
+    if (theme?.q) {
       const head = (await fetchJson(query(ids, 0, { fields: ['id'], limit: 1 }, theme.q), { ttl: 86400, headers: HEADERS })) as AicResponse;
       if (!head.pagination.total) return [];
       const from = randomPageStart(rng, head.pagination.total, PAGE, 1000 - PAGE);

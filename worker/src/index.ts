@@ -2,6 +2,7 @@
  * Worker « Galerie Infinie » : proxy des API de musées.
  *
  * - GET /artworks?count=24&seed=…&batch=0&types=peinture,estampe&sources=aic,met&theme=chats
+ *     &weights=peinture:0.5,affiche:0.1 (mode mélange : part de chaque type)
  *     Lot d'œuvres normalisées (format Artwork), tiré de plusieurs sources.
  *     Le tirage dépend de (seed, batch) : une visite est reproductible.
  * - GET /image?url=…
@@ -12,12 +13,13 @@
  * Les réponses des API sont mises en cache (Cache API) pour ménager les sources
  * et leurs limites de débit.
  */
-import { ADAPTERS, ADAPTERS_BY_ID, type FetchJson } from '../../shared/adapters';
-import { WALL_TYPES, type ArtType } from '../../shared/artwork';
+import { ADAPTERS, ADAPTERS_BY_ID, hasKeys, type FetchJson, type Keys } from '../../shared/adapters';
+import { parseWeights, SUPPORTED_TYPES, type ArtType } from '../../shared/artwork';
 import { gatherArtworks } from '../../shared/select';
 import { THEMES_BY_ID } from '../../shared/themes';
 
-export type Env = Record<string, never>;
+/** Secrets (wrangler secret put …) : chaque source qui en a besoin reste inactive sans eux. */
+export type Env = Keys;
 
 const USER_AGENT = 'galerie-infinie/0.2 (+https://github.com/hugohismans/infArt)';
 
@@ -28,6 +30,17 @@ const IMAGE_HOSTS = new Set([
   'images.metmuseum.org',
   'iip.smk.dk',
   'iip-thumb.smk.dk',
+  'framemark.vam.ac.uk',
+  'iiif.micr.io',
+  'upload.wikimedia.org',
+  'covers.openlibrary.org',
+  'coverartarchive.org',
+  'image.tmdb.org',
+  'images.igdb.com',
+  'api.europeana.eu',
+  'nrs.harvard.edu',
+  'ids.lib.harvard.edu',
+  'ids.si.edu',
 ]);
 
 const CORS_HEADERS = {
@@ -71,29 +84,36 @@ function makeCachedFetchJson(ctx: ExecutionContext): FetchJson {
   return async (url, opts) => {
     const ttl = opts?.ttl ?? 3600;
     const now = Date.now();
-    const mem = memory.get(url);
-    if (mem && mem.expires > now) return mem.data;
+    // Requête POST : le corps fait partie de la clé (la Cache API n'accepte que des GET).
+    const id = opts?.body ? `${url}#${await sha1(opts.body)}` : url;
+    const mem = memory.get(id);
+    if (!opts?.noCache && mem && mem.expires > now) return mem.data;
 
     const remember = (data: unknown) => {
-      memory.set(url, { data, expires: now + Math.min(ttl, 3600) * 1000 });
+      if (opts?.noCache) return data;
+      memory.set(id, { data, expires: now + Math.min(ttl, 3600) * 1000 });
       if (memory.size > MEMORY_MAX) memory.delete(memory.keys().next().value!);
       return data;
     };
 
-    const key = new Request(url);
+    const key = new Request(opts?.body ? `https://cache.galerie-infinie/${encodeURIComponent(id)}` : url);
     const cache = caches.default;
-    spend();
-    const hit = await cache.match(key);
-    if (hit) return remember(await hit.json());
+    if (!opts?.noCache) {
+      spend();
+      const hit = await cache.match(key);
+      if (hit) return remember(await hit.json());
+    }
     spend();
 
     const res = await fetch(url, {
+      method: opts?.body ? 'POST' : 'GET',
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json', ...(opts?.headers ?? {}) },
+      ...(opts?.body ? { body: opts.body } : {}),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status} sur ${new URL(url).host}`);
     const body = await res.text();
     const data = JSON.parse(body) as unknown;
-    if (budget > 0) {
+    if (budget > 0 && !opts?.noCache) {
       budget--;
       ctx.waitUntil(
         cache.put(key, new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` } })),
@@ -103,6 +123,11 @@ function makeCachedFetchJson(ctx: ExecutionContext): FetchJson {
   };
 }
 
+async function sha1(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 function parseList(v: string | null): string[] {
   return (v ?? '')
     .split(',')
@@ -110,14 +135,15 @@ function parseList(v: string | null): string[] {
     .filter(Boolean);
 }
 
-async function handleArtworks(url: URL, ctx: ExecutionContext): Promise<Response> {
+async function handleArtworks(url: URL, env: Env, ctx: ExecutionContext): Promise<Response> {
   const count = Math.min(60, Math.max(1, Number(url.searchParams.get('count')) || 24));
   const seed = (url.searchParams.get('seed') ?? 'galerie').slice(0, 64);
   const batch = Math.max(0, Math.floor(Number(url.searchParams.get('batch')) || 0));
-  const types = parseList(url.searchParams.get('types')).filter((t): t is ArtType => (WALL_TYPES as string[]).includes(t));
+  const types = parseList(url.searchParams.get('types')).filter((t): t is ArtType => (SUPPORTED_TYPES as string[]).includes(t));
+  const weights = parseWeights(url.searchParams.get('weights'));
   const sourceIds = parseList(url.searchParams.get('sources'));
   const theme = THEMES_BY_ID[url.searchParams.get('theme') ?? ''];
-  const adapters = sourceIds.length > 0 ? sourceIds.map((id) => ADAPTERS_BY_ID[id]).filter((a) => !!a) : ADAPTERS.filter((a) => !a.needsKey);
+  const adapters = (sourceIds.length > 0 ? sourceIds.map((id) => ADAPTERS_BY_ID[id]).filter((a) => !!a) : ADAPTERS).filter((a) => hasKeys(a, env));
 
   // Le résultat est déterministe pour une URL donnée : on met la réponse entière en cache.
   const cache = caches.default;
@@ -125,7 +151,7 @@ async function handleArtworks(url: URL, ctx: ExecutionContext): Promise<Response
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
-  const result = await gatherArtworks({ adapters, fetchJson: makeCachedFetchJson(ctx), seed, batch, count, ...(types.length ? { types } : {}), ...(theme ? { theme } : {}) });
+  const result = await gatherArtworks({ adapters, fetchJson: makeCachedFetchJson(ctx), seed, batch, count, keys: env, ...(types.length ? { types } : {}), ...(Object.keys(weights).length ? { weights } : {}), ...(theme ? { theme } : {}) });
   const response = json(result, 200, result.errors.length > 0 ? 60 : 3600);
   if (result.artworks.length > 0) ctx.waitUntil(cache.put(cacheKey, response.clone()));
   return response;
@@ -168,7 +194,7 @@ async function handleImage(url: URL, ctx: ExecutionContext): Promise<Response> {
 }
 
 export default {
-  async fetch(request, _env, ctx): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
     if (request.method !== 'GET') return json({ error: 'méthode non autorisée' }, 405);
     const url = new URL(request.url);
@@ -178,10 +204,10 @@ export default {
         case '/health':
           return json({
             ok: true,
-            sources: ADAPTERS.map((a) => ({ id: a.id, name: a.name, types: a.types, imageCors: a.imageCors })),
+            sources: ADAPTERS.map((a) => ({ id: a.id, name: a.name, types: a.types, imageCors: a.imageCors, active: hasKeys(a, env) })),
           });
         case '/artworks':
-          return await handleArtworks(url, ctx);
+          return await handleArtworks(url, env, ctx);
         case '/image':
           return await handleImage(url, ctx);
         default:
