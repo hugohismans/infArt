@@ -81,7 +81,9 @@ export const harvard: SourceAdapter = {
       .map((o): Artwork | null => {
         const title = clean(o.title);
         const iiif = iiifOf(o.images?.[0]);
-        if (!title || !iiif || o.imagepermissionlevel !== 0) return null;
+        // Sans IIIF : l'adresse NRS accepte ?width= / ?height= (doc de l'API).
+        const plain = o.images?.[0]?.baseimageurl ?? o.primaryimageurl;
+        if (!title || !(iiif || plain) || o.imagepermissionlevel !== 0) return null;
         const artist = clean(o.people?.find((p) => /artist/i.test(p.role ?? ''))?.name ?? o.people?.[0]?.name);
         const year = parseYear(o.datebegin, o.dated);
         const dims = parseDims(o.dimensions);
@@ -100,9 +102,9 @@ export const harvard: SourceAdapter = {
           ...(clean(o.period) ? { movement: clean(o.period)! } : {}),
           ...(clean(o.description) ? { description: clean(o.description)! } : {}),
           tags: [o.classification, o.culture, o.period].filter((t): t is string => !!t),
-          imageUrl: `${iiif}/full/!843,843/0/default.jpg`,
-          imageUrlHigh: `${iiif}/full/!2000,2000/0/default.jpg`,
-          iiif,
+          ...(iiif
+            ? { imageUrl: `${iiif}/full/!843,843/0/default.jpg`, imageUrlHigh: `${iiif}/full/!2000,2000/0/default.jpg`, iiif }
+            : { imageUrl: `${plain}?width=843&height=843`, imageUrlHigh: `${plain}?width=2000&height=2000` }),
           ...(img.width && img.height ? { aspectRatio: img.width / img.height } : {}),
           sourceUrl: o.url ?? `https://harvardartmuseums.org/collections/object/${o.id}`,
           license: 'Usage non commercial (conditions des Harvard Art Museums)',
@@ -115,15 +117,15 @@ export const harvard: SourceAdapter = {
     if (!found.length) {
       // Diagnostic : quel critère écarte les objets ? (sans la clé)
       const r0 = records[0] as unknown as Record<string, unknown> | undefined;
-      const stats = `sans titre ${records.filter((o) => !clean(o.title)).length}, sans iiif ${records.filter((o) => !iiifOf(o.images?.[0])).length}, droits≠0 ${records.filter((o) => o.imagepermissionlevel !== 0).length}`;
-      throw new Error(`page ${start / PAGE + 1} : ${records.length} objets, aucun exploitable (${stats} ; champs ${r0 ? Object.keys(r0).join(',') : '-'} ; images[0] ${JSON.stringify(records[0]?.images?.[0] ?? null).slice(0, 160)})`);
+      const stats = `sans titre ${records.filter((o) => !clean(o.title)).length}, sans image ${records.filter((o) => !iiifOf(o.images?.[0]) && !o.images?.[0]?.baseimageurl && !o.primaryimageurl).length}, droits≠0 ${records.filter((o) => o.imagepermissionlevel !== 0).length}`;
+      throw new Error(`page ${start / PAGE + 1} : ${records.length} objets, aucun exploitable (${stats} ; champs ${r0 ? Object.keys(r0).join(',') : '-'} ; champs images[0] ${Object.keys(records[0]?.images?.[0] ?? {}).join(',')})`);
     }
     return found;
   },
 
   imageForWidth(art, width) {
-    if (!art.iiif) return art.imageUrl;
     const w = Math.min(2000, Math.max(128, Math.round(width)));
+    if (!art.iiif) return art.imageUrl.replace(/\?width=\d+&height=\d+$/, `?width=${w}&height=${w}`);
     return `${art.iiif}/full/!${w},${w}/0/default.jpg`;
   },
 };
