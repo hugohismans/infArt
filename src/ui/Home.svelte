@@ -84,6 +84,9 @@
     // et sa nouvelle image a le temps d'arriver avant d'être visible.)
     const far = Math.min(1, Math.max(0, (s.z - SPAWN) / (DEPTH * 0.4)));
     const near = Math.min(1, Math.max(0, (NEAR - s.z) / 260));
+    // Tout le style est posé ici (jamais par le gabarit, qui l'écraserait le temps d'une image).
+    s.el.style.width = `${s.w}px`;
+    s.el.style.height = `${s.h}px`;
     s.el.style.opacity = String(far * near);
     s.el.style.transform = `translate3d(${s.side * HALF_WIDTH - s.w / 2}px, ${-s.h / 2}px, ${s.z}px) rotateY(${-s.side * TURN}deg)`;
   }
@@ -132,7 +135,7 @@
       <div class="floor" bind:this={floor}></div>
       <div class="ceiling"></div>
       {#each slots as s, i (i)}
-        <div class="frame" bind:this={s.el} style="width: {s.w}px; height: {s.h}px">
+        <div class="frame" bind:this={s.el}>
           {#if s.src}<img src={s.src} alt="" draggable="false" onerror={() => (s.src = null)} />{/if}
         </div>
       {/each}
@@ -196,6 +199,8 @@
     top: 0;
     box-sizing: border-box;
     padding: 7px;
+    /* Invisible tant qu'il n'est pas placé dans le couloir. */
+    opacity: 0;
     background: linear-gradient(135deg, #d9b45a, #8a6a2a 45%, #c79c43 70%, #6d5322);
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
     backface-visibility: hidden;
