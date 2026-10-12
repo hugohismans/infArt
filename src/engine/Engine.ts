@@ -87,6 +87,7 @@ export class Engine {
   private readonly hemi: THREE.HemisphereLight;
   /** Zones déjà annoncées (nom affiché) et dernière zone traversée. */
   private readonly announced = new Set<number>();
+  private lastWingId = -1;
   private lastZoneId = -1;
   private readonly frustum = new THREE.Frustum();
   private readonly projView = new THREE.Matrix4();
@@ -100,8 +101,8 @@ export class Engine {
   onArtworkOpen: ((artwork: Artwork) => void) | null = null;
   /** L'œuvre visée au centre de l'écran change (PC, souris capturée). */
   onAimChange: ((artwork: Artwork | null) => void) | null = null;
-  /** Entrée dans une aile qui a un nom (pas les zones liminales). */
-  onZoneTitle: ((name: string) => void) | null = null;
+  /** Titre d'une aile thématique (chaîne vide : on l'efface). */
+  onThemeTitle: ((title: string) => void) | null = null;
   /** Transition « rupture » : fondu au noir ou faux glitch. */
   onRupture: ((style: 'noir' | 'glitch') => void) | null = null;
 
@@ -217,8 +218,6 @@ export class Engine {
     const zone = m.zone.zone;
     let snap = false;
     if (zone.id !== this.lastZoneId) {
-      // Le nom de l'aile précédente s'efface dès qu'on la quitte.
-      if (this.lastZoneId >= 0) this.onZoneTitle?.('');
       this.lastZoneId = zone.id;
       if (zone.transition === 'rupture' && m.zone.step === 0 && !this.announced.has(-zone.id - 1)) {
         this.announced.add(-zone.id - 1);
@@ -226,10 +225,16 @@ export class Engine {
         this.onRupture?.(new Rng(this.options.seed, 'rupture', zone.id).chance(0.5) ? 'noir' : 'glitch');
       }
     }
-    // Le nom s'affiche une fois la transition achevée, s'il y en a un.
-    if (zone.ambiance.name && m.zone.step >= zone.blendSteps && !this.announced.has(zone.id)) {
-      this.announced.add(zone.id);
-      this.onZoneTitle?.(zone.ambiance.name);
+    // Aile thématique : son titre s'affiche à l'entrée et s'efface à la sortie.
+    const wing = m.zone.wing;
+    const wingId = wing?.id ?? -1;
+    if (wingId !== this.lastWingId) {
+      if (this.lastWingId >= 0) this.onThemeTitle?.('');
+      this.lastWingId = wingId;
+      if (wing && !this.announced.has(wing.id)) {
+        this.announced.add(wing.id);
+        this.onThemeTitle?.(wing.theme.title);
+      }
     }
     const p = m.preset;
     const k = snap ? 1 : 1 - Math.exp(-dt * CONFIG.director.envLerpRate);

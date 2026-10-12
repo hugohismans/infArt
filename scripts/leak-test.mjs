@@ -58,7 +58,7 @@ while (Date.now() < end) {
     heapMB: s.heapMB === null ? null : Number(s.heapMB.toFixed(2)),
     artTextures: s.art?.liveTextures ?? 0,
     // Textures d'œuvres qui ne sont ni accrochées, ni en réserve, ni en HD : doit rester proche de 0.
-    artOrphans: s.art ? s.art.liveTextures - s.world.arts - s.art.ready - s.art.highRes : 0,
+    artOrphans: s.art ? s.art.liveTextures - s.world.arts - s.art.ready - (s.art.themeReady ?? 0) - s.art.highRes : 0,
     artMB: s.art ? Number(s.art.gpuMB.toFixed(1)) : 0,
     artReady: s.art?.ready ?? 0,
     fps: Math.round(s.fps),

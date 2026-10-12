@@ -30,6 +30,7 @@
       <div><b>{t('debug.art')}</b> {s.art.mode}{s.art.offline ? ' (hors ligne)' : ''} <span class="dim">· prêtes {s.art.ready} · file {s.art.queued} · chargement {s.art.loading} · attente {s.art.waiting}</span></div>
       <div><b>GPU œuvres</b> {s.art.gpuMB.toFixed(1)} Mo <span class="dim">· {s.art.liveTextures} tex · HD {s.art.highRes} · échecs {s.art.failedImages} · filtrées {s.art.filtered}{s.art.disabledSources.length ? ` · écartées : ${s.art.disabledSources.join(', ')}` : ''}</span></div>
       {#if s.art.perSource}<div><b>Sources</b> <span class="dim">(réussies/échecs)</span> {s.art.perSource}</div>{/if}
+      {#if s.art.themes}<div><b>Thèmes</b> {s.art.themes}</div>{/if}
     {/if}
     <div><b>{t('debug.seed')}</b> {s.seed}</div>
   </div>

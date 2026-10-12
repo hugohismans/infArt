@@ -113,7 +113,7 @@ export class WorldModule {
       const always = this.def.kind === 'cap' || this.def.kind === 'deadend';
       if (!always && !rng.chance(density)) continue;
       const wallHeight = slot.wallHeight ?? this.preset.geometry.ceilingHeight * this.def.ceilingScale;
-      const art = new ArtPiece(slot, rng, this.preset, mats, wallHeight, artCtx, () => this.visible);
+      const art = new ArtPiece(slot, rng, this.preset, mats, wallHeight, artCtx, () => this.visible, this.zone.wing?.theme.id);
       this.arts.push(art);
       this.group.add(art.object);
     }

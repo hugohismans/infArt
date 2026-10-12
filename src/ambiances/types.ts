@@ -17,7 +17,7 @@ export type FrameBias = 'classique' | 'moderne' | 'bon-marche';
 
 export interface AmbiancePreset {
   id: string;
-  /** Nom affiché à l'entrée de la zone (absent pour les zones liminales). */
+  /** Nom lisible de l'ambiance (panneau de debug, documentation). */
   name?: string;
   rarity: Rarity;
   /** 0 = calme et rassurant, 1 = étrange et inquiétant (courbe de tension du Directeur). */

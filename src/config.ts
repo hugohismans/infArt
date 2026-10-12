@@ -136,6 +136,11 @@ export const CONFIG = {
     fadeDuration: 0.9,
     /** Distance max (m) pour ouvrir la fiche d'une œuvre. */
     pickDistance: 7,
+    /** Ailes thématiques : œuvres prêtes avant d'ouvrir une aile, et réserve visée. */
+    themeMinReady: 5,
+    themeBufferTarget: 7,
+    /** Lots tentés pour un thème avant de l'abandonner. */
+    themeMaxBatches: 4,
   },
 
   director: {
@@ -151,8 +156,14 @@ export const CONFIG = {
     transitionWeights: { progressive: 0.6, seuil: 0.28, rupture: 0.12 },
     /** Vitesse d'interpolation de l'environnement (brouillard, lumière) quand l'ambiance change. */
     envLerpRate: 1.4,
-    /** Durée d'affichage du nom d'une aile (s). */
+    /** Durée d'affichage du nom d'une aile thématique (s). */
     titleDuration: 4.5,
+    /** Aile thématique (les œuvres suivent un sujet) : chance par module, durée, écart minimal. */
+    wingChance: 0.15,
+    wingLength: [3, 5] as [number, number],
+    wingGap: 10,
+    /** Densité d'œuvres minimale de l'ambiance pour y ouvrir une aile. */
+    wingMinDensity: 0.3,
   },
 
   quality: {

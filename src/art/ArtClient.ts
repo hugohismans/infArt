@@ -1,6 +1,7 @@
 import { ADAPTERS_BY_ID, DIRECT_ADAPTERS, type FetchJson } from '../../shared/adapters';
 import type { Artwork } from '../../shared/artwork';
 import { gatherArtworks } from '../../shared/select';
+import type { ArtTheme } from '../../shared/themes';
 
 /**
  * Accès aux œuvres. Deux modes :
@@ -29,10 +30,10 @@ export class ArtClient {
     this.seed = seed;
   }
 
-  async fetchBatch(batch: number, count: number): Promise<Artwork[]> {
+  async fetchBatch(batch: number, count: number, theme?: ArtTheme): Promise<Artwork[]> {
     if (this.mode === 'worker') {
       try {
-        const url = `${this.apiUrl}/artworks?count=${count}&seed=${encodeURIComponent(this.seed)}&batch=${batch}`;
+        const url = `${this.apiUrl}/artworks?count=${count}&seed=${encodeURIComponent(this.seed)}&batch=${batch}${theme ? `&theme=${theme.id}` : ''}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as { artworks: Artwork[]; errors: string[] };
@@ -44,7 +45,7 @@ export class ArtClient {
         this.workerDown = true;
       }
     }
-    const result = await gatherArtworks({ adapters: DIRECT_ADAPTERS, fetchJson: this.directFetch, seed: this.seed, batch, count });
+    const result = await gatherArtworks({ adapters: DIRECT_ADAPTERS, fetchJson: this.directFetch, seed: this.seed, batch, count, ...(theme ? { theme } : {}) });
     this.lastErrors = result.errors;
     return result.artworks;
   }

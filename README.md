@@ -23,8 +23,8 @@ Chaque ambiance est un preset de données (`src/ambiances/presets/`) : dimension
   - **seuil** : un sas étroit et sombre, avec des portes ;
   - **rupture** : fondu au noir ou faux glitch, rare.
 - **Raccords** : aux jonctions entre ambiances de tailles différentes, des jambages et des linteaux referment automatiquement l'écart.
-- **Nom de l'aile** : il s'affiche brièvement à l'arrivée (pas dans les zones liminales).
-- **Réglages** : `CONFIG.director`.
+- **Ailes thématiques** : de temps en temps, quelques modules d'affilée dont les œuvres suivent un même sujet (les chats, la mer, les portraits, la nuit…). Le titre s'affiche à l'entrée. Les thèmes sont dans `shared/themes.ts` : un mot-clé cherché dans les titres de chaque musée, puis une vérification de pertinence. La réserve d'un thème est préparée à l'avance : l'aile ne s'ouvre que si ses œuvres sont déjà chargées.
+- **Réglages** : `CONFIG.director` (dont `wingChance`, `wingLength`, `wingGap`) et `CONFIG.art.theme*`.
 
 ## Phase 3, embranchements
 
@@ -87,7 +87,7 @@ Le déploiement est automatique (GitHub Actions) dès que deux secrets sont pré
 
 Le workflow déploie le Worker (`galerie-infinie-api`), récupère son URL et construit le site avec (`VITE_API_URL`). Sans les secrets, ou si le déploiement du Worker échoue, le site est quand même publié, en mode direct.
 
-Pour tester : `https://galerie-infinie-api.<sous-domaine>.workers.dev/health`, puis `/artworks?count=5`.
+Pour tester : `https://galerie-infinie-api.<sous-domaine>.workers.dev/health`, puis `/artworks?count=5` (ou `&theme=chats`).
 
 ## Commandes
 
@@ -141,6 +141,7 @@ npm run build      # vérification des types + build de production dans dist/
 npm run test:leak  # test de fuite mémoire (après build), 10 min par défaut
 npm run worker:dev # Worker local sous Node (http://localhost:8787), sans compte Cloudflare
 npm run try:adapters -- met peinture   # essai direct d'un adaptateur
+npx tsx scripts/try-themes.ts chats    # rendement d'un thème, toutes sources
 ```
 
 En local, `npx wrangler dev --config worker/wrangler.jsonc` lance le Worker avec le vrai moteur Cloudflare. `npm run worker:deploy` le déploie à la main (après `npx wrangler login`).

@@ -1,7 +1,7 @@
 /**
  * Worker « Galerie Infinie » : proxy des API de musées.
  *
- * - GET /artworks?count=24&seed=…&batch=0&types=peinture,estampe&sources=aic,met
+ * - GET /artworks?count=24&seed=…&batch=0&types=peinture,estampe&sources=aic,met&theme=chats
  *     Lot d'œuvres normalisées (format Artwork), tiré de plusieurs sources.
  *     Le tirage dépend de (seed, batch) : une visite est reproductible.
  * - GET /image?url=…
@@ -15,6 +15,7 @@
 import { ADAPTERS, ADAPTERS_BY_ID, type FetchJson } from '../../shared/adapters';
 import { WALL_TYPES, type ArtType } from '../../shared/artwork';
 import { gatherArtworks } from '../../shared/select';
+import { THEMES_BY_ID } from '../../shared/themes';
 
 export type Env = Record<string, never>;
 
@@ -115,6 +116,7 @@ async function handleArtworks(url: URL, ctx: ExecutionContext): Promise<Response
   const batch = Math.max(0, Math.floor(Number(url.searchParams.get('batch')) || 0));
   const types = parseList(url.searchParams.get('types')).filter((t): t is ArtType => (WALL_TYPES as string[]).includes(t));
   const sourceIds = parseList(url.searchParams.get('sources'));
+  const theme = THEMES_BY_ID[url.searchParams.get('theme') ?? ''];
   const adapters = sourceIds.length > 0 ? sourceIds.map((id) => ADAPTERS_BY_ID[id]).filter((a) => !!a) : ADAPTERS.filter((a) => !a.needsKey);
 
   // Le résultat est déterministe pour une URL donnée : on met la réponse entière en cache.
@@ -123,7 +125,7 @@ async function handleArtworks(url: URL, ctx: ExecutionContext): Promise<Response
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
-  const result = await gatherArtworks({ adapters, fetchJson: makeCachedFetchJson(ctx), seed, batch, count, ...(types.length ? { types } : {}) });
+  const result = await gatherArtworks({ adapters, fetchJson: makeCachedFetchJson(ctx), seed, batch, count, ...(types.length ? { types } : {}), ...(theme ? { theme } : {}) });
   const response = json(result, 200, result.errors.length > 0 ? 60 : 3600);
   if (result.artworks.length > 0) ctx.waitUntil(cache.put(cacheKey, response.clone()));
   return response;

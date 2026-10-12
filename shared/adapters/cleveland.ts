@@ -96,12 +96,14 @@ export const cleveland: SourceAdapter = {
   types: Object.keys(TYPE_NAMES) as ArtType[],
   weight: 1,
 
-  async fetchBatch({ fetchJson, rng, count, type }) {
+  async fetchBatch({ fetchJson, rng, count, type, theme }) {
     const name = TYPE_NAMES[type];
     if (!name) return [];
-    const head = (await fetchJson(url(name, 'limit=1'), { ttl: 86400 })) as ClevelandResponse;
+    const title = theme ? `title=${encodeURIComponent(theme.q)}&` : '';
+    const head = (await fetchJson(url(name, `${title}limit=1`), { ttl: 86400 })) as ClevelandResponse;
+    if (!head.info.total) return [];
     const skip = randomPageStart(rng, head.info.total, PAGE);
-    const page = (await fetchJson(url(name, `limit=${PAGE}&skip=${skip}`), { ttl: 86400 * 7 })) as ClevelandResponse;
+    const page = (await fetchJson(url(name, `${title}limit=${PAGE}&skip=${skip}`), { ttl: 86400 * 7 })) as ClevelandResponse;
     return rng
       .shuffle(page.data)
       .map((it) => normalize(it, type))

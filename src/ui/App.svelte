@@ -47,7 +47,7 @@
   let sheetArtwork = $state<Artwork | null>(null);
   let aimed = $state<Artwork | null>(null);
   let locked = $state(false);
-  let zoneTitle = $state<string | null>(null);
+  let themeTitle = $state<string | null>(null);
   let titleKey = $state(0);
   let titleTimer = 0;
   let rupture = $state<'noir' | 'glitch' | null>(null);
@@ -82,15 +82,15 @@
     e.onAutoWalkChange = (v) => (autoWalk = v);
     e.onArtworkOpen = (art) => openSheet(art);
     e.onAimChange = (art) => (aimed = art);
-    e.onZoneTitle = (name) => {
+    e.onThemeTitle = (name) => {
       if (!name) {
-        zoneTitle = null;
+        themeTitle = null;
         return;
       }
-      zoneTitle = name;
+      themeTitle = name;
       titleKey++;
       clearTimeout(titleTimer);
-      titleTimer = window.setTimeout(() => (zoneTitle = null), CONFIG.director.titleDuration * 1000);
+      titleTimer = window.setTimeout(() => (themeTitle = null), CONFIG.director.titleDuration * 1000);
     };
     e.onRupture = (style) => {
       rupture = style;
@@ -214,8 +214,8 @@
     {#if aimed}<div class="aim-label">{t('hud.view')}</div>{/if}
   {/if}
 
-  {#if zoneTitle && !menuOpen && !sheetArtwork}
-    {#key titleKey}<div class="zone-title" style="animation-duration: {CONFIG.director.titleDuration}s">{zoneTitle}</div>{/key}
+  {#if themeTitle && !menuOpen && !sheetArtwork}
+    {#key titleKey}<div class="theme-title" style="animation-duration: {CONFIG.director.titleDuration}s">{themeTitle}</div>{/key}
   {/if}
 
   {#if rupture}<div class="rupture {rupture}" aria-hidden="true"></div>{/if}
@@ -267,7 +267,7 @@
   .hud-btn:hover {
     opacity: 1;
   }
-  .zone-title {
+  .theme-title {
     position: fixed;
     left: 0;
     right: 0;

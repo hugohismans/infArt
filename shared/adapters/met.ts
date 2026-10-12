@@ -95,7 +95,7 @@ export const met: SourceAdapter = {
   types: Object.keys(DEPARTMENTS) as ArtType[],
   weight: 1,
 
-  async fetchBatch({ fetchJson, rng, count, type }) {
+  async fetchBatch({ fetchJson, rng, count, type, theme }) {
     const deps = DEPARTMENTS[type];
     if (!deps) return [];
     const dep = rng.pick(deps);
@@ -104,13 +104,15 @@ export const met: SourceAdapter = {
     const [minYear, maxYear] = type === 'photographie' ? [1840, 1930] : [1400, 1900];
     const from = 10 * Math.floor(rng.range(minYear, maxYear - 30) / 10);
     const window = type === 'photographie' ? 20 : 50;
+    const q = theme ? `${encodeURIComponent(theme.q)}&title=true` : '*';
     const search = (offset: number, limit: number, dated: boolean) =>
-      `${BASE}/v1.1/search?departmentId=${dep}&hasImages=true&isPublicDomain=true&q=*` +
+      `${BASE}/v1.1/search?departmentId=${dep}&hasImages=true&isPublicDomain=true&q=${q}` +
       (dated ? `&dateBegin=${from}&dateEnd=${from + window}` : '') +
       `&offset=${offset}&limit=${limit}`;
-    let dated = true;
+    // Thème : peu de résultats, inutile de fenêtrer par dates.
+    let dated = !theme;
     let head = (await fetchJson(search(0, 1, dated), { ttl: 86400 })) as MetSearch;
-    if (!head.total) {
+    if (!head.total && dated) {
       // Fenêtre vide : on se rabat sur le département entier.
       dated = false;
       head = (await fetchJson(search(0, 1, dated), { ttl: 86400 })) as MetSearch;

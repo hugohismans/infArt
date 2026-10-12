@@ -40,9 +40,9 @@ interface SmkResponse {
   items: SmkItem[] | null;
 }
 
-function url(name: string, offset: number, rows: number): string {
+function url(name: string, offset: number, rows: number, keys = '*'): string {
   const filters = `[has_image:true],[public_domain:true],[object_names:${name}]`;
-  return `${API}?keys=*&filters=${encodeURIComponent(filters)}&offset=${offset}&rows=${rows}&lang=en`;
+  return `${API}?keys=${encodeURIComponent(keys)}&filters=${encodeURIComponent(filters)}&offset=${offset}&rows=${rows}&lang=en`;
 }
 
 function toCm(value: string | undefined, unit: string | undefined): number {
@@ -99,13 +99,14 @@ export const smk: SourceAdapter = {
   types: Object.keys(OBJECT_NAMES) as ArtType[],
   weight: 1,
 
-  async fetchBatch({ fetchJson, rng, count, type }) {
+  async fetchBatch({ fetchJson, rng, count, type, theme }) {
     const names = OBJECT_NAMES[type];
     if (!names) return [];
     const name = rng.pick(names);
-    const head = (await fetchJson(url(name, 0, 0), { ttl: 86400 })) as SmkResponse;
+    const keys = theme?.q ?? '*';
+    const head = (await fetchJson(url(name, 0, 0, keys), { ttl: 86400 })) as SmkResponse;
     if (!head.found) return [];
-    const page = (await fetchJson(url(name, randomPageStart(rng, head.found, PAGE), PAGE), { ttl: 86400 * 7 })) as SmkResponse;
+    const page = (await fetchJson(url(name, randomPageStart(rng, head.found, PAGE), PAGE, keys), { ttl: 86400 * 7 })) as SmkResponse;
     return rng
       .shuffle(page.items ?? [])
       .map((it) => normalize(it, type))

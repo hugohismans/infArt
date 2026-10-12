@@ -1,3 +1,4 @@
+import type { ArtTheme } from '../../shared/themes';
 import { blendPresets } from '../ambiances/blend';
 import type { AmbiancePreset, Rarity } from '../ambiances/types';
 import { CONFIG } from '../config';
@@ -12,6 +13,8 @@ import { Rng } from '../world/random';
  * - Rareté, affinités entre ambiances et historique pondèrent les choix.
  * - Les premiers modules sont toujours un musée classique rassurant.
  * - Un embranchement peut mener à une autre zone que le couloir principal.
+ * - De temps en temps, une aile thématique : quelques modules dont les œuvres
+ *   suivent un même sujet (les chats, la mer…), annoncé à l'entrée.
  *
  * Le graphe de modules n'ayant pas de plan global, chaque module porte son propre
  * état de zone, hérité de son parent : deux branches peuvent diverger.
@@ -32,16 +35,30 @@ export interface Zone {
   tension: number;
 }
 
+/** Aile thématique : indépendante des zones, elle peut traverser une transition. */
+export interface Wing {
+  id: number;
+  theme: ArtTheme;
+  /** Modules restants, celui-ci compris. */
+  left: number;
+}
+
 export interface ZoneState {
   zone: Zone;
   /** Rang du module dans la zone (0 = premier module). */
   step: number;
+  wing?: Wing;
 }
 
 const RARITY_WEIGHT: Record<Rarity, number> = { commune: 1, rare: 0.35, 'tres-rare': 0.1 };
 
 export class Director {
   private zoneCount = 0;
+  private wingCount = 0;
+  /** Modules créés depuis la dernière aile thématique. */
+  private sinceWing = 0;
+  /** Fournit un thème prêt (œuvres chargées), ou null. Renseigné par le monde. */
+  claimTheme: (() => ArtTheme | null) | null = null;
   /** Dernières ambiances choisies (pour éviter les répétitions). */
   private history: string[] = [];
   private readonly blends = new Map<string, AmbiancePreset>();
@@ -84,8 +101,25 @@ export class Director {
     // Une branche latérale peut partir ailleurs, sauf au départ ou en pleine transition.
     const settled = z.transition === 'depart' ? false : parent.step >= z.blendSteps;
     const branchOff = branch && settled && rng.chance(CONFIG.director.branchNewZone);
-    if (!ended && !branchOff) return { zone: z, step: parent.step + 1 };
-    return { zone: this.newZone(z, rng), step: 0 };
+    const state: ZoneState = !ended && !branchOff ? { zone: z, step: parent.step + 1 } : { zone: this.newZone(z, rng), step: 0 };
+    const wing = this.nextWing(parent, state, rng);
+    if (wing) state.wing = wing;
+    return state;
+  }
+
+  private nextWing(parent: ZoneState, state: ZoneState, rng: Rng): Wing | undefined {
+    const d = CONFIG.director;
+    this.sinceWing++;
+    // Pas d'aile dans une zone presque vide (back rooms) ni pendant le départ.
+    if (state.zone.ambiance.art.density < d.wingMinDensity) return undefined;
+    const pw = parent.wing;
+    if (pw) return pw.left > 1 ? { ...pw, left: pw.left - 1 } : undefined;
+    if (state.zone.transition === 'depart' && state.step < 4) return undefined;
+    if (this.sinceWing < d.wingGap || !rng.chance(d.wingChance)) return undefined;
+    const theme = this.claimTheme?.();
+    if (!theme) return undefined;
+    this.sinceWing = 0;
+    return { id: this.wingCount++, theme, left: rng.int(d.wingLength[0], d.wingLength[1]) };
   }
 
   /** Ambiance effective d'un module (intermédiaire pendant une transition progressive). */

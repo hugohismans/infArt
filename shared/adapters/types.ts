@@ -1,5 +1,6 @@
 import type { ArtType, Artwork } from '../artwork';
 import type { Rng } from '../random';
+import type { ArtTheme } from '../themes';
 
 /**
  * Récupère du JSON. Côté Worker : avec cache (Cache API) et en-têtes ;
@@ -13,6 +14,8 @@ export interface BatchRequest {
   rng: Rng;
   count: number;
   type: ArtType;
+  /** Aile thématique : recherche par mot-clé dans les titres. */
+  theme?: ArtTheme;
 }
 
 export interface SourceAdapter {

@@ -68,6 +68,8 @@ export class World {
     ambiances: Record<string, AmbiancePreset> = AMBIANCES,
   ) {
     this.director = new Director(seed, ambiances, startPreset);
+    // Une aile thématique ne s'ouvre que si ses œuvres sont déjà chargées.
+    if (artCtx) this.director.claimTheme = () => artCtx.library.claimTheme();
   }
 
   /** Ambiance du module où se trouve le visiteur. */
@@ -271,7 +273,7 @@ export class World {
       capRetries: this.counters.capRetries,
       currentModule: this.current ? `#${this.current.id} ${this.current.def.id}` : '-',
       zone: this.current
-        ? `${this.current.zone.zone.id} · ${this.current.preset.id} · ${this.current.zone.step + 1}/${this.current.zone.zone.length} · ${this.current.zone.zone.transition} · tension ${this.current.zone.zone.tension.toFixed(2)}`
+        ? `${this.current.zone.zone.id} · ${this.current.preset.id} · ${this.current.zone.step + 1}/${this.current.zone.zone.length} · ${this.current.zone.zone.transition} · tension ${this.current.zone.zone.tension.toFixed(2)}${this.current.zone.wing ? ` · aile « ${this.current.zone.wing.theme.id} »` : ''}`
         : '-',
     };
   }

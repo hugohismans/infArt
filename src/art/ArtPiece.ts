@@ -71,11 +71,13 @@ export class ArtPiece {
     private readonly ctx: ArtContext | null,
     /** Le module est-il potentiellement visible ? (sinon on peut tout reconstruire) */
     private readonly isVisible: () => boolean,
+    /** Aile thématique du module : on y accroche en priorité des œuvres du thème. */
+    themeId?: string,
   ) {
     this.object.position.set(slot.pos.x, slot.y, slot.pos.z);
     this.object.rotation.y = Math.atan2(slot.normal.x, slot.normal.z);
 
-    const ready = ctx?.library.take(preset.art.prefer) ?? null;
+    const ready = ctx?.library.take(preset.art.prefer, themeId) ?? null;
     if (ready) this.hang(ready);
     else if (!ctx || ctx.library.offline) this.hangProcedural();
     else {
