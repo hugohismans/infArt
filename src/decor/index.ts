@@ -3,9 +3,10 @@ import type { AmbiancePreset, DecorKind } from '../ambiances/types';
 import { CONFIG } from '../config';
 import { dist, dot, pointInConvex, sub, type Segment, type Vec2 } from '../world/math2d';
 import { wallNormal, type ArtSlotDef, type ModuleDef } from '../world/modules/defs';
-import type { Rng } from '../world/random';
+import { Rng } from '../world/random';
 import { buildExitSign, buildRope, CATALOG } from './catalog';
 import { Kit } from './kit';
+import { buildBoundary } from './boundary';
 
 /**
  * Décors procéduraux d'un module, tirés dans le pool de son ambiance avec la graine
@@ -105,10 +106,15 @@ function edges(poly: Vec2[]): Segment[] {
 export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hung: readonly ArtSlotDef[], odd: DecorOddities = {}): DecorBuild {
   const k = new Kit();
   const out: DecorBuild = { solid: null, glow: null, shafts: null, collisions: [], drips: [] };
-  // Pas de décor dans les escaliers, les sas et les bouchons.
-  if (def.kind === 'stairs' || def.kind === 'sas' || def.kind === 'cap' || !def.hasFloor) return out;
   const d = preset.decor;
   const ceiling = def.ceilingHeight ?? preset.geometry.ceilingHeight * def.ceilingScale;
+  // Ciel ouvert : la lisière rend visibles les limites (même au bout d'une impasse).
+  if (d.boundary && def.kind !== 'stairs' && def.kind !== 'sas') {
+    out.collisions.push(...buildBoundary(k, def, d.boundary, new Rng(rng.nextUint(), 'lisiere'), hung, ceiling));
+    if (def.kind === 'cap' || !def.hasFloor) return { ...out, ...k.build() };
+  }
+  // Pas de décor dans les escaliers, les sas et les bouchons.
+  if (def.kind === 'stairs' || def.kind === 'sas' || def.kind === 'cap' || !def.hasFloor) return out;
   const angleOf = (n: Vec2) => Math.atan2(n.x, n.z);
   // Objet contre un mur : décollé de quelques millimètres (le mur voisin est au même plan).
   const placeOnWall = (p: Vec2, y: number, n: Vec2) => k.place(p.x + n.x * CONFIG.world.wallGap, y, p.z + n.z * CONFIG.world.wallGap, angleOf(n));

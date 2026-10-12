@@ -26,7 +26,7 @@ export const desert: AmbiancePreset = {
   fog: { color: '#ead0a4', near: 5, far: 26 },
   lighting: { hemiSky: '#fff2d6', hemiGround: '#b08850', hemiIntensity: 2.4, artGlow: 0, flicker: 0 },
   furniture: { small: 'aucun', large: 'aucun' },
-  decor: decor({ density: 0, dust: 0.45 }),
+  decor: decor({ boundary: 'dunes', density: 0, dust: 0.45 }),
   sound: sound({ wind: 1, reverb: 0.05 }),
   art: { density: 0.45, frames: 'classique', mount: 'chevalet' },
   modules: { ...OPEN_AIR_MODULES, 'straight-l': 1.6, 'room-l': 0.6 },

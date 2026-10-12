@@ -26,7 +26,7 @@ export const vaporwave: AmbiancePreset = {
   fog: { color: '#ff7aa8', near: 5, far: 26 },
   lighting: { hemiSky: '#ffc0e8', hemiGround: '#40108a', hemiIntensity: 1.6, artGlow: 0, flicker: 0 },
   furniture: { small: 'aucun', large: 'aucun' },
-  decor: decor({ density: 1.6, pool: { statue: 2, palmier: 2 }, dust: 0.3, particles: 'paillettes' }),
+  decor: decor({ boundary: 'colonnade', density: 1.6, pool: { statue: 2, palmier: 2 }, dust: 0.3, particles: 'paillettes' }),
   sound: sound({ roomTone: 0.2, hum: 0.08, reverb: 0.9 }),
   art: { density: 0.6, frames: 'moderne', mount: 'flottant' },
   modules: { ...OPEN_AIR_MODULES },

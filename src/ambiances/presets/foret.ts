@@ -26,7 +26,7 @@ export const foret: AmbiancePreset = {
   fog: { color: '#0c1612', near: 2, far: 20 },
   lighting: { hemiSky: '#7a9ab8', hemiGround: '#0c140e', hemiIntensity: 0.55, artGlow: 0, flicker: 0, flashlight: 0.45 },
   furniture: { small: 'aucun', large: 'aucun' },
-  decor: decor({ density: 1.2, pool: { arbre: 3 }, leaves: 10, dust: 1, particles: 'lucioles', trunksBehindArt: true }),
+  decor: decor({ boundary: 'lisiere', density: 1.2, pool: { arbre: 3 }, leaves: 10, dust: 1, particles: 'lucioles', trunksBehindArt: true }),
   sound: sound({ crickets: 1, wind: 0.25, reverb: 0.1 }),
   art: { density: 0.7, frames: 'classique' },
   modules: { ...OPEN_AIR_MODULES },

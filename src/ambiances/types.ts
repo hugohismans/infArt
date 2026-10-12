@@ -216,6 +216,8 @@ export interface AmbiancePreset {
     particles?: Particles;
     /** Un tronc d'arbre derrière chaque œuvre (forêt de cadres). */
     trunksBehindArt?: boolean;
+    /** Ciel ouvert : lisière visible là où se tient le mur invisible (arbres, dunes…). */
+    boundary?: import('../decor/boundary').Boundary;
   };
 
   sound: SoundProfile;

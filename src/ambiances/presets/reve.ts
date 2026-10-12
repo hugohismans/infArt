@@ -26,7 +26,7 @@ export const reve: AmbiancePreset = {
   fog: { color: '#fbe2ee', near: 5, far: 26 },
   lighting: { hemiSky: '#fff0f8', hemiGround: '#e8c0d8', hemiIntensity: 1.8, artGlow: 0, flicker: 0 },
   furniture: { small: 'aucun', large: 'aucun' },
-  decor: decor({ density: 0, dust: 0.8, particles: 'paillettes' }),
+  decor: decor({ boundary: 'nuages', density: 0, dust: 0.8, particles: 'paillettes' }),
   sound: sound({ roomTone: 0.15, birds: 0.1, wind: 0.1, reverb: 0.9 }),
   art: { density: 0.6, frames: 'moderne', mount: 'flottant' },
   modules: { ...OPEN_AIR_MODULES },

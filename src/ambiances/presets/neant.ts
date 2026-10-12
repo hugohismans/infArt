@@ -25,7 +25,7 @@ export const neant: AmbiancePreset = {
   fog: { color: '#f6f6f4', near: 4, far: 24 },
   lighting: { hemiSky: '#ffffff', hemiGround: '#d8d8d6', hemiIntensity: 2.4, artGlow: 0, flicker: 0 },
   furniture: { small: 'aucun', large: 'aucun' },
-  decor: decor({ density: 0, dust: 0 }),
+  decor: decor({ boundary: 'muret', density: 0, dust: 0 }),
   sound: sound({ reverb: 0.05 }),
   art: { density: 0.55, frames: 'moderne', mount: 'chevalet' },
   modules: { ...OPEN_AIR_MODULES, 'straight-l': 1.5 },
