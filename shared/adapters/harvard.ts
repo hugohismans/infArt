@@ -66,6 +66,8 @@ export const harvard: SourceAdapter = {
   keys: ['HARVARD_KEY'],
   types: Object.keys(CLASSIFICATIONS) as ArtType[],
   weight: 1,
+  // Les notices arrivent, mais nrs.harvard.edu répond 403 au relais d'images (Cloudflare).
+  paused: 'images refusées au relais (HTTP 403 de nrs.harvard.edu)',
 
   async fetchBatch({ fetchJson, rng, count, type, theme, keys }) {
     const cls = CLASSIFICATIONS[type];

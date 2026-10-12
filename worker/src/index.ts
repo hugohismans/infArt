@@ -143,7 +143,7 @@ async function handleArtworks(url: URL, env: Env, ctx: ExecutionContext): Promis
   const weights = parseWeights(url.searchParams.get('weights'));
   const sourceIds = parseList(url.searchParams.get('sources'));
   const theme = THEMES_BY_ID[url.searchParams.get('theme') ?? ''];
-  const adapters = (sourceIds.length > 0 ? sourceIds.map((id) => ADAPTERS_BY_ID[id]).filter((a) => !!a) : ADAPTERS).filter((a) => hasKeys(a, env));
+  const adapters = (sourceIds.length > 0 ? sourceIds.map((id) => ADAPTERS_BY_ID[id]).filter((a) => !!a) : ADAPTERS.filter((a) => !a.paused)).filter((a) => hasKeys(a, env));
 
   // Le résultat est déterministe pour une URL donnée : on met la réponse entière en cache.
   const cache = caches.default;
@@ -205,7 +205,7 @@ export default {
         case '/health':
           return json({
             ok: true,
-            sources: ADAPTERS.map((a) => ({ id: a.id, name: a.name, types: a.types, imageCors: a.imageCors, active: hasKeys(a, env) })),
+            sources: ADAPTERS.map((a) => ({ id: a.id, name: a.name, types: a.types, imageCors: a.imageCors, active: hasKeys(a, env) && !a.paused, ...(a.paused ? { paused: a.paused } : {}) })),
           });
         case '/artworks':
           return await handleArtworks(url, env, ctx);

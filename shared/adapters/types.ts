@@ -48,6 +48,8 @@ export interface SourceAdapter {
   types: ArtType[];
   /** Poids relatif dans le mélange. */
   weight: number;
+  /** Source mise de côté (raison) : hors du mélange par défaut, interrogeable avec `sources=`. */
+  paused?: string;
   /** Tire `count` œuvres d'un type donné, de façon déterminée par `rng`. */
   fetchBatch(req: BatchRequest): Promise<Artwork[]>;
   /** URL d'image pour une largeur souhaitée (sources IIIF) ; sinon on garde imageUrl. */

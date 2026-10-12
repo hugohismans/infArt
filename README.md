@@ -133,7 +133,7 @@ Chaque ambiance est un preset de données (`src/ambiances/presets/`) : dimension
 | [Victoria and Albert Museum](https://developers.vam.ac.uk/) | non | IIIF, CORS | usage non commercial, « © V&A » | peintures, estampes, dessins, photos, affiches ; fenêtres de dates (10 000 résultats max) |
 | [Wikidata](https://query.wikidata.org) + Wikimedia Commons | non | CORS | domaine public (reproductions Commons) | peintures de 16 grands musées (Rijksmuseum, Louvre, Orsay, Prado, National Gallery, Ermitage, musées belges de Bruxelles, Anvers et Gand…) ; titres en français ; vignettes calculées (MD5) sans l'API Commons, qui limite vite le débit |
 | [Europeana](https://pro.europeana.eu/page/search) | **oui** (`EUROPEANA_KEY`) | vignettes 400 px, CORS | licences ouvertes seulement | agrégateur européen ; images d'origine dans la fiche |
-| [Harvard Art Museums](https://github.com/harvardartmuseums/api-docs) | **oui** (`HARVARD_KEY`) | IIIF, via le Worker | usage non commercial | |
+| [Harvard Art Museums](https://github.com/harvardartmuseums/api-docs) | **oui** (`HARVARD_KEY`) | via le Worker | usage non commercial | en pause : nrs.harvard.edu refuse le relais (403) |
 | [Smithsonian Open Access](https://www.si.edu/openaccess/devtools) | **oui** (`SMITHSONIAN_KEY`, api.data.gov) | CORS | CC0 | |
 | [TMDB](https://developer.themoviedb.org/docs) | **oui** (`TMDB_TOKEN`) | CORS | illustration, attribution obligatoire | affiches de films ; « Ce produit utilise l'API TMDB mais n'est ni approuvé ni certifié par TMDB » |
 | [IGDB](https://api-docs.igdb.com) (Twitch) | **oui** (`TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`) | CORS | illustration, attribution | jaquettes de jeux ; requêtes POST, jeton Twitch mis en cache |
