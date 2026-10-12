@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { AmbiancePreset } from '../ambiances/types';
-import { ArtPiece } from '../art/ArtPiece';
+import { ArtPiece, type ArtContext } from '../art/ArtPiece';
 import { CONFIG } from '../config';
 import { applyTransform, rotate, type Segment, type Transform2, type Vec2 } from './math2d';
 import type { ModuleDef } from './modules/defs';
@@ -70,7 +70,10 @@ export class WorldModule {
   }
 
   /** Crée les meshes (partagés) et les œuvres (propres au module). */
-  build(): void {
+  /** Potentiellement visible lors de la dernière vérification (mis à jour par World). */
+  visible = true;
+
+  build(artCtx: ArtContext | null): void {
     const mats = this.cache.acquireMaterials(this.preset);
     const geos = this.cache.acquireGeometries(this.def, this.preset);
     if (geos.structure) this.group.add(new THREE.Mesh(geos.structure, mats.structure));
@@ -82,7 +85,7 @@ export class WorldModule {
     for (const slot of this.def.artSlots) {
       // Une impasse expose toujours son œuvre.
       if (this.def.kind !== 'cap' && !rng.chance(density)) continue;
-      const art = new ArtPiece(slot, rng, this.preset, mats, this.preset.geometry.ceilingHeight);
+      const art = new ArtPiece(slot, rng, this.preset, mats, this.preset.geometry.ceilingHeight, artCtx, () => this.visible);
       this.arts.push(art);
       this.group.add(art.object);
     }
@@ -106,6 +109,10 @@ export class WorldModule {
   turnSign(from: number, to: number): number {
     if (this.def.turn === 0 || from === to) return 0;
     return to === 1 ? this.def.turn : -this.def.turn;
+  }
+
+  get artPieces(): readonly ArtPiece[] {
+    return this.arts;
   }
 
   get artCount(): number {

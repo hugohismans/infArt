@@ -10,6 +10,8 @@ export class MouseInput {
   enabled = true;
   /** Appelé quand le verrouillage est perdu (Échap) : le jeu ouvre le menu. */
   onUnlock: (() => void) | null = null;
+  /** Clic alors que la souris est capturée (viser une œuvre au centre de l'écran). */
+  onLockedClick: (() => void) | null = null;
 
   private readonly onMove = (e: MouseEvent) => {
     if (!this.enabled) return;
@@ -21,7 +23,9 @@ export class MouseInput {
   };
   private readonly onDown = (e: PointerEvent) => {
     if (!this.enabled || e.pointerType === 'touch') return;
-    if (document.pointerLockElement !== this.element) {
+    if (document.pointerLockElement === this.element) {
+      if (e.button === 0) this.onLockedClick?.();
+    } else {
       this.lock();
       this.dragging = true;
     }

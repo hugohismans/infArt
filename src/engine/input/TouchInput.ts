@@ -7,6 +7,9 @@ import type { InputState } from './InputState';
  */
 export class TouchInput {
   enabled = true;
+  /** Toucher bref et immobile (ouvrir une œuvre). Coordonnées écran. */
+  onTap: ((x: number, y: number) => void) | null = null;
+  private tapStart = new Map<number, { x: number; y: number; t: number; moved: boolean }>();
   private joyId: number | null = null;
   private joyOrigin = { x: 0, y: 0 };
   private lookId: number | null = null;
@@ -16,6 +19,7 @@ export class TouchInput {
 
   private readonly onDown = (e: PointerEvent) => {
     if (!this.enabled || e.pointerType !== 'touch') return;
+    this.tapStart.set(e.pointerId, { x: e.clientX, y: e.clientY, t: e.timeStamp, moved: false });
     const leftSide = e.clientX < window.innerWidth / 2;
     if (leftSide && this.joyId === null) {
       this.joyId = e.pointerId;
@@ -28,6 +32,8 @@ export class TouchInput {
   };
 
   private readonly onMove = (e: PointerEvent) => {
+    const tap = this.tapStart.get(e.pointerId);
+    if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 12) tap.moved = true;
     if (e.pointerId === this.joyId) {
       const r = CONFIG.touch.joystickRadius;
       let dx = e.clientX - this.joyOrigin.x;
@@ -55,6 +61,12 @@ export class TouchInput {
   };
 
   private readonly onUp = (e: PointerEvent) => {
+    const tap = this.tapStart.get(e.pointerId);
+    this.tapStart.delete(e.pointerId);
+    // Durée mesurée avec l'horodatage des événements : insensible aux frames lentes.
+    if (tap && !tap.moved && e.type === 'pointerup' && e.timeStamp - tap.t < 350 && this.enabled) {
+      this.onTap?.(e.clientX, e.clientY);
+    }
     if (e.pointerId === this.joyId) {
       this.joyId = null;
       this.state.forward = 0;
@@ -99,6 +111,7 @@ export class TouchInput {
   }
 
   reset(): void {
+    this.tapStart.clear();
     this.joyId = null;
     this.lookId = null;
     this.hideJoystick();

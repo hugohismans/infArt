@@ -25,6 +25,10 @@
     <div><b>{t('debug.module')}</b> {s.world.currentModule}</div>
     <div><b>{t('debug.position')}</b> {s.position} <span class="dim">· {s.distanceWalked.toFixed(0)} m</span></div>
     <div><b>{t('debug.ambiance')}</b> {s.ambiance}</div>
+    {#if s.art}
+      <div><b>{t('debug.art')}</b> {s.art.mode}{s.art.offline ? ' (hors ligne)' : ''} <span class="dim">· prêtes {s.art.ready} · file {s.art.queued} · chargement {s.art.loading} · attente {s.art.waiting}</span></div>
+      <div><b>GPU œuvres</b> {s.art.gpuMB.toFixed(1)} Mo <span class="dim">· {s.art.liveTextures} tex · HD {s.art.highRes} · échecs {s.art.failedImages} · filtrées {s.art.filtered}{s.art.disabledSources.length ? ` · écartées : ${s.art.disabledSources.join(', ')}` : ''}</span></div>
+    {/if}
     <div><b>{t('debug.seed')}</b> {s.seed}</div>
   </div>
 {/if}

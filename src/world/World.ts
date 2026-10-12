@@ -7,6 +7,7 @@ import { Rng } from './random';
 import { ResourceCache } from './resources';
 import { computeVisibility, modulesContaining, type VisibilityResult } from './visibility';
 import { WorldModule } from './WorldModule';
+import type { ArtContext } from '../art/ArtPiece';
 
 export interface WorldStats {
   modules: number;
@@ -50,9 +51,13 @@ export class World {
   private warm = false;
   private popInLog: string[] = [];
 
+  private lodTimer = 0;
+
   constructor(
     readonly seed: string,
     private preset: AmbiancePreset,
+    /** Accès aux vraies œuvres (null : œuvres factices, comme en phase 1). */
+    private readonly artCtx: ArtContext | null = null,
   ) {
     this.defs = makeModuleDefs(preset.geometry.corridorWidth);
   }
@@ -88,6 +93,7 @@ export class World {
     const maxDistance = this.preset.fog.far + cfg.visibilityMargin;
     const vis = computeVisibility(eyes, this.modules, maxDistance);
     this.lastVisibility = vis;
+    for (const m of this.modules) m.visible = vis.modules.has(m);
 
     // 3. Urgence : une ouverture vide visible doit être comblée immédiatement
     //    (normalement elle est au-delà du brouillard, donc invisible à l'écran).
@@ -154,6 +160,37 @@ export class World {
       return shift;
     }
     return null;
+  }
+
+  /**
+   * Œuvres proches du visiteur : fondus à chaque frame, niveaux de détail
+   * (cartels, haute résolution) quelques fois par seconde.
+   */
+  updateArts(dt: number, player: Vec2): void {
+    this.lodTimer -= dt;
+    const doLod = this.lodTimer <= 0;
+    if (doLod) this.lodTimer = 0.25;
+    for (const m of this.modules) {
+      // Au-delà de deux modules, les cartels et la HD sont forcément trop loin ou cachés.
+      const near = m.graphDistance <= 2;
+      for (const art of m.artPieces) {
+        art.animate(dt);
+        if (doLod) art.updateLod(near ? player.x : Infinity, near ? player.z : Infinity);
+      }
+    }
+  }
+
+  /** Objets à tester pour le clic : toiles et structures (les murs bloquent le rayon). */
+  pickables(out: THREE.Object3D[] = []): THREE.Object3D[] {
+    out.length = 0;
+    for (const m of this.modules) {
+      if (m.graphDistance > 2) continue;
+      for (const child of m.group.children) {
+        if (child instanceof THREE.Mesh) out.push(child);
+      }
+      for (const art of m.artPieces) if (art.canvasMesh) out.push(art.canvasMesh);
+    }
+    return out;
   }
 
   /** Murs à prendre en compte pour les collisions autour du joueur. */
@@ -348,7 +385,7 @@ export class World {
   private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }): WorldModule {
     const id = this.nextId++;
     const m = new WorldModule(id, def, { ...transform }, this.preset, `${this.seed}:${id}`, this.cache);
-    m.build();
+    m.build(this.artCtx);
     this.root.add(m.group);
     this.modules.add(m);
     this.counters.created++;

@@ -5,7 +5,9 @@
  *
  * Usage : npm run build && npm run test:leak
  * Variables : LEAK_MINUTES (défaut 10), LEAK_TIMESCALE (défaut 3), LEAK_SEED,
+ *             LEAK_API (URL d'un Worker, ex. http://localhost:8787 avec scripts/dev-worker.ts),
  *             CHROMIUM_PATH (défaut /opt/pw-browsers/chromium ou Chromium de Playwright).
+ * Derrière un proxy (HTTPS_PROXY), Chromium l'utilise pour charger les vraies images.
  */
 import { writeFileSync, existsSync } from 'node:fs';
 import { preview } from 'vite';
@@ -14,6 +16,7 @@ import { chromium } from 'playwright-core';
 const minutes = Number(process.env.LEAK_MINUTES ?? 10);
 const timeScale = Number(process.env.LEAK_TIMESCALE ?? 3);
 const seed = process.env.LEAK_SEED ?? 'leak-test';
+const api = process.env.LEAK_API;
 const sampleEveryMs = Math.max(5000, (minutes * 60000) / 40);
 const executablePath = process.env.CHROMIUM_PATH ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 
@@ -23,12 +26,13 @@ const base = server.resolvedUrls?.local[0] ?? 'http://localhost:4317/';
 const browser = await chromium.launch({
   executablePath,
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--js-flags=--expose-gc'],
+  ...(process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' } } : {}),
 });
 const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 
-await page.goto(`${base}?seed=${encodeURIComponent(seed)}&autostart=1&autowalk=1&timescale=${timeScale}`);
+await page.goto(`${base}?seed=${encodeURIComponent(seed)}&autostart=1&autowalk=1&timescale=${timeScale}${api ? `&api=${encodeURIComponent(api)}` : ''}`);
 await page.waitForFunction(() => window.__galerie !== undefined, null, { timeout: 30000 });
 
 const samples = [];
@@ -52,6 +56,9 @@ while (Date.now() < end) {
     geometries: s.geometries,
     textures: s.textures,
     heapMB: s.heapMB === null ? null : Number(s.heapMB.toFixed(2)),
+    artTextures: s.art?.liveTextures ?? 0,
+    artMB: s.art ? Number(s.art.gpuMB.toFixed(1)) : 0,
+    artReady: s.art?.ready ?? 0,
     fps: Math.round(s.fps),
   };
   popInLog = s.world.popInLog;
@@ -70,7 +77,7 @@ const max = (rows, k) => Math.max(...rows.map((r) => r[k] ?? 0));
 const avg = (rows, k) => rows.reduce((a, r) => a + (r[k] ?? 0), 0) / rows.length;
 const failures = [];
 
-for (const k of ['geometries', 'textures', 'modules']) {
+for (const k of ['geometries', 'textures', 'modules', 'artTextures']) {
   const a = max(first, k), b = max(second, k);
   if (b > a * 1.3 + 4) failures.push(`${k} augmente : max ${a} puis ${b}`);
 }

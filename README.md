@@ -4,14 +4,55 @@ Un musée infini, explorable à la première personne sur PC et sur mobile. Le b
 
 **Version en ligne** : https://hugohismans.github.io/infArt/
 
-## État : phase 1, prototype du couloir infini
+## État : phase 2, vraies œuvres
 
-- Couloirs droits (trois longueurs), virages à gauche et à droite, impasses.
-- Génération devant le visiteur et destruction derrière lui, étalées sur plusieurs frames, avec libération explicite de la mémoire GPU.
-- Espace non euclidien : un nouveau module ne doit chevaucher aucun module *chargé*, mais il peut réoccuper l'espace d'un module déjà détruit.
-- Œuvres factices : compositions abstraites générées sur canvas, cadres, halos de lumière.
-- Contrôles PC (ZQSD/WASD, souris en pointer lock, Maj) et mobile (joystick virtuel, glisser pour regarder).
-- Marche contemplative automatique, option « réduire les mouvements », panneau de debug.
+- **Phase 1** : couloir infini (couloirs, virages, impasses), génération devant et destruction derrière, visibilité à 360°, contrôles PC et mobile.
+- **Phase 2** : vraies œuvres tirées de quatre musées, cadres selon le type et l'époque, échelle réelle, cartels, fiche détaillée zoomable.
+
+### Sources
+
+| Source | Clé | Images | Licence | Remarques |
+|---|---|---|---|---|
+| [Art Institute of Chicago](https://api.artic.edu/docs/) | non | IIIF, CORS | CC0 (descriptions CC BY 4.0) | 60 requêtes/min par IP ; pagination limitée à 1 000 résultats, on tire des fenêtres d'identifiants |
+| [Cleveland Museum of Art](https://openaccess-api.clevelandart.org/) | non | sans CORS : via le Worker | CC0 | |
+| [The Met](https://metmuseum.github.io/) | non | sans CORS : via le Worker | CC0 | recherche `v1.1` paginée (la `v1` a été retirée le 01/10/2026), plafonnée à 10 000 résultats : fenêtres de dates aléatoires |
+| [SMK – Statens Museum for Kunst](https://open.smk.dk/) | non | IIIF, CORS | domaine public | |
+
+Chaque source est un adaptateur indépendant dans `shared/adapters/`, avec la même interface. Ajouter une source = ajouter un fichier et l'inscrire dans `shared/adapters/index.ts`. Seules les œuvres du domaine public sont retenues. Le crédit et la licence apparaissent sur le cartel et dans la fiche.
+
+### Deux modes
+- **Avec le Worker** (`worker/`, Cloudflare) : toutes les sources, réponses mises en cache, et relais des images sans CORS (indispensable pour en faire des textures WebGL).
+- **Mode direct** : sans Worker, ou s'il ne répond pas, le navigateur interroge lui-même les sources qui le permettent (AIC et SMK).
+
+Une source dont les images échouent systématiquement est écartée pour le reste de la visite.
+
+### Présentation
+- **Cadres** (`src/art/frames.ts`) :
+  - peinture ancienne : grand cadre doré mouluré ;
+  - XIXᵉ siècle : cadre doré ou bois ;
+  - moderne : baguette noire, ou toile nue sur châssis ;
+  - papier (estampes, dessins, photos) : passe-partout et baguette fine.
+- **Échelle réelle** : les dimensions de la source sont respectées. Une œuvre trop grande pour le mur est réduite ; une miniature reste petite.
+- **Image en retard** : toile drapée et cartel « Œuvre en restauration ». À l'arrivée de l'image, l'œuvre est raccrochée à la bonne taille si personne ne regarde ; sinon, elle apparaît en fondu sur un passe-partout.
+- **Niveaux de détail** : le texte du cartel n'est généré qu'à l'approche (moins de 7 m). La haute définition est chargée à moins de 3,2 m, pour les sources IIIF uniquement.
+- **Fiche détaillée** : clic sur une œuvre (PC, au centre du viseur) ou toucher (mobile). Zoom à la molette ou au pincement, glisser pour se déplacer, double-clic. Fermeture par Échap, la croix, un clic à côté ou un glissement vers le bas.
+- **Filtre de contenu** (activé par défaut, menu ☰) : mots-clés visant la sexualité explicite et la violence graphique, pas les nus académiques. C'est imparfait par nature.
+
+## Mise en place du Worker Cloudflare
+
+Le déploiement est automatique (GitHub Actions) dès que deux secrets sont présents dans le dépôt :
+
+1. **Jeton d'API** : sur dash.cloudflare.com, aller dans *My Profile → API Tokens → Create Token*, choisir le modèle **« Edit Cloudflare Workers »**, puis *Account Resources* : ton compte. Créer et copier le jeton.
+2. **Identifiant de compte** : *Workers & Pages* dans le tableau de bord, colonne de droite, *Account ID*.
+3. **Sous-domaine workers.dev** : si tu n'as jamais utilisé Workers, ouvre *Workers & Pages* une fois pour choisir ton sous-domaine (`xxx.workers.dev`).
+4. **Secrets GitHub** : sur le dépôt, *Settings → Secrets and variables → Actions → New repository secret* :
+   - `CLOUDFLARE_API_TOKEN` : le jeton ;
+   - `CLOUDFLARE_ACCOUNT_ID` : l'identifiant.
+5. **Relancer le déploiement** : *Actions → Déploiement → Run workflow*, ou simplement pousser un commit.
+
+Le workflow déploie le Worker (`galerie-infinie-api`), récupère son URL et construit le site avec (`VITE_API_URL`). Sans les secrets, ou si le déploiement du Worker échoue, le site est quand même publié, en mode direct.
+
+Pour tester : `https://galerie-infinie-api.<sous-domaine>.workers.dev/health`, puis `/artworks?count=5`.
 
 ## Commandes
 
@@ -32,6 +73,7 @@ Le clavier est lu par **position physique** des touches (`KeyboardEvent.code`) :
 - `&autowalk=1` : marche automatique.
 - `&debug=1` : affiche le panneau de debug.
 - `&timescale=3` : accélère la simulation (tests).
+- `&api=https://…` : utilise un autre Worker (par exemple `http://localhost:8787` en local).
 
 ## Comment ça marche
 
@@ -62,16 +104,20 @@ npm install
 npm run dev        # serveur de développement (accessible sur le réseau local)
 npm run build      # vérification des types + build de production dans dist/
 npm run test:leak  # test de fuite mémoire (après build), 10 min par défaut
+npm run worker:dev # Worker local sous Node (http://localhost:8787), sans compte Cloudflare
+npm run try:adapters -- met peinture   # essai direct d'un adaptateur
 ```
 
-Le test de fuite lance le build dans Chromium sans écran, active la marche automatique et relève régulièrement les géométries, les textures, le nombre de modules et le tas JS. Il échoue si ces valeurs dérivent ou si une apparition perceptible est détectée. Variables utiles : `LEAK_MINUTES`, `LEAK_TIMESCALE`, `LEAK_SEED`.
+En local, `npx wrangler dev --config worker/wrangler.jsonc` lance le Worker avec le vrai moteur Cloudflare. `npm run worker:deploy` le déploie à la main (après `npx wrangler login`).
+
+Le test de fuite lance le build dans Chromium sans écran, active la marche automatique et relève régulièrement les géométries, les textures (dont celles des œuvres), le nombre de modules et le tas JS. Il échoue si ces valeurs dérivent ou si une apparition perceptible est détectée. Variables utiles : `LEAK_MINUTES`, `LEAK_TIMESCALE`, `LEAK_SEED`, `LEAK_API` (pour tester avec un Worker).
 
 Le déploiement sur GitHub Pages se fait automatiquement à chaque push sur `main` (`.github/workflows/deploy.yml`).
 
 ## Feuille de route
 
-1. ~~Prototype de couloir infini~~ (en cours de validation)
-2. Vraies œuvres : Worker Cloudflare, adaptateurs de musées, cartels, fiche détaillée
+1. ~~Prototype de couloir infini~~
+2. ~~Vraies œuvres : Worker Cloudflare, adaptateurs de musées, cartels, fiche détaillée~~
 3. Embranchements : T, carrefours, salles, escaliers
 4. Ambiances et Directeur
 5. Plus de sources : affiches, jaquettes, pochettes, livres

@@ -17,12 +17,23 @@ export interface PresetMaterials {
   structure: THREE.MeshLambertMaterial;
   floor: THREE.MeshLambertMaterial;
   lights: THREE.MeshBasicMaterial;
+  /** Couleurs de cadres du preset (œuvres factices du mode hors ligne). */
   frames: THREE.MeshLambertMaterial[];
+  /** Cadres des vraies œuvres, par style (voir art/frames.ts). */
+  frameKinds: Record<FrameMaterialKey, THREE.MeshLambertMaterial>;
+  /** Passe-partout. */
+  mat: THREE.MeshLambertMaterial;
+  /** Drap posé sur une toile dont l'image n'est pas encore arrivée. */
+  drape: THREE.MeshLambertMaterial;
+  /** Plaque de cartel vierge (avant que le texte soit généré, ou de loin). */
+  cartelBlank: THREE.MeshLambertMaterial;
   glow: THREE.MeshBasicMaterial;
   /** Géométries unitaires partagées pour les œuvres (mises à l'échelle par mesh). */
   unitBox: THREE.BoxGeometry;
   unitPlane: THREE.PlaneGeometry;
 }
+
+export type FrameMaterialKey = 'gold' | 'goldDark' | 'wood' | 'black' | 'white';
 
 interface Counted<T> {
   value: T;
@@ -67,6 +78,34 @@ function makeParquetTexture(preset: AmbiancePreset): THREE.CanvasTexture {
 }
 
 /** Halo d'un spot : une tache de lumière plus intense en haut, qui s'évase vers le bas. */
+/** Drap à plis verticaux (toile couverte, « œuvre en restauration »). */
+function makeDrapeTexture(): THREE.CanvasTexture {
+  const w = 128, h = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  const rng = new Rng('drap');
+  const g = ctx.createLinearGradient(0, 0, w, 0);
+  let x = 0;
+  while (x <= 1) {
+    const l = Math.round(rng.range(178, 228));
+    g.addColorStop(x, `rgb(${l},${l - 4},${l - 12})`);
+    x += rng.range(0.05, 0.14);
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  // Ombre douce en bas, là où le tissu retombe.
+  const shade = ctx.createLinearGradient(0, h * 0.7, 0, h);
+  shade.addColorStop(0, 'rgba(0,0,0,0)');
+  shade.addColorStop(1, 'rgba(0,0,0,0.18)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(0, 0, w, h);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 function makeGlowTexture(): THREE.CanvasTexture {
   const w = 64, h = 128;
   const canvas = document.createElement('canvas');
@@ -104,6 +143,16 @@ export class ResourceCache {
           floor: new THREE.MeshLambertMaterial({ map: makeParquetTexture(preset) }),
           lights: new THREE.MeshBasicMaterial({ color: pal.lightStrip }),
           frames: pal.frame.map((c) => new THREE.MeshLambertMaterial({ color: c })),
+          frameKinds: {
+            gold: new THREE.MeshLambertMaterial({ color: '#c49a3e', emissive: '#3a2808' }),
+            goldDark: new THREE.MeshLambertMaterial({ color: '#8c6a24', emissive: '#1e1404' }),
+            wood: new THREE.MeshLambertMaterial({ color: '#4a3320' }),
+            black: new THREE.MeshLambertMaterial({ color: '#1a1816' }),
+            white: new THREE.MeshLambertMaterial({ color: '#ebe7df' }),
+          },
+          mat: new THREE.MeshLambertMaterial({ color: '#f3eee3' }),
+          drape: new THREE.MeshLambertMaterial({ map: makeDrapeTexture() }),
+          cartelBlank: new THREE.MeshLambertMaterial({ color: '#efe9dc' }),
           glow: new THREE.MeshBasicMaterial({
             map: glowTex,
             color: pal.lightStrip,
@@ -129,7 +178,8 @@ export class ResourceCache {
     const m = entry.value;
     m.floor.map?.dispose();
     m.glow.map?.dispose();
-    for (const mat of [m.structure, m.floor, m.lights, m.glow, ...m.frames]) mat.dispose();
+    m.drape.map?.dispose();
+    for (const mat of [m.structure, m.floor, m.lights, m.glow, m.mat, m.drape, m.cartelBlank, ...m.frames, ...Object.values(m.frameKinds)]) mat.dispose();
     m.unitBox.dispose();
     m.unitPlane.dispose();
     this.presets.delete(preset.id);

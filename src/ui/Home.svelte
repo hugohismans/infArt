@@ -1,12 +1,21 @@
 <script lang="ts">
   import { t } from '../i18n';
+  import { onMount } from 'svelte';
   import { isTouchDevice } from '../engine/Engine';
+  import type { ArtLibrary } from '../art/ArtLibrary';
 
   interface Props {
     initialSeed: string;
     onEnter: (seed: string) => void;
+    library: ArtLibrary;
   }
-  let { initialSeed, onEnter }: Props = $props();
+  let { initialSeed, onEnter, library }: Props = $props();
+  let readyCount = $state(0);
+
+  onMount(() => {
+    const id = setInterval(() => (readyCount = library.stats().ready), 300);
+    return () => clearInterval(id);
+  });
   // svelte-ignore state_referenced_locally
   let seed = $state(initialSeed);
   const touch = isTouchDevice();
@@ -26,6 +35,7 @@
       <span>{t('home.seed')}</span>
       <input type="text" bind:value={seed} placeholder={t('home.seedHint')} autocomplete="off" spellcheck="false" />
     </label>
+    <p class="status">{readyCount > 0 ? t('home.ready', { n: readyCount }) : t('home.preparing')}</p>
     <p class="controls">{touch ? t('home.controlsMobile') : t('home.controlsDesktop')}</p>
   </form>
 </div>
@@ -99,6 +109,12 @@
     border: 1px solid rgba(255, 255, 255, 0.14);
     color: var(--ink);
     border-radius: 4px;
+  }
+  .status {
+    font-size: 0.75rem;
+    color: var(--ink-dim);
+    margin: -8px 0 0;
+    font-style: italic;
   }
   .controls {
     font-size: 0.78rem;

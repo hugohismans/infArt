@@ -95,8 +95,36 @@ export const CONFIG = {
     minWidth: 0.5,
     maxWidth: 2.0,
     maxHeight: 2.0,
-    /** Taille max (px) des textures factices. */
+    /** Taille max (px) des textures factices (mode hors ligne). */
     placeholderTextureSize: 128,
+    /** Taille max (px) des textures d'œuvres affichées. */
+    textureSize: { desktop: 768, mobile: 512 },
+    /** Taille max (px) quand on s'approche (sources IIIF uniquement). */
+    textureSizeHigh: { desktop: 1686, mobile: 1024 },
+    /** Distance (m) sous laquelle on charge la haute résolution, et au-delà de laquelle on la libère. */
+    highResDistance: 3.2,
+    highResRelease: 6,
+    /** Nombre max de textures haute résolution simultanées. */
+    maxHighRes: 3,
+    /** Distance (m) d'affichage du texte des cartels, et de libération. */
+    cartelDistance: 7,
+    cartelRelease: 10,
+    /** Réserve d'œuvres préchargées (images prêtes) visée. */
+    bufferTarget: 10,
+    /** Nombre d'œuvres demandées par lot à l'API. */
+    batchSize: 24,
+    maxConcurrentLoads: 4,
+    /** Délai max de chargement d'une image (ms). */
+    loadTimeoutMs: 20000,
+    /** Images trop petites ou trop allongées ignorées. */
+    minImageSize: 120,
+    maxAspect: 4.2,
+    /** Plus petit côté visible d'une œuvre (m) : une miniature reste petite mais visible. */
+    minSize: 0.09,
+    /** Durée du fondu d'apparition d'une œuvre (s). */
+    fadeDuration: 0.9,
+    /** Distance max (m) pour ouvrir la fiche d'une œuvre. */
+    pickDistance: 7,
   },
 
   debug: {

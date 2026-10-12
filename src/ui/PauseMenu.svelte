@@ -7,6 +7,7 @@
     autoWalk: boolean;
     reduceMotion: boolean;
     debugVisible: boolean;
+    filterSensitive: boolean;
     onResume: () => void;
     onNewVisit: () => void;
   }
@@ -15,6 +16,7 @@
     autoWalk = $bindable(),
     reduceMotion = $bindable(),
     debugVisible = $bindable(),
+    filterSensitive = $bindable(),
     onResume,
     onNewVisit,
   }: Props = $props();
@@ -48,6 +50,10 @@
     <label class="toggle">
       <input type="checkbox" bind:checked={reduceMotion} />
       <span>{t('menu.reduceMotion')}</span>
+    </label>
+    <label class="toggle">
+      <input type="checkbox" bind:checked={filterSensitive} />
+      <span>{t('menu.filter')}</span>
     </label>
     <label class="toggle">
       <input type="checkbox" bind:checked={debugVisible} />

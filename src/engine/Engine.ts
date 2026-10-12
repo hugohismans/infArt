@@ -9,6 +9,9 @@ import { KeyboardInput } from './input/KeyboardInput';
 import { MouseInput } from './input/MouseInput';
 import { TouchInput } from './input/TouchInput';
 import { Player } from './Player';
+import type { Artwork } from '../../shared/artwork';
+import type { ArtContext, ArtPiece } from '../art/ArtPiece';
+import type { LibraryStats } from '../art/ArtLibrary';
 
 const DEG = Math.PI / 180;
 
@@ -18,6 +21,8 @@ export interface EngineOptions {
   /** Accélère la simulation (tests automatisés uniquement). */
   timeScale?: number;
   autoWalk?: boolean;
+  /** Vraies œuvres (sinon œuvres factices). */
+  art?: ArtContext;
 }
 
 export interface EngineStats {
@@ -34,6 +39,7 @@ export interface EngineStats {
   world: WorldStats;
   elapsed: number;
   distanceWalked: number;
+  art: (LibraryStats & { gpuMB: number; liveTextures: number; highRes: number }) | null;
 }
 
 export const isTouchDevice = (): boolean => window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
@@ -67,11 +73,23 @@ export class Engine {
   private fpsTime = 0;
   private fps = 0;
   private frameMs = 0;
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly pickList: THREE.Object3D[] = [];
+  private aimTimer = 0;
+  private aimed: Artwork | null = null;
+  private pumpTimer = 0;
+  private readonly frustum = new THREE.Frustum();
+  private readonly projView = new THREE.Matrix4();
+  private readonly sphere = new THREE.Sphere();
 
   /** Appelé quand le visiteur demande le menu (Échap, perte du pointer lock). */
   onMenuRequest: (() => void) | null = null;
   /** Appelé quand l'auto-marche est coupée par une action du visiteur. */
   onAutoWalkChange: ((enabled: boolean) => void) | null = null;
+  /** Le visiteur a cliqué / touché une œuvre. */
+  onArtworkOpen: ((artwork: Artwork) => void) | null = null;
+  /** L'œuvre visée au centre de l'écran change (PC, souris capturée). */
+  onAimChange: ((artwork: Artwork | null) => void) | null = null;
 
   constructor(
     private readonly container: HTMLElement,
@@ -97,7 +115,8 @@ export class Engine {
     this.camera = new THREE.PerspectiveCamera(CONFIG.camera.fovLandscape, 1, CONFIG.camera.near, amb.fog.far + 5);
     this.camera.rotation.order = 'YXZ';
 
-    this.world = new World(options.seed, amb);
+    if (options.art) options.art.viewer = this;
+    this.world = new World(options.seed, amb, options.art ?? null);
     this.scene.add(this.world.root);
     const start = this.world.init();
     this.player.position = start.position;
@@ -109,7 +128,12 @@ export class Engine {
     this.keyboard = new KeyboardInput(this.input);
     this.mouse = new MouseInput(this.renderer.domElement, this.input);
     this.mouse.onUnlock = () => this.onMenuRequest?.();
+    this.mouse.onLockedClick = () => this.openAt(0, 0);
     this.touch = new TouchInput(this.renderer.domElement, this.input, overlay);
+    this.touch.onTap = (x, y) => {
+      const r = this.renderer.domElement.getBoundingClientRect();
+      this.openAt(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
+    };
     this.autoWalk = new AutoWalk(this.world, options.seed);
     this.autoWalkEnabled = options.autoWalk ?? false;
     this.timeScale = options.timeScale ?? 1;
@@ -143,6 +167,33 @@ export class Engine {
     if (!isTouchDevice()) this.mouse.lock();
   }
 
+  /** Œuvre sous un point de l'écran (coordonnées normalisées -1..1), si assez proche et non masquée. */
+  pick(ndcX: number, ndcY: number): Artwork | null {
+    this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    this.raycaster.far = CONFIG.art.pickDistance;
+    const hits = this.raycaster.intersectObjects(this.world.pickables(this.pickList), false);
+    const piece = hits[0]?.object.userData.artPiece as ArtPiece | undefined;
+    return piece?.artwork ?? null;
+  }
+
+  /**
+   * Le visiteur peut-il voir cet objet en ce moment ? (dans le champ de la caméra et
+   * assez près pour qu'un changement se remarque malgré le brouillard)
+   */
+  watching(object: THREE.Object3D): boolean {
+    const e = object.matrixWorld.elements;
+    this.sphere.center.set(e[12]!, 1.6, e[14]!);
+    this.sphere.radius = 1.8;
+    if (this.sphere.center.distanceTo(this.camera.position) > 18) return false;
+    return this.frustum.intersectsSphere(this.sphere);
+  }
+
+  private openAt(ndcX: number, ndcY: number): void {
+    if (this.paused) return;
+    const art = this.pick(ndcX, ndcY);
+    if (art) this.onArtworkOpen?.(art);
+  }
+
   get autoWalkActive(): boolean {
     return this.autoWalkEnabled;
   }
@@ -174,6 +225,14 @@ export class Engine {
       world: this.world.stats(),
       elapsed: this.elapsed,
       distanceWalked: this.distanceWalked,
+      art: this.options.art
+        ? {
+            ...this.options.art.library.stats(),
+            gpuMB: this.options.art.loader.liveBytes / 1048576,
+            liveTextures: this.options.art.loader.liveTextures,
+            highRes: this.options.art.budget.highRes,
+          }
+        : null,
     };
   }
 
@@ -186,6 +245,7 @@ export class Engine {
     this.mouse.dispose();
     this.touch.dispose();
     this.world.dispose();
+    if (this.options.art?.viewer === this) this.options.art.viewer = null;
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
@@ -271,5 +331,25 @@ export class Engine {
 
     this.camera.position.set(this.player.position.x, this.player.eyeY, this.player.position.z);
     this.camera.rotation.set(this.player.pitch, this.player.yaw, 0);
+    this.camera.updateMatrixWorld();
+    this.projView.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+    this.frustum.setFromProjectionMatrix(this.projView);
+
+    this.world.updateArts(dt, this.player.position);
+    this.pumpTimer -= dt;
+    if (this.pumpTimer <= 0) {
+      this.pumpTimer = 0.25;
+      this.options.art?.library.pump();
+    }
+    // Viseur : quelle œuvre est au centre de l'écran ?
+    this.aimTimer -= dt;
+    if (this.aimTimer <= 0) {
+      this.aimTimer = 0.15;
+      const aimed = this.mouse.locked ? this.pick(0, 0) : null;
+      if (aimed !== this.aimed) {
+        this.aimed = aimed;
+        this.onAimChange?.(aimed);
+      }
+    }
   }
 }
