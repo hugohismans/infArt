@@ -33,6 +33,9 @@
   /** Les cadres sont un peu tournés vers le visiteur (vus de face, ils restent lisibles). */
   const TURN = 58;
   const SPEED = 55; // px / s
+  /** Un cadre qui dépasse le visiteur (z > NEAR) repart au fond, en SPAWN. */
+  const NEAR = 420;
+  const SPAWN = NEAR - DEPTH;
 
   interface Slot {
     el?: HTMLDivElement;
@@ -77,8 +80,10 @@
   function place(s: Slot): void {
     if (!s.el) return;
     // Brume : les cadres naissent dans le noir au fond et s'effacent en passant à côté.
-    const far = Math.min(1, Math.max(0, (s.z + DEPTH) / (DEPTH * 0.45)));
-    const near = Math.min(1, Math.max(0, (420 - s.z) / 260));
+    // (Un cadre recyclé repart du fond à opacité nulle : il ne « clignote » pas en réapparaissant,
+    // et sa nouvelle image a le temps d'arriver avant d'être visible.)
+    const far = Math.min(1, Math.max(0, (s.z - SPAWN) / (DEPTH * 0.4)));
+    const near = Math.min(1, Math.max(0, (NEAR - s.z) / 260));
     s.el.style.opacity = String(far * near);
     s.el.style.transform = `translate3d(${s.side * HALF_WIDTH - s.w / 2}px, ${-s.h / 2}px, ${s.z}px) rotateY(${-s.side * TURN}deg)`;
   }
@@ -104,7 +109,7 @@
       floor.style.transform = `translate3d(0, 0, ${travelled}px) rotateX(90deg) translateY(-3000px)`;
       for (const s of slots) {
         s.z += v;
-        if (s.z > 420) {
+        if (s.z > NEAR) {
           s.z -= DEPTH;
           assign(s);
         }
