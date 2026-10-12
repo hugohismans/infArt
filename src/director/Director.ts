@@ -33,6 +33,8 @@ export interface Zone {
   blendSteps: number;
   /** Tension visée au moment où la zone a été choisie. */
   tension: number;
+  /** Zone mise en scène par la voix off : « sortie » = le chemin vers l'encadrement dans le néant. */
+  special?: 'sortie';
 }
 
 /** Aile thématique : indépendante des zones, elle peut traverser une transition. */
@@ -82,6 +84,11 @@ export class Director {
   /** Modules créés depuis la dernière aile thématique, la dernière étrangeté. */
   private sinceWing = 0;
   private sinceOddity = 0;
+  /**
+   * Étrangeté demandée par la voix off (une histoire en a besoin) : posée sur les modules
+   * suivants jusqu'à ce qu'elle la retire.
+   */
+  requestedOddity: Oddity | null = null;
   /** Fournit un thème prêt (œuvres chargées), ou null. Renseigné par le monde. */
   claimTheme: (() => ArtTheme | null) | null = null;
   /** Multiplicateur de fréquence des ailes (un thème apparenté aux goûts du visiteur est prêt). */
@@ -166,6 +173,7 @@ export class Director {
   private nextOddity(state: ZoneState, rng: Rng): Oddity | undefined {
     const d = CONFIG.director;
     if (Director.debugOddity) return Director.debugOddity;
+    if (this.requestedOddity) return this.requestedOddity;
     this.sinceOddity++;
     // Jamais pendant la visite rassurante du début.
     if (state.zone.transition === 'depart' || this.sinceOddity < d.oddityGap) return undefined;
@@ -188,6 +196,12 @@ export class Director {
     if (!theme) return undefined;
     this.sinceWing = 0;
     return { id: this.idBase + this.wingCount++, theme, left: rng.int(d.wingLength[0], d.wingLength[1]) };
+  }
+
+  /** Zone imposée par la voix off (ambiance, transition, durée). */
+  makeZone(ambianceId: string, from: AmbiancePreset, transition: TransitionKind, length: number, special?: Zone['special']): ZoneState {
+    const ambiance = this.ambiances[ambianceId] ?? this.start;
+    return { zone: { id: this.idBase + this.zoneCount++, ambiance, from, transition, length, blendSteps: 0, tension: ambiance.tension, ...(special ? { special } : {}) }, step: 0 };
   }
 
   /** Aile imposée (panneau d'orientation, voix off) : `theme` sur `length` modules. */

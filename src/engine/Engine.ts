@@ -1,10 +1,9 @@
 import * as THREE from 'three';
-import type { ArtTheme } from '../../shared/themes';
 import type { AmbiancePreset } from '../ambiances/types';
 import { CONFIG } from '../config';
 import { pointSegmentDistance, type Segment } from '../world/math2d';
 import type { WorldModule } from '../world/WorldModule';
-import { World, type WorldStats } from '../world/World';
+import { World, type HubOptions, type WorldStats } from '../world/World';
 import { AutoWalk } from './AutoWalk';
 import { InputState } from './input/InputState';
 import { KeyboardInput } from './input/KeyboardInput';
@@ -29,8 +28,8 @@ export interface EngineOptions {
   ambiance: AmbiancePreset;
   /** Départ dans une rotonde aux portes ouvrant sur plusieurs ambiances. */
   startHub?: boolean;
-  /** Première visite : thème promis par la voix off, fléché sur une porte de la rotonde. */
-  firstTheme?: ArtTheme | null;
+  /** Salle ronde de départ : thème promis, finale, panneaux de la voix off. */
+  hub?: HubOptions;
   /** Qualité de rendu (auto par défaut). */
   quality?: QualitySetting;
   /** Accélère la simulation (tests automatisés uniquement). */
@@ -191,7 +190,7 @@ export class Engine {
     this.scene.add(this.ground.mesh);
     // La lampe suit la caméra ; sa cible est placée devant à chaque image.
     this.scene.add(this.flashlight, this.flashlight.target);
-    const start = this.world.init(options.startHub ?? false, options.firstTheme ?? null);
+    const start = this.world.init(options.startHub ?? false, options.hub ?? {});
     this.player.position = start.position;
     this.player.yaw = start.yaw;
     // Pré-génère les environs avant la première image.
@@ -382,6 +381,21 @@ export class Engine {
     if (this.paused) return;
     const art = this.pick(ndcX, ndcY);
     if (art) this.onArtworkOpen?.(art);
+  }
+
+  /** La sortie ramène à la salle ronde : le monde repart de zéro autour du visiteur. */
+  returnToStart(opts: HubOptions = {}): void {
+    // (Un passage au noir masque le changement.)
+    this.onRupture?.('noir');
+    const start = this.world.restart(opts);
+    this.player.position = start.position;
+    this.player.yaw = start.yaw;
+    this.player.pitch = 0;
+    this.player.floorY = 0;
+    for (let i = 0; i < 40; i++) this.world.update(this.player.position);
+    this.world.markWarm();
+    this.autoWalk.reset();
+    this.previousModule = null;
   }
 
   /** Déplace le monde et le visiteur d'un bloc (raccordement à un autre visiteur). */

@@ -210,7 +210,7 @@ export class ArtLibrary {
    * Prépare et ouvre tout de suite un thème précis (promis par un panneau, ou par la voix
    * off) ; il reste épinglé jusqu'à `unpinTheme`.
    */
-  openTheme(theme: ArtTheme): void {
+  openTheme(theme: ArtTheme, pin = true): void {
     let p = this.activePools.find((x) => x.theme.id === theme.id);
     if (!p && this.upcoming?.theme.id === theme.id) {
       p = this.upcoming;
@@ -218,12 +218,12 @@ export class ArtLibrary {
       this.activePools.push(p);
     }
     if (!p) {
-      p = { theme, queued: [], ready: [], loading: 0, batch: 0, fetching: false, exhausted: false, active: true, dropped: false, lastTake: 0, interest: false, pinned: true, waiters: [] };
+      p = { theme, queued: [], ready: [], loading: 0, batch: 0, fetching: false, exhausted: false, active: true, dropped: false, lastTake: 0, interest: false, pinned: pin, waiters: [] };
       this.activePools.push(p);
       this.recentThemes.push(theme.id);
     }
     p.active = true;
-    p.pinned = true;
+    p.pinned ||= pin;
     p.lastTake = performance.now();
     this.trimPools();
     this.pump();
@@ -253,6 +253,34 @@ export class ArtLibrary {
     }
   }
   private readonly banned = new Set<string>();
+
+  /** Le visiteur change d'avis : le thème peut revenir. */
+  unbanTheme(id: string): void {
+    this.banned.delete(id);
+  }
+
+  /** Le thème le plus proche des goûts du moment (regards, fiches, favoris), sans le consommer. */
+  topInterest(): ArtTheme | null {
+    const now = performance.now();
+    let best: ArtTheme | null = null;
+    let score = 0.2;
+    for (const i of this.interests.values()) {
+      const s = this.decayed(i, now);
+      if (s > score && this.themeAvailable(i.theme)) {
+        score = s;
+        best = i.theme;
+      }
+    }
+    return best;
+  }
+
+  /** `n` thèmes fixes servis par les sources, au hasard, sauf ceux de `exclude`. */
+  pickThemes(n: number, exclude: readonly string[] = []): ArtTheme[] {
+    const pool = THEMES.filter((t) => !t.like && this.themeAvailable(t) && !exclude.includes(t.id));
+    const out: ArtTheme[] = [];
+    while (out.length < n && pool.length > 0) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]!);
+    return out;
+  }
 
   /**
    * Un emplacement d'aile attend une œuvre du thème, encore en chargement : il patiente

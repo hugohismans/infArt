@@ -13,7 +13,8 @@
     client: ArtClient;
     onClose: () => void;
     /** L'œuvre vient d'entrer dans la collection. */
-    onFavorite?: (art: Artwork) => void;
+    /** Favori ajouté (`added`) ou retiré. */
+    onFavorite?: (art: Artwork, added: boolean) => void;
   }
   let { artwork, client, onClose, onFavorite }: Props = $props();
 
@@ -30,7 +31,7 @@
   const saved = $derived(collection.has(artwork.id));
 
   function toggleFav() {
-    if (collection.toggle(artwork)) onFavorite?.(artwork);
+    onFavorite?.(artwork, collection.toggle(artwork));
     progress.collectionChanged();
   }
   const typeLabel = $derived(t(`type.${artwork.type}` as MessageKey));

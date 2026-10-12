@@ -407,7 +407,7 @@ function cap(id: string, w: number): ModuleDef {
  * (une par point cardinal, l'entrée comprise) ; les quatre pans en biais portent des œuvres.
  * Elle n'est jamais tirée au hasard : le monde la place au départ (voir World.init).
  */
-function rotonde(id: string, w: number): ModuleDef {
+function rotonde(id: string, w: number, extraDoor = false): ModuleDef {
   const sides = 8;
   const half = Math.PI / sides;
   // Pans assez larges pour une porte et deux jambages d'au moins 1,2 m.
@@ -426,7 +426,8 @@ function rotonde(id: string, w: number): ModuleDef {
     const at = (u: number) => v2(mid.x + t.x * u, mid.z + t.z * u);
     footprint.push(at(-s));
     // Parcours dans le sens qui tourne la normale du mur vers l'intérieur.
-    if (k % 2 === 0) {
+    // (Variante de la finale : une cinquième porte, sur le pan en biais de droite, au fond.)
+    if (k % 2 === 0 || (extraDoor && k === 3)) {
       const dw = w / 2;
       walls.push({ seg: { a: at(s), b: at(dw) }, hangable: false }, { seg: { a: at(-dw), b: at(-s) }, hangable: false });
       lintels.push({ a: at(dw), b: at(-dw) });
@@ -475,6 +476,7 @@ export function makeModuleDefs(corridorWidth: number, furniture: { small: RoomFu
     sas('sas', 3.2),
     cap('cap', w),
     rotonde('rotonde', w),
+    rotonde('rotonde-finale', w, true),
   ];
   return Object.fromEntries(defs.map((d) => [d.id, d]));
 }

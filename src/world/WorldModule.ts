@@ -10,9 +10,19 @@ import type { PresetMaterials } from './resources';
 import { Rng } from './random';
 import type { ResourceCache } from './resources';
 import { buildDecor } from '../decor';
-import { buildSign, signSlot, signSpot, slotHitsSign, type SignSpot } from './signs';
+import { buildSign, signSlot, signSpot, slotHitsSign, type SignLook, type SignSpot } from './signs';
+
+/** Panneau d'orientation d'une ouverture : le thème qui attend derrière, ou un texte (histoires). */
+export interface ModuleSign extends SignLook {
+  connector: number;
+  themeId?: string;
+  /** Marque de la voix off (« sortie », « atelier »…) pour reconnaître ses panneaux. */
+  tag?: string;
+}
 import type { ArtSlotDef } from './modules/defs';
 import type { Artwork } from '../../shared/artwork';
+import type { SpecialRoom } from './World';
+import { buildDoorFrame, buildEasel } from './specialProps';
 
 /**
  * Œuvres d'un module venu d'un autre visiteur (visite à deux) : celles qu'il a accrochées,
@@ -105,8 +115,44 @@ export class WorldModule {
   /** Rotonde de départ : zone imposée à chacune de ses ouvertures (une ambiance par porte). */
   exitZones: ZoneState[] | null = null;
   /** Panneaux d'orientation (à fixer avant `build`) : l'ouverture et le thème qui l'attend. */
-  signs: Array<{ connector: number; title: string; themeId: string }> = [];
+  signs: ModuleSign[] = [];
+  /** Salles mises en scène derrière certaines ouvertures (voix off). */
+  exitSpecial: Record<number, SpecialRoom> | null = null;
+  /** Ce module est une salle mise en scène (à fixer avant `build`). */
+  special: 'atelier' | 'sortie' | 'favoris' | null = null;
+  /** Salle des favoris : les œuvres à accrocher, dans l'ordre des emplacements. */
+  forcedArt: Artwork[] | null = null;
+  /** Point d'intérêt de la salle mise en scène (toile, encadrement), repère du module. */
+  private specialLocal: Vec2 | null = null;
+
+  /** Point d'intérêt de la salle mise en scène, repère du monde (suit l'origine flottante). */
+  get specialPoint(): Vec2 | null {
+    return this.specialLocal ? applyTransform(this.transform, this.specialLocal) : null;
+  }
   private signParts: Array<{ dispose(): void }> = [];
+  /** Panneaux construits (pour pouvoir les décrocher). */
+  private signObjects: Array<{ object: THREE.Object3D; dispose(): void }> = [];
+
+  /**
+   * Décroche des panneaux (la voix off en a posé sur plusieurs carrefours d'avance : une
+   * fois le bon trouvé, les autres disparaissent). Ce qui attend derrière ne change pas.
+   */
+  clearSigns(keep: (s: ModuleSign) => boolean): void {
+    if (this.signs.every(keep)) return;
+    for (const o of this.signObjects) {
+      o.object.removeFromParent();
+      o.dispose();
+    }
+    this.signObjects = [];
+    this.signs = this.signs.filter(keep);
+    for (const sign of this.signs) {
+      const spot = signSpot(this.def, this.preset, sign.connector);
+      if (!spot) continue;
+      const built = buildSign(spot, sign, this.preset);
+      this.group.add(built.object);
+      this.signObjects.push(built);
+    }
+  }
   /** Étrangeté « porte murée » : l'entrée sera murée derrière le visiteur. */
   sealEntrance = false;
   /**
@@ -241,9 +287,18 @@ export class WorldModule {
       const spot = signSpot(this.def, this.preset, sign.connector);
       if (!spot) continue;
       spots.push(spot);
-      const built = buildSign(spot, sign.title, this.preset);
+      const built = buildSign(spot, sign, this.preset);
       this.group.add(built.object);
-      this.signParts.push(built);
+      this.signObjects.push(built);
+    }
+    // Salles mises en scène : le chevalet de l'atelier, l'encadrement au bout de la sortie.
+    if (this.special === 'atelier' || this.special === 'sortie') {
+      const far = this.def.navPoints[0]?.z ?? 3;
+      const at = this.special === 'atelier' ? { x: 0, z: far + 0.6 } : { x: 0, z: far * 0.75 };
+      const prop = this.special === 'atelier' ? buildEasel(at.x, at.z) : buildDoorFrame(at.x, at.z);
+      this.group.add(prop.object);
+      this.signParts.push(prop);
+      this.specialLocal = at;
     }
     const odd = this.zone.oddity;
     // Salle vide : les œuvres sont parties, il reste les clous et les traces des cadres.
@@ -269,7 +324,8 @@ export class WorldModule {
       }
       // Répétition d'un couloir déjà vu : la même œuvre au même endroit.
       // (Module d'un autre visiteur : son œuvre, ou on attend qu'il la publie.)
-      const copied = remote ? remote.walls.get(index) : this.loopFrom?.pieces[index]?.artwork;
+      // Salle des favoris : les œuvres de la collection du visiteur, une par emplacement.
+      const copied = remote ? remote.walls.get(index) : (this.forcedArt?.shift() ?? this.loopFrom?.pieces[index]?.artwork);
       if (copied) opts.artwork = copied;
       else if (remote) opts.awaitRemote = true;
       if (triple && tripleLeft > 0 && !slot.hangY) {
@@ -285,10 +341,12 @@ export class WorldModule {
       this.wallPieces.push(art);
       this.group.add(art.object);
     };
-    for (const slot of emptied ? [] : this.def.artSlots.filter((sl) => !spots.some((sp) => slotHitsSign(sl, sp)))) {
+    // L'atelier et le bout de la sortie n'ont pas d'œuvre au mur : leur objet suffit.
+    const bare = emptied || this.special === 'atelier' || this.special === 'sortie';
+    for (const slot of bare ? [] : this.def.artSlots.filter((sl) => !spots.some((sp) => slotHitsSign(sl, sp)))) {
       // Une impasse (ou un bouchon) expose toujours son œuvre unique.
       const always = this.def.kind === 'cap' || this.def.kind === 'deadend';
-      if (!always && !rng.chance(density)) continue;
+      if (!always && !this.forcedArt?.length && !rng.chance(density)) continue;
       const wallHeight = slot.wallHeight ?? this.preset.geometry.ceilingHeight * this.def.ceilingScale;
       hung.push(slot);
       // Accrochage serré : d'autres rangs au-dessus, jusqu'au plafond.
@@ -597,6 +655,8 @@ export class WorldModule {
     this.ownedGeometries = [];
     for (const p of this.signParts) p.dispose();
     this.signParts = [];
+    for (const p of this.signObjects) p.dispose();
+    this.signObjects = [];
     this.drips = [];
     this.steam = null;
     this.steamPuffs = [];

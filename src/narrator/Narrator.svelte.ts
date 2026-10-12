@@ -1,37 +1,88 @@
-import { resolveTheme, themesFor, type ArtTheme } from '../../shared/themes';
+import { resolveTheme, themesFor } from '../../shared/themes';
 import type { Artwork } from '../../shared/artwork';
 import type { ArtLibrary } from '../art/ArtLibrary';
+import { LOCAL_SOURCE } from '../art/ArtClient';
 import type { AudioEngine } from '../audio/AudioEngine';
 import { AMBIANCES } from '../ambiances';
 import { CONFIG } from '../config';
-import type { Engine } from '../engine/Engine';
-import { readJson, writeJson } from '../progress/storage';
+import { isTouchDevice, type Engine } from '../engine/Engine';
+import { collection } from '../progress/collection.svelte';
+import { progress } from '../progress/achievements.svelte';
 import { isOpenAir } from '../world/resources';
-import type { WorldModule } from '../world/WorldModule';
+import type { HubOptions, SignPlan, World } from '../world/World';
+import type { ModuleSign, WorldModule } from '../world/WorldModule';
+import { loadMemory, saveMemory, type Memory, type SeaState } from './memory';
 import { estimatedDuration, LINES, lineFamily, type LineId } from './script';
 
-const KEY = 'galerie-infinie:narrateur';
 /** Le thème proposé à la première visite. */
 const FIRST_THEME = 'mer';
 
-/**
- * Où en est le visiteur avec la mer : proposée (porte fléchée de la rotonde), prise,
- * refusée une fois (elle sera refléchée plus loin), refléchée, ou retirée pour de bon.
- */
-type SeaState = 'propose' | 'pris' | 'refuse' | 'relance' | 'retire';
+/** La toile blanche du Conservateur (histoire 1), quand le visiteur la garde. */
+export const SANS_TITRE: Artwork = {
+  id: `${LOCAL_SOURCE}:sans-titre`,
+  source: LOCAL_SOURCE,
+  type: 'peinture',
+  title: 'Sans titre',
+  creator: 'le Conservateur',
+  date: 'jamais terminé',
+  medium: 'Toile blanche, sur châssis',
+  description: 'Le seul tableau du Conservateur. Il n’a jamais su peindre, seulement accrocher. Personne ne l’avait regardé avant vous.',
+  tags: ['atelier'],
+  imageUrl: 'oeuvres/sans-titre.jpg',
+  aspectRatio: 900 / 1150,
+  sourceUrl: '',
+  license: 'Ailleurs',
+  credit: 'Le Conservateur',
+};
 
-interface Memory {
-  /** Répliques déjà entendues (chacune n'est jouée qu'une fois, sauf les retours). */
-  heard: string[];
-  sea: SeaState;
-  firstVisit: number | null;
-  lastVisit: number | null;
-  /** Retours ordinaires : R03 et R04 alternent. */
-  returns: number;
-  ignoredSigns: number;
+/** Variantes des événements : jouées, une fois chacune, quand l'original a déjà été entendu. */
+const VARIANTS: Record<string, string[]> = Object.fromEntries(
+  Array.from({ length: 18 }, (_, i) => {
+    const n = (k: number) => `E${String(k).padStart(2, '0')}`;
+    return [n(i + 1), [n(19 + 2 * i), n(20 + 2 * i)]];
+  }),
+);
+
+/** Les mondes : première rencontre, puis retour lors d'une visite suivante. */
+const WORLDS: Record<string, [string, string]> = {
+  'beaux-arts': ['W01', 'W02'], 'white-cube': ['W03', 'W04'], serre: ['W05', 'W06'], baroque: ['W07', 'W08'],
+  'galerie-japonaise': ['W09', 'W10'], bibliotheque: ['W11', 'W12'], cabinet: ['W13', 'W14'], disquaire: ['W15', 'W16'],
+  videoclub: ['W17', 'W18'], arcade: ['W19', 'W20'], cinema: ['W21', 'W22'], ruines: ['W23', 'W24'],
+  travaux: ['W25', 'W26'], givre: ['W27', 'W28'], foret: ['W29', 'W30'], desert: ['W31', 'W32'],
+  neant: ['W33', 'W34'], 'reve-pastel': ['W35', 'W36'], vaporwave: ['W37', 'W38'], englouti: ['W39', 'W40'],
+  station: ['W41', 'W42'], 'musee-nuit': ['W43', 'W44'], 'bureaux-nuit': ['W45', 'W46'], hopital: ['W47', 'W48'],
+  parking: ['W49', 'W50'], 'back-rooms': ['W51', 'W52'], poolrooms: ['W53', 'W54'], escher: ['W55', 'W56'],
+  miroirs: ['W57', 'W58'], inverse: ['W59', 'W60'], geant: ['W61', 'W62'], miniature: ['W61', 'W62'], respire: ['W63', 'W64'],
+};
+
+/** Histoire 5 : les fragments, dans l'ordre ; un par visite (avec sa suite). L'index 10 est la question. */
+const FRAGMENTS: string[][] = [
+  ['H01'], ['H02'], ['H03'], ['H04'], ['H05'], ['H06'], ['H07'], ['H08'], ['H09'], ['H10'], ['H11'],
+  ['H18', 'H19'], ['H20'], ['H21', 'H22'], ['H23'], ['H24', 'H25'], ['H26'], ['H27', 'H28'], ['H29'],
+  ['H30', 'H31'], ['H32', 'H33'], ['H34', 'H35'], ['H36', 'H37'], ['H38', 'H39'], ['H40'],
+];
+const QUESTION = 10;
+
+/** Dates du calendrier (mois 1-12, jour). */
+function calendarLine(d: Date, m: Memory): LineId | null {
+  const mo = d.getMonth() + 1, day = d.getDate(), dow = d.getDay(), h = d.getHours();
+  const fixed: Record<string, LineId> = { '1-1': 'N01', '2-14': 'N02', '4-1': 'N03', '6-21': 'N04', '7-14': 'N05', '10-31': 'N06', '12-24': 'N07', '12-25': 'N08', '12-31': 'N09', '5-18': 'N19', '2-29': 'N20' };
+  const f = fixed[`${mo}-${day}`];
+  if (f) return f;
+  if (m.firstVisit) {
+    const first = new Date(m.firstVisit);
+    if (first.getMonth() === d.getMonth() && first.getDate() === day && first.getFullYear() < d.getFullYear()) return 'N17';
+  }
+  if (dow === 5 && day === 13) return 'N10';
+  if (h >= 3 && h < 4) return 'N16';
+  // Dernier dimanche de mars ou d'octobre : changement d'heure.
+  if (dow === 0 && (mo === 3 || mo === 10) && day + 7 > new Date(d.getFullYear(), mo, 0).getDate()) return 'N18';
+  if (dow === 0 && h >= 7 && h < 12) return 'N11';
+  if (dow === 1 && h >= 6 && h < 11) return 'N12';
+  if (mo === 9 && day <= 7) return 'N15';
+  if (mo === 7 || mo === 8) return 'N14';
+  return null;
 }
-
-const FRESH: Memory = { heard: [], sea: 'propose', firstVisit: null, lastVisit: null, returns: 0, ignoredSigns: 0 };
 
 /** Une réplique en cours de lecture. */
 interface Clip {
@@ -42,12 +93,14 @@ interface Clip {
 interface Pending {
   id: LineId;
   at: number;
+  after?: () => void;
 }
 
 /**
  * La voix off : le Conservateur. Il commente la visite en solo (jamais à deux), d'après
- * ce que fait le visiteur. Chaque réplique est un fichier audio (voix/<ID>.mp3, listés
- * dans voix/index.json) ; tant qu'il manque, la réplique s'affiche en sous-titre seul.
+ * ce que fait le visiteur, et raconte cinq histoires sur plusieurs visites (voir le doc
+ * « Trame de la voix off, saison 2 »). Chaque réplique est un fichier audio
+ * (voix/<ID>.mp3, listés dans voix/index.json) ; tant qu'il manque, sous-titre seul.
  *
  * Paramètres d'URL pour les essais : `narrateur=0` (muet), `narrateur=reset` (mémoire
  * effacée : première visite).
@@ -59,13 +112,18 @@ export class Narrator {
   private engine: Engine | null = null;
   private timer = 0;
   private active = false;
+  /** Le visiteur a demandé le silence (histoire 5, ou porte de la finale) : plus rien jusqu'à la fin. */
+  private silent = false;
   private queue: Pending[] = [];
-  private playing: { id: LineId; until: number; audio: Clip | null } | null = null;
+  private playing: { id: LineId; until: number; audio: Clip | null; after?: () => void } | null = null;
   private available: Set<string> | null = null;
   private sound = true;
   private lastEvent = -Infinity;
   private lastDebut = -Infinity;
+  private lastMonde = -Infinity;
+  private lastStory = -Infinity;
   private visitTime = 0;
+  private walkedAtStart = 0;
   private idle = 0;
   private push = 0;
   private placeholder = 0;
@@ -75,7 +133,41 @@ export class Narrator {
   private hiddenAt = 0;
   private leftRotonde = false;
   private seenAmbiance: string | null = null;
+  /** Cette visite : étrangetés croisées, escaliers, ruptures, pauses, fiches… */
+  private v = {
+    oddities: new Set<string>(),
+    stairs: 0,
+    ruptures: 0,
+    pauses: 0,
+    sheetAt: 0,
+    collectionOpens: 0,
+    removed: 0,
+    favsAdded: 0,
+    sheetsByArt: new Map<string, number>(),
+    gazeArt: '' as string,
+    gaze: 0,
+    lookDown: 0,
+    lookUp: 0,
+    spin: [] as Array<{ t: number; d: number }>,
+    lastYaw: 0,
+    run: 0,
+    autoWalk: 0,
+    lastWing: -1,
+    aspect: 0,
+    fragmentDone: false,
+    suitePending: null as string | null,
+    suiteAt: 0,
+    roundDone: false,
+    question: false,
+    sortieStarted: false,
+    signGapModules: 0,
+    rappel: false,
+    /** Une histoire a commencé ou s'est terminée pendant cette visite. */
+    storyMoment: false,
+  };
   private readonly onVisibility = () => this.visibility();
+  private readonly onResize = () => this.resized();
+  private readonly onFullscreen = () => this.fullscreenChanged();
   readonly disabled: boolean;
 
   constructor(
@@ -84,49 +176,76 @@ export class Narrator {
   ) {
     const q = new URLSearchParams(window.location.search).get('narrateur');
     this.disabled = q === '0';
-    if (q === 'reset') writeJson(KEY, FRESH);
-    this.memory = { ...FRESH, ...readJson<Partial<Memory>>(KEY, {}) };
+    this.memory = loadMemory(q === 'reset');
     if (this.memory.sea === 'retire') library.banTheme(FIRST_THEME);
     void this.loadManifest();
   }
 
-  /**
-   * Avant la visite : le thème à flécher sur une porte de la rotonde (tant que le visiteur
-   * n'a pas choisi), préparé tout de suite pour que l'aile soit prête.
-   */
-  firstTheme(): ArtTheme | null {
-    if (this.disabled || this.memory.sea !== 'propose') return null;
-    const t = resolveTheme(FIRST_THEME);
-    if (t) this.library.openTheme(t);
-    return t;
+  private get m(): Memory {
+    return this.memory;
   }
 
-  /** Début de la visite (solo). `hub` : départ dans la rotonde. */
+  /**
+   * Avant la visite : comment préparer la salle ronde. Première visite, la porte « LA MER »
+   * (son aile se prépare tout de suite) ; quand toutes les histoires sont finies, la salle
+   * ronde à cinq portes de la finale.
+   */
+  hubOptions(): HubOptions {
+    if (this.disabled) return {};
+    if (this.m.story === 6 && !this.m.finaleDone) return { finale: true, prepare: (mod, world) => this.prepareFinale(mod, world) };
+    if (this.m.sea !== 'propose') return {};
+    const t = resolveTheme(FIRST_THEME);
+    if (t) this.library.openTheme(t);
+    return { firstTheme: t };
+  }
+
+  /** Début de la visite (solo). `hub` : départ dans la salle ronde. */
   start(engine: Engine, hub: boolean): void {
     this.engine = engine;
     this.active = !this.disabled;
+    const m = this.m;
     const now = Date.now();
-    const m = this.memory;
     const first = m.firstVisit === null;
     if (first) m.firstVisit = now;
+    const lastVisit = m.lastVisit;
+    m.visits++;
+    const dayKey = new Date(now).toDateString();
+    m.day = m.day.key === dayKey ? { key: dayKey, n: m.day.n + 1 } : { key: dayKey, n: 1 };
+    const device = isTouchDevice() ? 'mobile' : 'pc';
+    const deviceChanged = m.device !== null && m.device !== device;
+    m.device = device;
+    engine.world.signPlanner = (mod, exits) => this.plan(mod, exits);
+    this.walkedAtStart = m.walked;
     if (this.active) {
-      if (hub && m.sea === 'propose') {
+      if (hub && m.story === 6 && !m.finaleDone) {
+        this.say('X07', 2);
+        this.say('X08', 2);
+      } else if (hub && m.sea === 'propose') {
         this.say('A01', 2);
         this.say('A02', 2);
-      } else if (!first) this.sayReturn(now);
+      } else if (!first) this.sayReturn(now, lastVisit, deviceChanged);
     }
+    // Ce qu'on retient de la visite qui commence (mis à jour au fil de l'eau).
     m.lastVisit = now;
+    m.lastDuration = 0;
+    m.lastFavsAdded = 0;
+    m.lastWasDuo = false;
     this.save();
     this.prev = engine.world.currentModule;
     this.seenAmbiance = this.prev?.preset.id ?? null;
+    this.v.aspect = window.innerWidth / window.innerHeight;
     window.clearInterval(this.timer);
     this.timer = window.setInterval(() => this.tick(0.25), 250);
     document.addEventListener('visibilitychange', this.onVisibility);
+    window.addEventListener('resize', this.onResize);
+    document.addEventListener('fullscreenchange', this.onFullscreen);
   }
 
   stop(): void {
     window.clearInterval(this.timer);
     document.removeEventListener('visibilitychange', this.onVisibility);
+    window.removeEventListener('resize', this.onResize);
+    document.removeEventListener('fullscreenchange', this.onFullscreen);
     this.silence();
     this.engine = null;
   }
@@ -135,8 +254,11 @@ export class Narrator {
   setDuo(duo: boolean): void {
     if (this.disabled) return;
     this.active = !duo;
-    if (duo) this.silence();
-    else this.say('E18', 3);
+    if (duo) {
+      this.m.lastWasDuo = true;
+      this.save();
+      this.silence();
+    } else this.sayEvent('E18', 3);
   }
 
   /** Le son est coupé ou rétabli : la voix suit, les sous-titres restent. */
@@ -150,33 +272,129 @@ export class Narrator {
       if (p?.audio) {
         p.audio.stop();
         p.audio = null;
-        p.until = performance.now() / 1000 + estimatedDuration(LINES[p.id]) / 2;
+        p.until = performance.now() / 1000 + estimatedDuration(LINES[p.id] ?? '') / 2;
         this.audio.duck(false);
       }
       this.say('T01', 0.5);
     } else if (this.heard('T01')) this.say('T02', 0.5);
   }
 
+  // --- Ce que l'interface lui signale ------------------------------------------------
+
   /** Arrêt prolongé devant une œuvre. */
   dwell(art: Artwork): void {
-    if (!this.active) return;
+    if (!this.live) return;
     this.roomsSinceDwell = 0;
-    const m = this.engine?.world.currentModule;
-    if (this.memory.sea === 'retire' && themesFor(art).some((t) => t.theme.id === FIRST_THEME)) this.say('C05');
-    else if (m?.zone.wing?.theme.id === FIRST_THEME && this.memory.sea === 'pris') this.say('B02');
-    else this.say('D01');
+    const m = this.m;
+    const cur = this.engine?.world.currentModule;
+    const sea = themesFor(art).some((t) => t.theme.id === FIRST_THEME);
+    // Histoires en cours d'abord.
+    if (m.atelier.stage === 'quete') this.say(cur?.zone.oddity === 'salle-vide' && cur.def.kind === 'room' && !this.heard('P02') ? 'P02' : 'P09');
+    else if (m.sortie.stage === 'chemin' && m.sortie.step > 0) this.say('S10');
+    else if (m.autre.stage === 'poursuite') this.say(collection.has(art.id) ? 'V14' : 'V13');
+    else if (cur?.special === 'favoris') this.say('V19');
+    else if (m.sea === 'retire' && sea) this.say('C05');
+    else if (cur?.zone.wing?.theme.id === FIRST_THEME && m.sea === 'pris') this.say(this.heard('B02') ? 'M01' : 'B02');
+    else if (m.sea === 'pris' && sea && m.visits >= 2) this.say('M01');
+    else if (collection.has(art.id)) this.say('K10');
+    else {
+      const byType: Record<string, LineId> = { sculpture: 'E89', 'affiche-film': 'E90', 'jaquette-jeu': 'E91', 'pochette-disque': 'E92', 'couverture-livre': 'E93' };
+      const t = byType[art.type];
+      if (t && !this.heard(t)) this.say(t);
+      else this.say('D01');
+    }
+    this.calmMoment();
   }
 
-  favorite(): void {
-    if (this.active) this.say('D02');
+  /** Un favori ajouté (`added`) ou retiré. */
+  favorite(art: Artwork, added: boolean): void {
+    if (!this.live) return;
+    const n = collection.items.length;
+    const cur = this.engine?.world.currentModule;
+    if (!added) {
+      this.v.removed++;
+      if (performance.now() - this.v.sheetAt < 8000 && this.v.favsAdded > 0) this.say('K18');
+      else this.say(this.v.removed >= 3 ? 'K07' : 'K06');
+      return;
+    }
+    this.v.favsAdded++;
+    this.m.lastFavsAdded = this.v.favsAdded;
+    this.save();
+    if (cur?.special === 'favoris') return this.say('V29');
+    if (themesFor(art).some((t) => t.theme.id === FIRST_THEME) && this.m.sea === 'pris') return this.say('M08');
+    const milestones: Record<number, LineId> = { 5: 'K01', 10: this.m.story === 3 && this.m.autre.stage !== 'fin' ? 'K19' : 'K02', 25: 'K03', 50: 'K04', 100: 'K05' };
+    if (milestones[n]) return this.say(milestones[n]!);
+    const firstOfType: Record<string, LineId> = { 'affiche-film': 'K12', 'jaquette-jeu': 'K13', 'pochette-disque': 'K14', 'couverture-livre': 'K15', sculpture: 'K16' };
+    const t = firstOfType[art.type];
+    if (t && collection.items.filter((s) => s.art.type === art.type).length === 1) return this.say(t);
+    this.say('D02');
+  }
+
+  /** La collection est ouverte. */
+  collectionOpened(): void {
+    if (!this.live) return;
+    this.v.collectionOpens++;
+    if (this.m.atelier.canvas && collection.has(SANS_TITRE.id)) {
+      if (!this.heard('P24')) return this.say('P24');
+      if (this.m.visits > 1) this.say(this.heard('P25') ? 'K20' : 'P25');
+      return;
+    }
+    if (this.v.collectionOpens >= 5) return this.say('K09');
+    this.say('K08');
+  }
+
+  /** Fiche d'une œuvre ouverte, puis fermée. */
+  sheetOpened(art: Artwork): void {
+    this.v.sheetAt = performance.now();
+    this.m.sheets++;
+    this.save();
+    if (!this.live) return;
+    const k = (this.v.sheetsByArt.get(art.id) ?? 0) + 1;
+    this.v.sheetsByArt.set(art.id, k);
+    if (k === 3) return this.say('K17');
+    if (this.m.sheets === 10) return this.say('E71');
+    if (this.m.sheets === 1) this.say('E70');
+  }
+
+  sheetClosed(): void {
+    if (this.live && performance.now() - this.v.sheetAt < 2000) this.say('E72', 0.5);
+  }
+
+  /** Menu de pause refermé. */
+  resumed(): void {
+    if (!this.live) return;
+    this.v.pauses++;
+    if (this.v.pauses === 5) this.say('E74', 1);
+    else if (this.v.pauses === 1) this.say('E73', 1);
+  }
+
+  autoWalkChanged(on: boolean): void {
+    if (!this.live) return;
+    if (on) this.say('E75', 1);
+    else if (this.v.autoWalk > 20) this.say('E77', 0.5);
+    this.v.autoWalk = 0;
+  }
+
+  /** Changement d'ambiance brutal (noir, parasites). */
+  rupture(): void {
+    if (!this.live || this.quietRupture) return;
+    this.v.ruptures++;
+    const id = (['E60', 'E61', 'E62'] as const)[Math.min(2, this.v.ruptures - 1)]!;
+    this.say(id, 2);
   }
 
   /** Succès débloqué (hors « premier pas », obtenu à l'entrée). */
   achievement(id: string): void {
-    if (this.active && id !== 'premier-pas') this.say('E15');
+    if (!this.live || id === 'premier-pas') return;
+    if (id === 'la-sortie') this.say('S34', 4);
+    else this.sayEvent('E15');
   }
 
   // --- Déroulement ------------------------------------------------------------------
+
+  private get live(): boolean {
+    return this.active && !this.silent && !!this.engine;
+  }
 
   private tick(dt: number): void {
     const e = this.engine;
@@ -185,6 +403,11 @@ export class Narrator {
     this.updatePlayback(now);
     if (!this.active || e.isPaused) return;
     this.visitTime += dt;
+    // Mémoire de la visite (au cas où elle s'arrête brutalement).
+    this.m.walked = this.walkedAtStart + e.walked;
+    this.m.lastDuration = this.visitTime;
+    if (Math.floor(this.visitTime * 4) % 20 === 0) this.save();
+    if (this.silent) return;
     const cur = e.world.currentModule;
     if (cur && cur !== this.prev) {
       const prev = this.prev;
@@ -192,140 +415,900 @@ export class Narrator {
       if (prev) this.moved(prev, cur);
     }
 
-    // Immobile (sans même regarder autour : l'œil qui balaie la salle compte comme de l'activité).
-    // (Le temps passé à l'écouter ne compte pas.)
+    // Immobile (le temps passé à l'écouter ne compte pas).
     const still = e.player.speed < 0.05 && !e.input.hasMoveIntent && !this.playing && this.queue.length === 0;
     this.idle = still ? this.idle + dt : 0;
-    const [r1, r2] = CONFIG.narrator.idleRotonde;
-    if (cur?.def.kind === 'rotonde' && !this.leftRotonde && this.memory.sea === 'propose') {
-      if (this.idle >= r1 && !this.heard('A03')) {
-        this.say('A03');
-        this.idle = 0;
-      } else if (this.idle >= r2 - r1 && this.heard('A03')) this.say('A04');
-    } else if (this.idle >= CONFIG.narrator.idle) this.say('E02');
+    this.idleTriggers(cur);
 
     // Il pousse contre la limite d'un monde à ciel ouvert.
     const pushing = e.input.hasMoveIntent && e.player.speed < 0.15 && !!cur && isOpenAir(cur.preset);
     this.push = pushing ? this.push + dt : 0;
-    if (this.push >= CONFIG.narrator.pushLimit) this.say('E14');
+    if (this.push >= CONFIG.narrator.pushLimit) this.sayEvent('E14');
 
-    // Un cadre drapé (image pas encore là) qu'on regarde avec insistance.
+    // Ce qu'il regarde : un cadre drapé, la même œuvre longtemps, le sol, le plafond.
     const piece = e.pickPiece(0, 0);
-    this.placeholder = piece && !piece.artwork && e.player.speed < 0.4 ? this.placeholder + dt : 0;
-    if (this.placeholder >= 4) this.say('E11');
+    const slow = e.player.speed < 0.4;
+    this.placeholder = piece && !piece.artwork && slow ? this.placeholder + dt : 0;
+    if (this.placeholder >= 4) this.sayEvent('E11');
+    const id = piece?.artwork?.id ?? '';
+    this.v.gaze = id && id === this.v.gazeArt && slow ? this.v.gaze + dt : 0;
+    this.v.gazeArt = id;
+    if (this.v.gaze >= 60) this.say('E69');
+    else if (this.v.gaze >= 30) this.say(this.heard('E67') ? 'E68' : 'E67');
+    this.v.lookDown = e.player.pitch < -0.9 ? this.v.lookDown + dt : 0;
+    this.v.lookUp = e.player.pitch > 0.9 ? this.v.lookUp + dt : 0;
+    if (this.v.lookDown >= 10) this.say('E95');
+    if (this.v.lookUp >= 10) this.say('E96');
+    // Il tourne sur lui-même (deux tours en quelques secondes).
+    let d = e.player.yaw - this.v.lastYaw;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    this.v.lastYaw = e.player.yaw;
+    this.v.spin.push({ t: now, d: Math.abs(d) });
+    this.v.spin = this.v.spin.filter((s) => now - s.t < 6);
+    if (this.v.spin.reduce((a, s) => a + s.d, 0) > Math.PI * 4) this.say('E97');
+    // Course, auto-marche.
+    this.v.run = e.input.run && e.player.speed > CONFIG.player.walkSpeed * 1.2 ? this.v.run + dt : 0;
+    if (this.v.run > 1) this.say(this.m.sortie.stage === 'chemin' && this.m.sortie.step > 0 ? 'S36' : 'E78');
+    if (this.v.run > 60) this.say('E79');
+    if (e.autoWalkActive) {
+      this.v.autoWalk += dt;
+      if (this.v.autoWalk > 300) this.say('E76');
+    }
 
+    // Distance totale, durée de la visite.
+    const walked = this.m.walked;
+    if (walked > 42195) this.say('E83');
+    else if (walked > 10000) this.say('E82');
+    else if (walked > 5000) this.say('E81');
+    else if (walked > 1000) this.say('E80');
     if (this.visitTime >= 600) this.say('D08');
-    if (this.visitTime >= 1800) this.say('E16');
-    if (this.visitTime >= 3600) this.say('E17');
+    if (this.visitTime >= 1800) this.sayEvent('E16');
+    if (this.visitTime >= 3600) this.sayEvent('E17');
+    if (this.visitTime >= 45 && this.m.visits >= 2) this.say(this.m.device === 'mobile' ? 'E84' : 'E85');
+
+    this.specialRooms(cur);
+    this.storyTick(cur);
+  }
+
+  /** Immobile : salle ronde de la première visite, quête, sortie, banc… */
+  private idleTriggers(cur: WorldModule | null): void {
+    const [r1, r2] = CONFIG.narrator.idleRotonde;
+    const m = this.m;
+    if (cur?.def.kind === 'rotonde' && !this.leftRotonde && m.sea === 'propose') {
+      if (this.idle >= r1 && !this.heard('A03')) {
+        this.say('A03');
+        this.idle = 0;
+      } else if (this.idle >= r2 - r1 && this.heard('A03')) this.say('A04');
+      return;
+    }
+    if (this.idle < 6) return;
+    const tags = new Set(cur?.signs.map((s) => s.tag ?? ''));
+    if (tags.has('sortie1')) this.say(this.heard('S02') ? 'S03' : 'S02');
+    else if (tags.has('sortie3')) this.say('S13');
+    else if (tags.has('silence')) this.say('H15');
+    else if (tags.has('g-star')) this.say('G03');
+    if (this.idle < 12) return;
+    if (m.atelier.stage === 'quete') this.say('P15');
+    else if (m.autre.stage === 'traces' && m.autre.traces > 0) this.say('V06');
+    else if (cur?.zone.zone.special === 'sortie' && cur.special === 'sortie') this.say('S22');
+    else if (cur?.def.kind === 'room' && (cur.def.id === 'room-s' || cur.def.id === 'room-s-side')) this.say('E88');
+    if (this.idle >= 15) this.calmMoment();
+    if (this.idle >= CONFIG.narrator.idle) this.sayEvent('E02');
   }
 
   /** Passage d'un module à un autre : choix des portes, retours en arrière, découvertes. */
   private moved(prev: WorldModule, cur: WorldModule): void {
     const via = prev.connectors.findIndex((c) => c.neighbor?.module === cur);
     const backward = prev.connectors[0]?.neighbor?.module === cur && prev.def.kind !== 'rotonde';
-    const m = this.memory;
+    const m = this.m;
     const sea = (mod: WorldModule) => mod.zone.wing?.theme.id === FIRST_THEME;
 
-    // Sortie d'un module fléché : a-t-il suivi le panneau ?
-    if (!backward && via >= 0 && prev.signs.length > 0) {
-      const followed = prev.signs.some((s) => s.connector === via);
-      const seaSign = prev.signs.some((s) => s.themeId === FIRST_THEME);
-      if (prev.def.kind === 'rotonde' && seaSign && (m.sea === 'propose' || m.sea === 'refuse')) {
-        this.leftRotonde = true;
-        // Le choix est fait : l'accueil s'interrompt (même au milieu d'une phrase).
-        this.cutIntro();
-        if (followed) {
-          this.say(m.sea === 'propose' ? 'B01' : 'C06');
-          this.setSea('pris');
-        } else if (m.sea === 'propose') {
-          this.say('C01');
-          this.setSea('refuse');
-          // Deuxième chance, au prochain carrefour qui s'y prête.
-          this.engine!.world.forcedSign = resolveTheme(FIRST_THEME);
-        }
-      } else if (seaSign && m.sea === 'relance') {
-        if (followed) {
-          this.say('C03');
-          this.setSea('pris');
-        } else {
-          this.say('C04');
-          this.setSea('retire');
-          this.library.banTheme(FIRST_THEME);
-        }
-      } else if (prev.def.kind !== 'rotonde') {
-        if (followed) this.say('D05');
-        else {
-          m.ignoredSigns++;
-          this.say(m.ignoredSigns >= 2 && this.heard('D06') ? 'D07' : 'D06');
-          this.save();
-        }
-      }
-    }
+    if (!backward && via >= 0 && prev.signs.length > 0) this.leftSigned(prev, via);
     if (prev.def.kind === 'rotonde') this.leftRotonde = true;
-
-    // Entrée dans un module fléché.
-    if (!backward && cur.signs.length > 0 && cur.def.kind !== 'rotonde') {
-      if (cur.signs.some((s) => s.themeId === FIRST_THEME) && m.sea === 'refuse') {
-        this.engine!.world.forcedSign = null;
-        this.setSea('relance');
-        this.say('C02');
-      } else if (!cur.signs.some((s) => s.themeId === FIRST_THEME)) this.say('D04');
-    }
+    if (!backward && cur.signs.length > 0) this.enteredSigned(cur);
 
     // Demi-tours.
     this.backCount = backward ? this.backCount + 1 : 0;
-    if (backward && sea(prev) && m.sea === 'pris') this.say('B03');
-    if (this.backCount >= CONFIG.narrator.backtrackRooms) this.say('E12');
+    if (backward) {
+      if (sea(prev) && m.sea === 'pris') this.say('B03');
+      if (m.atelier.stage === 'quete') this.say('P13');
+      // Il repart par où il est venu, depuis le carrefour « SORTIE » qu'il avait suivi.
+      // (Un demi-tour au fond d'une impasse ne compte pas.)
+      if (m.sortie.stage === 'chemin' && m.sortie.step > 0 && prev.signs.some((sg) => sg.tag === `sortie${m.sortie.step}`)) this.sortieRenonce('S15');
+    }
+    if (this.backCount >= CONFIG.narrator.backtrackRooms) this.sayEvent('E12');
     if (!backward && sea(cur) && cur.zone.wing!.left === 1 && m.sea === 'pris') this.say('B04');
 
     // Il traverse sans rien regarder.
     if (!backward && cur.artCount > 0) {
       this.roomsSinceDwell++;
-      if (this.roomsSinceDwell >= CONFIG.narrator.rushRooms) this.say('E01');
+      if (this.roomsSinceDwell >= CONFIG.narrator.rushRooms) this.sayEvent('E01');
     }
+
+    // Ailes à thème (hors histoires) : entrée, sortie.
+    const wing = cur.zone.wing;
+    if (wing && wing.id !== this.v.lastWing && wing.theme.id !== FIRST_THEME && this.m.visits >= 2) this.say(this.heard('E63') ? 'E64' : 'E63');
+    else if (!wing && this.v.lastWing >= 0 && prev.zone.wing && prev.zone.wing.theme.id !== FIRST_THEME) this.say(this.heard('E65') ? 'E66' : 'E65');
+    this.v.lastWing = wing?.id ?? -1;
 
     // Nouvelle ambiance (hors portes de la rotonde : on ne fait que commencer).
     const amb = AMBIANCES[cur.preset.id] ? cur.preset.id : null;
     if (amb && amb !== this.seenAmbiance) {
-      if (this.seenAmbiance && prev.def.kind !== 'rotonde') this.say('D03');
+      if (m.sortie.stage === 'chemin' && m.sortie.step > 0) this.say('S11');
+      else if (this.seenAmbiance && prev.def.kind !== 'rotonde') this.say('D03');
       this.seenAmbiance = amb;
+      this.worldLine(amb);
     }
-    if (isOpenAir(cur.preset)) this.say('E13');
-    if (cur.def.kind === 'deadend' || cur.def.kind === 'cap') this.say('E10');
+    if (isOpenAir(cur.preset)) this.sayEvent('E13');
+    if (cur.def.kind === 'deadend' && !cur.special) this.sayEvent('E10');
+    if (cur.def.kind === 'stairs') {
+      this.v.stairs++;
+      this.say(this.v.stairs >= 3 ? 'E57' : cur.def.rise > 0 ? 'E55' : 'E56');
+    }
+    if (cur.def.id === 'sas') this.say(cur.zone.zone.special === 'sortie' ? 'S19' : this.heard('E58') ? 'E59' : 'E58');
+    if (cur.def.kind === 'rotonde' && this.leftRotonde) this.say('E98');
 
-    // Étrangetés.
+    // Étrangetés (celles que les histoires ont demandées d'abord).
     const odd = cur.zone.oddity;
-    if (cur.isLoopCopy) this.say('E05');
-    else if (odd === 'salle-vide' && cur.def.kind === 'room') this.say('E04');
-    else if (odd === 'veste-cafe') this.say('E08');
-    else if (odd === 'a-l-envers') this.say('E09');
-    else if (odd === 'oeuvre-plafond') this.say('E07');
-    else if (cur.sealEntrance) this.say('E06', 5);
+    if (odd) this.v.oddities.add(odd);
+    if (this.v.oddities.size >= 3) this.say('E94');
+    if (odd === 'salle-vide' && cur.def.kind === 'room') {
+      if (m.atelier.stage === 'appel') this.atelierAppel();
+      else if (m.atelier.stage === 'quete') this.say(this.heard('P10') ? 'P14' : 'P10');
+      else this.sayEvent('E04');
+    } else if (odd === 'veste-cafe' && (m.autre.stage === 'traces' || m.autre.stage === 'poursuite')) this.autreVeste();
+    else if (cur.isLoopCopy) this.sayEvent('E05');
+    else if (odd === 'veste-cafe') this.sayEvent('E08');
+    else if (odd === 'a-l-envers') this.sayEvent('E09');
+    else if (odd === 'oeuvre-plafond') this.sayEvent('E07');
+    else if (cur.sealEntrance) this.sayEvent('E06', 5);
+
+    // Salles mises en scène.
+    if (cur.special === 'atelier') this.atelierEntered();
+    if (cur.special === 'favoris') this.favorisEntered();
+    if (prev.special === 'favoris' && !backward) this.say('V22');
+    if (prev.special === 'favoris' && backward) this.say('V22');
+    if (prev.special === 'atelier' && m.atelier.stage === 'atelier') this.atelierLeft();
+    if (cur.zone.zone.special === 'sortie' && cur.special === 'sortie') this.say('S21');
   }
 
-  private visibility(): void {
-    if (document.hidden) {
-      // (Le son du jeu est suspendu avec l'onglet : la voix reprend où elle en était.)
-      this.hiddenAt = performance.now();
+  /** Il entre dans un module fléché. */
+  private enteredSigned(cur: WorldModule): void {
+    const m = this.m;
+    const tags = cur.signs.map((s) => s.tag ?? '');
+    const has = (t: string) => tags.includes(t);
+    if (cur.def.kind === 'rotonde') return;
+    if (has('mer-relance') && m.sea === 'refuse') {
+      this.setSea('relance');
+      return this.say('C02');
+    }
+    if (has('mer-retour')) return this.say('M05');
+    // Plusieurs carrefours ont pu recevoir le même panneau d'avance : celui-ci est le bon,
+    // les autres sont décrochés. (Seul celui de l'étape en cours compte.)
+    const family = (t: string) => t.replace(/\d+$/, '').replace('continuez', 'silence').replace('g-star', 'g');
+    const mine = new Set(tags.filter(Boolean).map(family));
+    if (mine.size > 0) {
+      for (const other of this.engine!.world.modules) {
+        if (other !== cur) other.clearSigns((sg) => !sg.tag || !mine.has(family(sg.tag)));
+      }
+    }
+    const num = (prefix: string) => Number(tags.find((t) => t.startsWith(prefix))?.slice(prefix.length) || 0);
+    if (m.atelier.stage === 'quete' && num('atelier') === m.atelier.signs + 1) {
+      m.atelier.signs++;
+      this.save();
+      return this.say(m.atelier.signs === 1 ? 'P03' : m.atelier.signs === 2 ? 'P06' : 'P11');
+    }
+    if (m.sortie.stage === 'chemin' && num('sortie') === m.sortie.step + 1) return this.say(m.sortie.step === 0 ? 'S01' : m.sortie.step === 1 ? 'S07' : 'S12');
+    if (m.sortie.stage === 'ignore' && has('sortie-petit')) return this.say(m.sortie.small === 0 ? 'S25' : 'S28');
+    if (m.autre.stage === 'poursuite' && num('autre') === m.autre.signs + 1) {
+      m.autre.signs++;
+      this.save();
+      return this.say(m.autre.signs === 1 ? 'V10' : m.autre.signs === 2 ? 'V12' : 'V16');
+    }
+    if (has('silence')) return this.say('H12');
+    if (has('g-star')) {
+      const p = m.portes;
+      if (p.rounds === 9) return this.say('G22');
+      return this.say(p.rounds === 0 ? 'G01' : 'G11', 0, p.rounds === 0 ? () => this.say('G02') : undefined);
+    }
+    if (cur.signs.some((s) => s.themeId && !s.tag)) {
+      if (cur.signs.some((s) => s.themeId === FIRST_THEME) && m.sea === 'pris') this.say('M02');
+      else this.say('D04');
+    }
+  }
+
+  /** Il quitte un module fléché par l'ouverture `via` : a-t-il suivi un panneau ? */
+  private leftSigned(prev: WorldModule, via: number): void {
+    const m = this.m;
+    const followed: ModuleSign | undefined = prev.signs.find((s) => s.connector === via);
+    const tags = prev.signs.map((s) => s.tag ?? '');
+    const has = (t: string) => tags.includes(t);
+    const seaSign = prev.signs.some((s) => s.themeId === FIRST_THEME);
+
+    // Acte I : la porte de la mer, dans la salle ronde.
+    if (prev.def.kind === 'rotonde' && seaSign && !has('finale') && (m.sea === 'propose' || m.sea === 'refuse')) {
+      this.leftRotonde = true;
+      this.cutIntro();
+      if (followed?.themeId === FIRST_THEME) {
+        if (m.sea === 'refuse') m.seaChangedMind = true;
+        this.say(m.sea === 'propose' ? 'B01' : 'C06');
+        this.setSea('pris');
+      } else if (m.sea === 'propose') {
+        this.say('C01');
+        this.setSea('refuse');
+      }
       return;
     }
-    if (this.hiddenAt && performance.now() - this.hiddenAt > CONFIG.narrator.hiddenTab * 1000) this.say('E03', 1.5);
-    this.hiddenAt = 0;
+    if (has('finale')) return this.finaleChoice(followed);
+    if (has('mer-relance') && m.sea === 'relance') {
+      if (followed?.tag === 'mer-relance') {
+        m.seaChangedMind = true;
+        this.say('C03');
+        this.setSea('pris');
+      } else {
+        this.say('C04');
+        m.seaRetiredAt = m.visits;
+        this.setSea('retire');
+        this.library.banTheme(FIRST_THEME);
+      }
+      return;
+    }
+    if (has('mer-retour')) {
+      if (followed?.tag === 'mer-retour') {
+        this.say('M06');
+        this.setSea('pris');
+      } else {
+        this.say('M07');
+        this.library.banTheme(FIRST_THEME);
+      }
+      return;
+    }
+    // Panneaux des histoires : seulement celui de l'étape en cours (voir enteredSigned).
+    const atelierSign = prev.signs.find((s) => s.tag === `atelier${m.atelier.signs}`);
+    if (atelierSign && m.atelier.stage === 'quete') return this.atelierChoice(followed === atelierSign, m.atelier.signs);
+    // Revenu au carrefour déjà suivi, il prend une autre porte : il renonce.
+    const suivi = m.sortie.stage === 'chemin' && m.sortie.step > 0 ? prev.signs.find((s) => s.tag === `sortie${m.sortie.step}`) : undefined;
+    if (suivi && followed !== suivi) return this.sortieRenonce('S16');
+    const sortieSign = prev.signs.find((s) => (m.sortie.stage === 'chemin' && s.tag === `sortie${m.sortie.step + 1}`) || (m.sortie.stage === 'ignore' && s.tag === 'sortie-petit'));
+    if (sortieSign) return this.sortieChoice(sortieSign.tag!, followed === sortieSign);
+    const autreSign = prev.signs.find((s) => s.tag === `autre${m.autre.signs}`);
+    if (autreSign && m.autre.stage === 'poursuite') return this.autreChoice(followed === autreSign);
+    if (has('silence')) return this.raconteChoice(followed?.tag);
+    if (has('g-star') || has('g')) return this.portesChoice(prev, followed);
+    // Panneaux ordinaires (thème prêt) : suivis ou ignorés.
+    if (prev.def.kind !== 'rotonde' && prev.signs.some((s) => s.themeId)) {
+      if (followed) this.say('D05');
+      else {
+        m.ignoredSigns++;
+        this.say(m.ignoredSigns >= 2 && this.heard('D06') ? 'D07' : 'D06');
+        this.save();
+      }
+    }
   }
 
-  private sayReturn(now: number): void {
-    const m = this.memory;
-    const last = m.lastVisit ?? now;
+  private worldLine(amb: string): void {
+    const pair = WORLDS[amb];
+    const m = this.m;
+    // Pas pendant l'acte I : la première visite parle déjà assez.
+    if (!pair || m.visits < 2) return;
+    if (amb === 'englouti' && m.sea === 'pris') this.say('M10');
+    if ((amb === 'englouti' || amb === 'poolrooms') && m.sea === 'retire') this.say('M04');
+    if (amb === 'givre') {
+      const mo = new Date().getMonth() + 1;
+      if (mo === 11 || mo === 12) this.say('N13');
+    }
+    const seen = m.worlds[amb];
+    if (seen === undefined) this.say(pair[0]);
+    else if (seen < m.visits) this.say(pair[1]);
+    m.worlds[amb] = m.visits;
+    this.save();
+  }
+
+  /** Salles mises en scène : la toile de l'atelier, l'encadrement au bout de la sortie. */
+  private specialRooms(cur: WorldModule | null): void {
+    const e = this.engine!;
+    const pos = e.player.position;
+    // Juste avant l'atelier : l'odeur de térébenthine.
+    const a3 = cur?.signs.find((sg) => sg.tag === 'atelier3');
+    const c3 = a3 && cur!.connectors[a3.connector];
+    if (c3 && this.m.atelier.stage === 'quete' && Math.hypot(c3.pos.x - pos.x, c3.pos.z - pos.z) < 3.5) this.say('P16');
+    const p = cur?.specialPoint;
+    if (!cur || !p) return;
+    const dist = Math.hypot(p.x - pos.x, p.z - pos.z);
+    if (cur.special === 'atelier' && this.m.atelier.stage === 'atelier') {
+      const f = e.player.forwardDir;
+      const facing = (f.x * (p.x - pos.x) + f.z * (p.z - pos.z)) / Math.max(0.01, dist) > 0.8;
+      if (!facing && !this.heard('P20')) this.atelierLook += 0.25;
+      else this.atelierLook = 0;
+      if (this.atelierLook > 4) this.say('P18');
+      if (facing && dist < 3.2) {
+        if (!this.heard('P20')) {
+          // (Le temps passé devant la toile ne compte qu'une fois l'aveu entendu.)
+          this.say('P19', 0, () =>
+            this.say('P20', 0, () => {
+              this.canvasReady = true;
+              this.say('P21');
+            }),
+          );
+          this.canvasTime = 0;
+        } else if (this.canvasReady && e.player.speed < 0.3) {
+          this.canvasTime += 0.25;
+          if (this.canvasTime > 5) this.say('P22');
+          if (this.canvasTime > 10 && !this.m.atelier.canvas) {
+            this.m.atelier.canvas = true;
+            collection.add(SANS_TITRE);
+            progress.collectionChanged();
+            this.m.atelier.result = 'reste';
+            this.endAtelier();
+            this.say('P23');
+          }
+        }
+      }
+    }
+    if (cur.special === 'sortie' && this.m.sortie.stage === 'chemin') {
+      if (dist < 3.5) this.say('S18');
+      if (dist < 0.7) this.sortieTraversee();
+    }
+  }
+  private atelierLook = 0;
+  private quietRupture = false;
+  private canvasTime = 0;
+  private canvasReady = false;
+
+  // --- Histoires ---------------------------------------------------------------------
+
+  /** Où en sont les histoires : ce qui démarre ou se poursuit dans cette visite. */
+  private storyTick(cur: WorldModule | null): void {
+    const m = this.m;
+    const t = this.visitTime;
+    // Histoire 1 : le cadre vide est demandé après un premier arrêt devant une œuvre.
+    // (Une seule histoire commence ou se termine par visite.)
+    const free = !this.v.storyMoment;
+    if (free && m.story === 1 && m.visits >= 2 && m.sea !== 'propose' && m.atelier.stage === 'attente' && t > 90 && this.roomsSinceDwell === 0 && this.heard('D01')) {
+      this.v.storyMoment = true;
+      m.atelier.stage = 'appel';
+      this.save();
+    }
+    const director = this.engine!.world.director;
+    director.requestedOddity =
+      m.atelier.stage === 'appel' || (m.atelier.stage === 'quete' && m.atelier.signs < 2)
+        ? 'salle-vide'
+        : (m.autre.stage === 'traces' && m.autre.traces >= 2) || m.autre.stage === 'poursuite'
+          ? 'veste-cafe'
+          : null;
+    // Après l'abandon de la quête, il insiste encore un peu.
+    if (m.atelier.result === 'abandon' && m.atelier.stage === 'fin' && t - this.abandonAt > 120) this.say(this.heard('P28') ? 'P29' : 'P28');
+
+    // Histoire 2 : le panneau de la sortie apparaît une minute après le début.
+    if (free && m.story === 2 && m.visits >= 3 && m.sortie.stage === 'attente' && t > 60) {
+      this.v.storyMoment = true;
+      m.sortie.stage = 'chemin';
+      m.sortie.step = 0;
+      this.save();
+    }
+    if (m.sortie.stage === 'chemin' && m.sortie.step > 0) {
+      m.sortie.inPath = true;
+      if (t - this.sortieAt > 25) this.say('S05');
+      if (t - this.sortieAt > 60) this.say('S06');
+    }
+    if (m.sortie.result === 'retour' && t - this.sortieAt > 120 && this.heard('S20')) this.say('S23');
+    if (m.sortie.result === 'renonce' && t - this.sortieAt > 120) this.say('S17');
+
+    // Histoire 3 : des pas au loin, de temps en temps.
+    if (free && m.story === 3 && m.visits >= 4 && m.autre.stage === 'attente' && t > 60) {
+      this.v.storyMoment = true;
+      m.autre.stage = 'traces';
+      this.save();
+    }
+    // (La poursuite attend dix favoris : en attendant, plus de pas.)
+    const waiting = m.autre.traces >= 4 && collection.items.length < 10;
+    if (((m.autre.stage === 'traces' && !waiting) || (m.autre.result === 'ignore' && m.story > 3 && !this.heard('V26'))) && t - this.stepsAt > 100 && !this.playing) {
+      this.stepsAt = t;
+      this.audio.footsteps();
+      if (m.autre.result === 'ignore') this.say('V26', 4);
+      else this.autreTrace();
+    }
+
+    // Histoire 5 : un fragment par visite, au calme.
+    if (this.v.suitePending && t > this.v.suiteAt && !this.playing && this.queue.length === 0) {
+      const id = this.v.suitePending;
+      this.v.suitePending = null;
+      this.say(id);
+    }
+    if (cur && m.story === 6 && m.finaleDone && !this.v.rappel && t > 60) this.rappel();
+  }
+  private abandonAt = 0;
+  private sortieAt = 0;
+  private stepsAt = 0;
+
+  /** Moment calme (arrêt devant une œuvre, immobile) : un fragment de l'histoire 5, un rappel. */
+  private calmMoment(): void {
+    const m = this.m;
+    const r = m.raconte;
+    const t = this.visitTime;
+    if (t < 90 || this.playing || this.queue.length > 0 || t - this.lastStory < 60) return;
+    const started = m.story === 5 || (m.story === 4 && m.portes.rounds >= 3);
+    if (started && !r.done && !this.v.fragmentDone && r.lastVisit !== m.visits && r.next < FRAGMENTS.length) {
+      const frag = FRAGMENTS[r.next]!;
+      this.v.fragmentDone = true;
+      r.lastVisit = m.visits;
+      this.lastStory = t;
+      if (r.next === QUESTION) this.v.question = true;
+      this.say(frag[0]!);
+      if (frag[1]) {
+        this.v.suitePending = frag[1];
+        this.v.suiteAt = t + 120;
+      }
+      if (r.next !== QUESTION) r.next++;
+      if (r.next >= FRAGMENTS.length) {
+        r.done = true;
+        if (r.choice === 'silence') this.v.suitePending = 'H42';
+        m.epilogue.push('H41');
+        this.storyDone(5);
+      }
+      this.save();
+      return;
+    }
+    if (!this.v.rappel && m.visits >= 3) this.rappel();
+  }
+
+  /** Les répliques qui relient les histoires (une par visite au plus). */
+  private rappel(): void {
+    const m = this.m;
+    const opts: Array<[LineId, boolean]> = [
+      ['X01', m.sea === 'pris' && m.sortie.result === 'retour'],
+      ['X02', m.sea === 'retire' && (m.sortie.result === 'disparu' || m.sortie.result === 'renonce')],
+      ['X03', !!m.atelier.canvas && m.autre.result === 'vu'],
+      ['X04', !!m.portes.done && m.portes.him > m.portes.me],
+      ['X05', !!m.portes.done && m.portes.me > m.portes.him],
+      ['X06', m.atelier.result !== undefined && m.atelier.result !== 'abandon' && m.sortie.result === 'retour'],
+      ['X18', m.abandoned >= 3],
+      ['X19', m.sortie.result === 'retour' && m.raconte.choice === 'silence'],
+      ['X20', m.sea === 'pris' && m.portes.him >= 5 && m.portes.him > m.portes.me * 2],
+      ['X16', m.finaleDone && m.visits % 5 === 0],
+      ['X17', m.finaleDone && Math.random() < 0.1],
+    ];
+    const pick = opts.find(([id, ok]) => ok && !this.heard(id));
+    if (!pick) return;
+    this.v.rappel = true;
+    this.say(pick[0], 3);
+  }
+
+  private storyDone(n: number): void {
+    const m = this.m;
+    this.v.storyMoment = true;
+    if (n === 1) m.story = Math.max(m.story, 2);
+    else if (n === 2) m.story = Math.max(m.story, 3);
+    else if (n === 3) m.story = Math.max(m.story, 4);
+    if (m.portes.done && m.raconte.done) m.story = 6;
+    else if (n === 4 && m.story < 5) m.story = 5;
+    this.save();
+  }
+
+  // Histoire 1 : le tableau manquant.
+
+  private atelierAppel(): void {
+    this.m.atelier.stage = 'quete';
+    this.save();
+    this.lastStory = this.visitTime;
+    this.say('P01');
+  }
+
+  private atelierChoice(followed: boolean, n: number): void {
+    const a = this.m.atelier;
+    if (followed) {
+      this.say(n === 1 ? 'P04' : n === 2 ? 'P07' : 'P12');
+      if (n >= 3) a.stage = 'atelier';
+    } else {
+      a.ignored++;
+      if (a.ignored >= 2) {
+        a.stage = 'fin';
+        a.result = 'abandon';
+        this.abandonAt = this.visitTime;
+        this.m.abandoned++;
+        this.m.epilogue.push('P30');
+        this.say('P27');
+        this.storyDone(1);
+      } else this.say(n === 1 ? 'P05' : 'P08');
+    }
+    this.save();
+  }
+
+  private atelierEntered(): void {
+    if (this.m.atelier.stage === 'atelier') this.say('P17');
+  }
+
+  private atelierLeft(): void {
+    const a = this.m.atelier;
+    if (a.canvas) return;
+    if (this.heard('P20')) {
+      a.result = 'parti';
+      this.say('P26');
+      this.endAtelier();
+    }
+  }
+
+  private endAtelier(): void {
+    const a = this.m.atelier;
+    a.stage = 'fin';
+    this.m.epilogue.push(a.result === 'reste' ? 'P31' : 'P32');
+    this.storyDone(1);
+  }
+
+  // Histoire 2 : la sortie.
+
+  private sortieChoice(tag: string, followed: boolean): void {
+    const s = this.m.sortie;
+    if (tag === 'sortie-petit') {
+      if (followed) {
+        this.say('S27');
+        s.stage = 'chemin';
+        s.step = 1;
+        this.sortieAt = this.visitTime;
+      } else {
+        s.small++;
+        if (s.small >= 3) {
+          s.stage = 'fin';
+          s.result = 'disparu';
+          this.m.epilogue.push('S32');
+          this.say('S30');
+          this.storyDone(2);
+        } else this.say(s.small === 1 ? 'S26' : 'S29');
+      }
+      this.save();
+      return;
+    }
+    const n = Number(tag.slice(-1));
+    if (s.stage !== 'chemin') return;
+    if (followed) {
+      s.step = n;
+      this.sortieAt = this.visitTime;
+      this.say(n === 1 ? 'S04' : n === 2 ? 'S08' : 'S14', 0, n === 2 ? () => this.say('S09') : undefined);
+    } else if (n === 1) {
+      s.stage = 'ignore';
+      s.step = 0;
+      this.v.signGapModules = 0;
+      this.say('S24');
+    } else this.sortieRenonce('S16');
+    this.save();
+  }
+
+  private sortieRenonce(id: LineId): void {
+    const s = this.m.sortie;
+    if (s.stage !== 'chemin') return;
+    s.stage = 'fin';
+    s.result = 'renonce';
+    s.inPath = false;
+    this.sortieAt = this.visitTime;
+    this.m.abandoned++;
+    this.say(id);
+    this.storyDone(2);
+  }
+
+  /** Il franchit l'encadrement : retour dans la salle ronde. */
+  private sortieTraversee(): void {
+    const s = this.m.sortie;
+    s.stage = 'fin';
+    s.result = 'retour';
+    s.inPath = false;
+    this.sortieAt = this.visitTime;
+    this.m.epilogue.push('S31');
+    progress.found('sortie');
+    this.storyDone(2);
+    // (Le passage au noir qui accompagne le retour n'est pas une « rupture » à commenter.)
+    this.quietRupture = true;
+    this.engine!.returnToStart();
+    this.quietRupture = false;
+    this.prev = this.engine!.world.currentModule;
+    this.leftRotonde = false;
+    this.say('S20', 1.5);
+  }
+
+  // Histoire 3 : l'autre visiteur.
+
+  private autreTrace(): void {
+    const a = this.m.autre;
+    a.traces++;
+    const id = a.traces === 1 ? 'V01' : a.traces === 2 ? 'V02' : a.traces === 3 ? 'V07' : a.traces === 4 ? 'V08' : null;
+    if (id) this.say(id, 3);
+    if (a.traces >= 4) {
+      // L'aveu ; la poursuite attend que la collection soit assez fournie.
+      if (collection.items.length >= 10) {
+        a.stage = 'poursuite';
+        this.say('V09', 10);
+      } else this.say('V27', 10);
+    }
+    this.save();
+  }
+
+  private autreVeste(): void {
+    const a = this.m.autre;
+    if (a.stage === 'poursuite') return this.say('V15');
+    this.say(this.heard('V03') ? 'V05' : 'V03', 0, () => this.say('V04'));
+  }
+
+  private autreChoice(followed: boolean): void {
+    const a = this.m.autre;
+    if (followed) {
+      this.say(a.signs === 1 ? 'V11' : a.signs >= 3 ? 'V17' : 'V12');
+    } else {
+      a.ignored++;
+      this.say(a.ignored >= 2 ? 'V25' : 'V24');
+      if (a.ignored >= 2) {
+        a.stage = 'fin';
+        a.result = 'ignore';
+        this.m.abandoned++;
+        this.storyDone(3);
+      }
+    }
+    this.save();
+  }
+
+  private favorisEntered(): void {
+    const a = this.m.autre;
+    this.say('V18');
+    if (a.stage !== 'poursuite') return;
+    a.stage = 'fin';
+    a.result = 'vu';
+    this.m.epilogue.push('V23');
+    this.say(this.m.lastWasDuo || this.heard('E18') ? 'V28' : 'V20', 6, () => this.say('V21'));
+    this.storyDone(3);
+  }
+
+  // Histoire 4 : le jeu des trois portes.
+
+  private portesChoice(prev: WorldModule, followed: ModuleSign | undefined): void {
+    const p = this.m.portes;
+    for (const s of prev.signs) if (s.themeId) this.library.unpinTheme(s.themeId);
+    if (!followed) return this.say('G21');
+    p.rounds++;
+    p.lastVisit = this.m.visits;
+    if (followed.star) {
+      p.him++;
+      p.streakHim++;
+      p.streakMe = 0;
+      const wasAvoiding = p.avoid >= 3;
+      p.avoid = 0;
+      if (wasAvoiding) this.say('G20');
+      else if (p.streakHim === 4) this.say('G13');
+      else if (p.streakHim === 3) this.say('G12');
+      else this.say(p.him === 1 ? 'G04' : p.him === 2 ? 'G05' : 'G06');
+    } else {
+      p.me++;
+      p.streakMe++;
+      p.streakHim = 0;
+      p.avoid++;
+      if (p.avoid === 5) this.say('G18');
+      else if (p.avoid >= 4) this.say('G19');
+      else if (p.streakMe === 3) this.say('G14');
+      else if (p.me >= p.him + 3) this.say('G15');
+      else this.say(p.me === 1 ? 'G07' : p.me === 2 ? 'G08' : 'G09');
+    }
+    if (p.me === p.him) this.say('G10');
+    if (p.rounds === 5) this.say(p.him >= p.me ? 'G16' : 'G17');
+    if (p.rounds >= 10) {
+      p.done = true;
+      this.m.epilogue.push(p.him > p.me ? 'G24' : 'G23');
+      this.storyDone(4);
+    }
+    this.save();
+  }
+
+  // Histoire 5 : le Conservateur se raconte.
+
+  private raconteChoice(tag: string | undefined): void {
+    const r = this.m.raconte;
+    if (r.choice) return;
+    r.next = QUESTION + 1;
+    if (tag === 'silence') {
+      r.choice = 'silence';
+      r.silenceVisit = this.m.visits;
+      this.m.epilogue.push('H43');
+      this.say('H13', 0, () => {
+        this.silent = true;
+      });
+    } else if (tag === 'continuez') {
+      r.choice = 'continuez';
+      this.say('H17');
+      this.v.suitePending = 'H16';
+      this.v.suiteAt = this.visitTime + 120;
+    } else {
+      r.choice = 'continuez';
+      this.say('H14');
+    }
+    this.save();
+  }
+
+  // Finale.
+
+  /** La salle ronde à cinq portes : une par histoire. */
+  private prepareFinale(mod: WorldModule, world: World): void {
+    const zones = mod.exitZones ?? [];
+    const d = world.director;
+    const c = mod.def.connectors;
+    // Face au visiteur : la mer. Derrière lui : la sortie. Sur les côtés : l'atelier, l'autre, le silence.
+    const idx = (nx: number, nz: number) => c.reduce((best, k, i) => (k.normal.x * nx + k.normal.z * nz > c[best]!.normal.x * nx + c[best]!.normal.z * nz ? i : best), 0);
+    const mer = idx(0, 1), sortie = idx(0, -1), atelier = idx(1, 0), autre = idx(-1, 0);
+    const silence = c.findIndex((_, i) => ![mer, sortie, atelier, autre].includes(i));
+    const sea = resolveTheme(FIRST_THEME);
+    if (sea) {
+      this.library.unbanTheme(FIRST_THEME);
+      this.library.openTheme(sea);
+      zones[mer] = { ...zones[mer]!, wing: d.makeWing(sea, 5) };
+    }
+    zones[sortie] = d.makeZone('neant', mod.preset, 'seuil', 3, 'sortie');
+    mod.exitZones = zones;
+    const fav = collection.items.slice(0, 14).map((s) => s.art);
+    mod.exitSpecial = { [atelier]: { kind: 'atelier' }, ...(fav.length >= 3 ? { [autre]: { kind: 'favoris' as const, art: fav } } : {}) };
+    mod.signs = [
+      { connector: mer, title: 'La mer', themeId: FIRST_THEME, tag: 'finale' },
+      { connector: atelier, title: 'Atelier', tag: 'finale' },
+      { connector: autre, title: 'L’autre', tag: 'finale' },
+      { connector: sortie, title: 'Sortie', style: 'vert', tag: 'finale' },
+      ...(silence >= 0 ? [{ connector: silence, title: 'Silence', tag: 'finale' }] : []),
+    ];
+    this.finaleDoors = { mer, atelier, autre, sortie, silence };
+  }
+  private finaleDoors: Record<string, number> = {};
+
+  private finaleChoice(followed: ModuleSign | undefined): void {
+    const m = this.m;
+    if (m.finaleDone) return;
+    m.finaleDone = true;
+    const d = this.finaleDoors;
+    const c = followed?.connector ?? -1;
+    if (c === d['mer']) this.say('X09');
+    else if (c === d['atelier']) {
+      this.say('X10');
+      m.atelier.stage = 'atelier';
+    } else if (c === d['sortie']) {
+      this.say('X11');
+      m.sortie.stage = 'chemin';
+      m.sortie.step = 3;
+    } else if (c === d['autre']) this.say('X12');
+    else if (c === d['silence']) {
+      return this.say('X13', 0, () => {
+        this.silent = true;
+        this.save();
+      });
+    } else this.say('X14');
+    this.v.suitePending = 'X15';
+    this.v.suiteAt = this.visitTime + 120;
+    this.save();
+  }
+
+  /**
+   * Panneaux des histoires au carrefour qui vient d'être créé (devant le visiteur, sur
+   * n'importe quelle branche : tant qu'il n'en a pas croisé un, chaque nouveau carrefour
+   * en reçoit).
+   */
+  private plan(mod: WorldModule, exits: number[]): SignPlan | null | undefined {
+    if (!this.active || this.silent || !this.engine) return undefined;
+    const m = this.m;
+    const world = this.engine.world;
+    // Le visiteur se tient dans un carrefour d'histoire : on attend son choix avant d'en poser d'autres.
+    if (world.currentModule?.signs.some((sg) => sg.tag)) return undefined;
+    const rng = () => exits[Math.floor(Math.random() * exits.length)]!;
+    const sea = resolveTheme(FIRST_THEME);
+    // Acte I : la mer, reproposée après un refus.
+    if (m.sea === 'refuse' && sea) {
+      const x = rng();
+      return { signs: [{ connector: x, title: sea.title, themeId: sea.id, tag: 'mer-relance' }], wings: { [x]: sea } };
+    }
+    // Dix visites après l'avoir retirée, la mer revient une fois.
+    if (m.sea === 'retire' && sea && m.seaRetiredAt !== undefined && m.visits - m.seaRetiredAt >= 10 && !this.heard('M05')) {
+      this.library.unbanTheme(FIRST_THEME);
+      this.library.openTheme(sea);
+      const x = rng();
+      return { signs: [{ connector: x, title: 'La mer ?', themeId: sea.id, tag: 'mer-retour' }], wings: { [x]: sea } };
+    }
+    if (m.atelier.stage === 'quete') {
+      const n = Math.min(3, m.atelier.signs + 1);
+      const x = rng();
+      return { signs: [{ connector: x, title: 'Atelier', tag: `atelier${n}` }], ...(n === 3 ? { specials: { [x]: { kind: 'atelier' } } } : {}) };
+    }
+    if (m.sortie.stage === 'chemin' && m.sortie.step < 3) {
+      const n = m.sortie.step + 1;
+      const x = rng();
+      return {
+        signs: [{ connector: x, title: 'Sortie', style: 'vert', tag: `sortie${n}` }],
+        ...(n === 3 ? { zones: { [x]: world.director.makeZone('neant', mod.preset, 'seuil', 3, 'sortie') } } : {}),
+      };
+    }
+    if (m.sortie.stage === 'ignore') {
+      this.v.signGapModules++;
+      if (this.v.signGapModules < 3) return undefined;
+      const x = rng();
+      return { signs: [{ connector: x, title: 'Sortie', style: 'petit', tag: 'sortie-petit' }] };
+    }
+    if (m.autre.stage === 'poursuite') {
+      const n = Math.min(3, m.autre.signs + 1);
+      const x = rng();
+      const fav = collection.items.slice(0, 14).map((s) => s.art);
+      return { signs: [{ connector: x, title: 'L’autre', tag: `autre${n}` }], ...(n === 3 ? { specials: { [x]: { kind: 'favoris', art: fav } } } : {}) };
+    }
+    // La question de l'histoire 5 : deux panneaux, deux réponses.
+    if (this.v.question && !m.raconte.choice && exits.length >= 2) {
+      const [a, b] = exits.slice().sort(() => Math.random() - 0.5);
+      return { signs: [{ connector: a!, title: 'Silence', tag: 'silence' }, { connector: b!, title: 'Continuez', tag: 'continuez' }] };
+    }
+    // Le jeu des trois portes : une manche par visite, dans une salle à trois sorties.
+    if (m.story >= 4 && !m.portes.done && m.portes.lastVisit !== m.visits && !this.v.roundDone && exits.length >= 3 && this.visitTime > 60) {
+      const star = this.library.topInterest() ?? this.library.pickThemes(1)[0];
+      if (!star) return undefined;
+      const others = this.library.pickThemes(2, [star.id]);
+      if (others.length < 2) return undefined;
+      this.v.roundDone = true;
+      const themes = [star, ...others];
+      const doors = exits.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+      // (Pas épinglés : un carrefour jamais atteint ne retient pas leurs œuvres.)
+      for (const t of themes) this.library.openTheme(t, false);
+      return {
+        signs: doors.map((c, i) => ({ connector: c, title: themes[i]!.title, themeId: themes[i]!.id, tag: i === 0 ? 'g-star' : 'g', star: i === 0 })),
+        wings: Object.fromEntries(doors.map((c, i) => [c, themes[i]!])),
+      };
+    }
+    return undefined;
+  }
+
+  // --- Retours, calendrier, épilogues ----------------------------------------------------
+
+  private sayReturn(now: number, last: number | null, deviceChanged: boolean): void {
+    const m = this.m;
     const hour = new Date(now).getHours();
     const day = (t: number) => Math.floor((t - new Date(t).getTimezoneOffset() * 60000) / 86400000);
-    const days = day(now) - day(last);
-    let id: LineId;
-    if (hour < 5 && !this.heard('R06')) id = 'R06';
-    else if (days === 0) id = 'R01';
-    else if (days === 1) id = 'R02';
-    else if (days <= 30) id = m.returns++ % 2 === 0 ? 'R03' : 'R04';
-    else id = 'R05';
+    const days = last ? day(now) - day(last) : 0;
+    const milestones: Record<number, LineId> = { 2: 'R07', 5: 'R08', 10: 'R09', 25: 'R10', 50: 'R11', 100: 'R12' };
+    const once: Array<[LineId, boolean]> = [
+      [milestones[m.visits] ?? '', !!milestones[m.visits]],
+      ['R06', hour < 5],
+      ['R30', hour < 5 && this.heard('R06')],
+      ['R28', days > 182],
+      ['R16', m.lastDuration > 0 && m.lastDuration < 120],
+      ['R17', m.lastDuration > 3600],
+      ['R18', m.lastFavsAdded >= 5],
+      ['R21', m.day.n === 3],
+      ['R22', m.lastWasDuo],
+      ['R23', m.atelier.stage === 'quete' || (m.autre.stage === 'poursuite') || (m.sortie.stage === 'chemin' && m.sortie.step > 0)],
+      ['R29', deviceChanged],
+      ['R13', hour >= 6 && hour < 10],
+      ['R14', hour >= 12 && hour < 14],
+      ['R15', hour >= 19 && hour < 23],
+      ['R20', days >= 8 && days <= 30],
+    ];
+    let id: LineId | undefined = once.find(([i, ok]) => ok && i && !this.heard(i))?.[0];
+    if (!id) {
+      if (days === 0) id = 'R01';
+      else if (days === 1) id = 'R02';
+      else if (days > 30) id = 'R05';
+      else {
+        const pool = ['R03', 'R04', 'R19', 'R24', 'R25', 'R26', 'R27'];
+        id = pool[m.returns++ % pool.length]!;
+      }
+    }
     this.say(id, 2.5);
+    // Ce qui s'est passé la dernière fois : silence, sortie quittée en chemin, épilogues.
+    if (m.raconte.silenceVisit === m.visits - 1) {
+      m.epilogue = m.epilogue.filter((e) => e !== 'H43');
+      this.say('H43', 4, () => {
+        this.v.suitePending = 'H44';
+        this.v.suiteAt = this.visitTime + 60;
+      });
+    }
+    if (m.sortie.inPath && m.sortie.stage === 'chemin') {
+      m.sortie.inPath = false;
+      m.sortie.stage = 'fin';
+      m.sortie.result = 'parti';
+      this.say('S33', 4);
+      this.storyDone(2);
+    }
+    if (m.sea === 'retire' && !this.heard('M03')) this.say('M03', 4);
+    if (m.seaChangedMind && m.sea === 'pris' && !this.heard('M09')) this.say('M09', 30);
+    for (const e of m.epilogue.splice(0)) this.say(e, 6);
+    if (m.visits >= 6 && collection.items.length === 0) this.say('K11', 40);
+    const cal = calendarLine(new Date(now), m);
+    if (cal) this.say(cal, 25);
+    this.save();
   }
 
   // --- Lecture ----------------------------------------------------------------------
@@ -334,10 +1317,17 @@ export class Narrator {
     return this.memory.heard.includes(id);
   }
 
+  /** Un événement : l'original, ou sa prochaine variante pas encore entendue. */
+  private sayEvent(base: LineId, delay = 0): void {
+    const chain = [base, ...(VARIANTS[base] ?? [])];
+    const id = chain.find((i) => !this.heard(i));
+    if (id) this.say(id, delay);
+  }
+
   /** Demande une réplique, jouée dès que possible (`delay` : au plus tôt dans n secondes). */
-  private say(id: LineId, delay = 0): void {
-    if (!this.active) return;
-    const repeatable = id[0] === 'R';
+  private say(id: LineId, delay = 0, after?: () => void): void {
+    if (!this.active || this.silent || !LINES[id]) return;
+    const repeatable = ['R01', 'R02', 'R03', 'R04', 'R05', 'R19', 'R24', 'R25', 'R26', 'R27'].includes(id);
     if (!repeatable && this.heard(id)) return;
     if (this.queue.some((p) => p.id === id) || this.playing?.id === id) return;
     const now = performance.now() / 1000;
@@ -345,9 +1335,11 @@ export class Narrator {
     // Les écarts minimaux s'appliquent à la demande : une occasion manquée n'est pas reportée.
     if (fam === 'evenement' && now - this.lastEvent < CONFIG.narrator.eventGap) return;
     if (fam === 'debut' && now - this.lastDebut < CONFIG.narrator.firstVisitGap) return;
+    if (fam === 'monde' && now - this.lastMonde < 90) return;
     if (fam === 'evenement') this.lastEvent = now;
     if (fam === 'debut') this.lastDebut = now;
-    this.queue.push({ id, at: now + delay });
+    if (fam === 'monde') this.lastMonde = now;
+    this.queue.push({ id, at: now + delay, ...(after ? { after } : {}) });
     // Marquée tout de suite : une réplique ne revient jamais, même si on quitte au milieu.
     if (!repeatable) this.memory.heard.push(id);
     this.save();
@@ -368,21 +1360,22 @@ export class Narrator {
     if (p && (p.audio ? p.audio.ended : now >= p.until)) this.finish();
     if (this.playing || !e) return;
     // Pas pendant une pause (menu, fiche) ; une réplique trop ancienne est abandonnée.
-    this.queue = this.queue.filter((p) => lineFamily(p.id) === 'scenario' || now - p.at < CONFIG.narrator.staleAfter);
+    this.queue = this.queue.filter((q) => ['scenario', 'texte'].includes(lineFamily(q.id)) || now - q.at < CONFIG.narrator.staleAfter);
     if (e.isPaused || document.hidden) return;
-    const next = this.queue.find((p) => p.at <= now);
+    const next = this.queue.find((q) => q.at <= now);
     if (!next) return;
     this.queue.splice(this.queue.indexOf(next), 1);
-    this.play(next.id, now);
+    this.play(next, now);
   }
 
-  private play(id: LineId, now: number): void {
-    const text = LINES[id];
+  private play(next: Pending, now: number): void {
+    const id = next.id;
+    const text = LINES[id] ?? '';
     this.current = { id, text };
     const estimate = estimatedDuration(text);
     const ctx = this.audio.externalInputs()?.ctx;
     const audio = this.sound && ctx && lineFamily(id) !== 'texte' && this.available?.has(id) ? this.startClip(ctx, id, estimate) : null;
-    this.playing = { id, until: now + estimate, audio };
+    this.playing = { id, until: now + estimate, audio, ...(next.after ? { after: next.after } : {}) };
   }
 
   /**
@@ -441,15 +1434,41 @@ export class Narrator {
   }
 
   private finish(): void {
+    const after = this.playing?.after;
     this.playing = null;
     this.current = null;
     this.audio.duck(false);
+    after?.();
   }
 
   private silence(): void {
     this.queue = [];
     this.playing?.audio?.stop();
-    if (this.playing) this.finish();
+    if (this.playing) {
+      this.playing.after = undefined;
+      this.finish();
+    }
+  }
+
+  private visibility(): void {
+    if (document.hidden) {
+      // (Le son du jeu est suspendu avec l'onglet : la voix reprend où elle en était.)
+      this.hiddenAt = performance.now();
+      return;
+    }
+    if (this.hiddenAt && performance.now() - this.hiddenAt > CONFIG.narrator.hiddenTab * 1000) this.sayEvent('E03', 1.5);
+    this.hiddenAt = 0;
+  }
+
+  /** Téléphone tourné (portrait ↔ paysage). */
+  private resized(): void {
+    const a = window.innerWidth / window.innerHeight;
+    if (this.live && this.m.device === 'mobile' && (a > 1) !== (this.v.aspect > 1)) this.say('E86', 1);
+    this.v.aspect = a;
+  }
+
+  private fullscreenChanged(): void {
+    if (this.live && !document.fullscreenElement && this.m.device === 'mobile') this.say('E87', 1);
   }
 
   private setSea(s: SeaState): void {
@@ -459,7 +1478,7 @@ export class Narrator {
   }
 
   private save(): void {
-    writeJson(KEY, this.memory);
+    saveMemory(this.memory);
   }
 
   private async loadManifest(): Promise<void> {

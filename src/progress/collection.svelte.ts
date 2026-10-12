@@ -23,6 +23,11 @@ class CollectionStore {
     return this.items.some((s) => s.art.id === id);
   }
 
+  /** Ajoute l'œuvre si elle n'y est pas (cadeau de la voix off). */
+  add(art: Artwork): void {
+    if (!this.has(art.id)) this.toggle(art);
+  }
+
   /** Ajoute ou retire l'œuvre ; renvoie vrai si elle est désormais dans la collection. */
   toggle(art: Artwork): boolean {
     const added = !this.has(art.id);

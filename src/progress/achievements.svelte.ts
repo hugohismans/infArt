@@ -15,6 +15,8 @@ export interface Stats {
   /** Thèmes d'ailes traversées (les chats, la mer…). */
   themes: string[];
   oddities: string[];
+  /** Moments des histoires de la voix off (la sortie trouvée…). */
+  found?: string[];
 }
 
 export interface Achievement {
@@ -50,6 +52,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'thematiques', title: 'Esprit de suite', description: 'Visiter 10 salles à thème différentes.', target: 10, progress: (s) => s.themes.length },
   { id: 'ca-alors', title: 'Ça alors', description: 'Remarquer une première étrangeté.', target: 1, progress: (s) => s.oddities.length, secret: true },
   { id: 'chasseur', title: 'Chasseur d’étrangetés', description: 'Croiser 5 étrangetés différentes.', target: 5, progress: (s) => s.oddities.length, secret: true },
+  { id: 'la-sortie', title: 'La sortie', description: 'Trouver la sortie du musée.', target: 1, progress: (s) => ((s.found ?? []).includes('sortie') ? 1 : 0), secret: true },
   { id: 'promeneur', title: 'Promeneur', description: 'Marcher 1 km dans la galerie.', target: 1000, progress: (s) => s.distance },
   { id: 'infini', title: 'L’infini à pied', description: 'Marcher 10 km dans la galerie.', target: 10000, progress: (s) => s.distance },
 ];
@@ -96,6 +99,14 @@ class ProgressStore {
     add('oddities', o.oddity);
     if (o.walked > 0) s.distance += o.walked;
     this.commit(changed);
+  }
+
+  /** Un moment d'histoire vécu (voix off). */
+  found(id: string): void {
+    const f = this.stats.found ?? [];
+    if (f.includes(id)) return;
+    this.stats.found = [...f, id];
+    this.commit(true);
   }
 
   /** La collection a changé : certains succès en dépendent. */

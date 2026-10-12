@@ -134,6 +134,7 @@ export class AudioEngine {
    * et déclenche les évènements ponctuels. `listener` : position du visiteur.
    */
   update(dt: number, profile: SoundProfile, flicker: number, listener: { x: number; y: number; z: number }): void {
+    this.listenerAt = listener;
     const ctx = this.ctx;
     if (!ctx || ctx.state !== 'running') return;
     const t = ctx.currentTime;
@@ -380,6 +381,13 @@ export class AudioEngine {
     }
     n.start(t, Math.random() * 2);
     n.stop(t + spec.len + 0.02);
+  }
+
+  private listenerAt = { x: 0, y: 0, z: 0 };
+
+  /** Des pas, au loin (voix off : l'autre visiteur). */
+  footsteps(): void {
+    if (this.ctx?.state === 'running') this.distantWalker(this.listenerAt);
   }
 
   /** Quelqu'un marche au loin, quelque part dans le musée. */

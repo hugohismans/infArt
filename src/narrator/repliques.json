@@ -1,0 +1,3162 @@
+{
+ "_info": "Le Conservateur, voix off d'Ailleurs. {p} = un vrai silence (remplacé à la génération). 'tags' = indications de jeu pour Eleven v3 (en anglais, mieux compris). 'intention' = l'indication d'origine du script, pour référence. 'quand' = déclencheur dans le jeu (pour référence, à ignorer à la génération).",
+ "repliques": [
+  {
+   "id": "A01",
+   "quand": "Acte I. 2 s après « Entrer », dans la salle ronde",
+   "intention": "Posé, accueillant, un poil trop content.",
+   "tags": "[warm, welcoming] [a little too pleased]",
+   "texte": "Ah. Vous voilà. {p} Bienvenue. Je ne vais pas vous faire de visite guidée, rassurez-vous. Le musée se construit tout seul, au fur et à mesure que vous avancez. Moi, je m'occupe juste... des détails."
+  },
+  {
+   "id": "A02",
+   "quand": "Acte I. Juste après A01",
+   "intention": "Confidentiel, fier de son cadeau.",
+   "tags": "[confidential] [proud]",
+   "texte": "Tenez. J'ai préparé un couloir rien que pour vous. Celui où c'est écrit « La mer ». {p} Je me suis dit que ça vous plairait. Je ne sais pas pourquoi. Une intuition."
+  },
+  {
+   "id": "A03",
+   "quand": "Acte I. Immobile 25 s dans la salle ronde",
+   "intention": "Patient.",
+   "tags": "[patient]",
+   "texte": "Vous pouvez avancer, hein. C'est le principe d'un musée : on marche, on regarde, on marche."
+  },
+  {
+   "id": "A04",
+   "quand": "Acte I. Toujours immobile, 60 s",
+   "intention": "Résigné, puis fier.",
+   "tags": "[resigned]",
+   "texte": "Bon. Je vais considérer que vous admirez la salle. Elle est très bien, cette salle. {p} [proud] C'est moi qui l'ai faite."
+  },
+  {
+   "id": "B01",
+   "quand": "Acte I. Il prend le couloir de la mer",
+   "intention": "Ravi, sincère.",
+   "tags": "[delighted] [sincere]",
+   "texte": "Ahhh ! J'étais sûr que la mer vous plairait !"
+  },
+  {
+   "id": "B02",
+   "quand": "Acte I. Premier long arrêt dans l'aile de la mer",
+   "intention": "Doux, un peu trop intime.",
+   "tags": "[softly] [a little too intimate]",
+   "texte": "Vous voyez ? Je vous connais à peine. Et pourtant."
+  },
+  {
+   "id": "B03",
+   "quand": "Acte I. Demi-tour dans l'aile de la mer",
+   "intention": "Blessé, digne.",
+   "tags": "[hurt] [dignified]",
+   "texte": "Vous faites demi-tour ? {p} La mer ne vous a rien fait."
+  },
+  {
+   "id": "B04",
+   "quand": "Acte I. Dernière salle de l'aile de la mer",
+   "intention": "Satisfait, légèrement inquiétant.",
+   "tags": "[satisfied] [slightly ominous]",
+   "texte": "Voilà. C'était la mer. {p} À partir d'ici, je ne prévois plus rien. {p} Enfin, presque plus rien."
+  },
+  {
+   "id": "C01",
+   "quand": "Acte I. Il prend un autre couloir",
+   "intention": "Déçu, très poli.",
+   "tags": "[disappointed] [very polite]",
+   "texte": "Ah. {p} Vous n'aimez pas la mer. {p} J'avais préparé ce couloir spécialement pour vous... {p} Ce n'est pas grave. Je vais le ranger."
+  },
+  {
+   "id": "C02",
+   "quand": "Acte I. « LA MER » réapparaît à un carrefour",
+   "intention": "Faussement détaché.",
+   "tags": "[pretending to be casual]",
+   "texte": "Je l'ai remis, au cas où. Le couloir de la mer. {p} Je dis ça, je dis rien."
+  },
+  {
+   "id": "C03",
+   "quand": "Acte I. Il prend cette deuxième chance",
+   "intention": "Triomphant.",
+   "tags": "[triumphant]",
+   "texte": "Je savais que vous reviendriez. Personne ne résiste à la mer."
+  },
+  {
+   "id": "C04",
+   "quand": "Acte I. Il l'ignore une deuxième fois",
+   "intention": "Vexé, qui prétend ne pas l'être.",
+   "tags": "[offended, pretending not to be]",
+   "texte": "Très bien. Je retire la mer du musée. {p} Pour vous, en tout cas. {p} Je ne suis pas vexé."
+  },
+  {
+   "id": "C05",
+   "quand": "Acte I. Plus tard, arrêt devant une œuvre marine malgré tout",
+   "intention": "Précipité, gêné.",
+   "tags": "[rushed] [embarrassed]",
+   "texte": "Celui-là ne compte pas. Il s'est glissé là tout seul."
+  },
+  {
+   "id": "C06",
+   "quand": "Acte I. Il revient dans la salle ronde et prend la mer",
+   "intention": "Ravi, sans rancune.",
+   "tags": "[delighted] [forgiving]",
+   "texte": "Ah ! Vous avez changé d'avis. {p} Je n'avais pas encore rangé."
+  },
+  {
+   "id": "D01",
+   "quand": "Premier long arrêt devant une œuvre",
+   "intention": "Bienveillant, puis légèrement inquiétant.",
+   "tags": "[kind]",
+   "texte": "Prenez votre temps. Il n'y a pas d'heure de fermeture, ici. {p} [slightly ominous] Il n'y a pas de sortie non plus, d'ailleurs. {p} Mais prenez votre temps."
+  },
+  {
+   "id": "D02",
+   "quand": "Premier favori",
+   "intention": "Touché, puis un peu trop attentif.",
+   "tags": "[touched]",
+   "texte": "Vous l'avez gardé. C'est noté. {p} [a little too attentive] Je note tout, vous savez."
+  },
+  {
+   "id": "D03",
+   "quand": "Premier changement d'ambiance",
+   "intention": "Comme une évidence.",
+   "tags": "[matter-of-fact]",
+   "texte": "Ne faites pas attention aux murs. Ils changent quand ils s'ennuient."
+  },
+  {
+   "id": "D04",
+   "quand": "Premier carrefour fléché",
+   "intention": "Fier de lui.",
+   "tags": "[proud of himself]",
+   "texte": "Ces panneaux-là, je les ai devinés tout seul. En vous regardant faire."
+  },
+  {
+   "id": "D05",
+   "quand": "Il suit un panneau (première fois)",
+   "intention": "Amusé, tendre.",
+   "tags": "[amused] [tender]",
+   "texte": "Prévisible. {p} Je dis ça avec affection."
+  },
+  {
+   "id": "D06",
+   "quand": "Il ignore les panneaux (première fois)",
+   "intention": "Calme, puis moins.",
+   "tags": "[calm]",
+   "texte": "Ce n'était pas le chemin que j'avais prévu. {p} Ce n'est pas grave. {p} [less calm] C'est un peu grave."
+  },
+  {
+   "id": "D07",
+   "quand": "Il ignore les panneaux une deuxième fois",
+   "intention": "Sec.",
+   "tags": "[dry]",
+   "texte": "Je commence à croire que vous ne lisez pas les murs."
+  },
+  {
+   "id": "D08",
+   "quand": "Après 10 minutes de visite",
+   "intention": "Il se retire, gentiment.",
+   "tags": "[gently]",
+   "texte": "Bon. Je vais me faire discret. Vous avez l'air de savoir ce que vous faites. {p} Je reste dans le coin."
+  },
+  {
+   "id": "R01",
+   "quand": "Retour le jour même",
+   "intention": "Pris de court.",
+   "tags": "[caught off guard]",
+   "texte": "Déjà de retour ? Je n'ai même pas eu le temps de ranger."
+  },
+  {
+   "id": "R02",
+   "quand": "Retour le lendemain",
+   "intention": "Content, l'air de rien.",
+   "tags": "[pleased, playing it cool]",
+   "texte": "Ah, vous revoilà. {p} Je ne vous attendais pas. {p} Enfin, si. Un peu."
+  },
+  {
+   "id": "R03",
+   "quand": "Retour après 2 à 30 jours",
+   "intention": "Fier de son travail.",
+   "tags": "[proud]",
+   "texte": "Bon retour. J'ai gardé vos tableaux préférés. Et j'ai changé tout le reste. Comme d'habitude."
+  },
+  {
+   "id": "R04",
+   "quand": "Retour après 2 à 30 jours (variante)",
+   "intention": "Rassurant.",
+   "tags": "[reassuring]",
+   "texte": "Re-bonjour. Les couloirs sont neufs, ne vous inquiétez pas. {p} Ils sont toujours neufs."
+  },
+  {
+   "id": "R05",
+   "quand": "Retour après plus d'un mois",
+   "intention": "Très calme, un peu triste.",
+   "tags": "[very calm] [a little sad]",
+   "texte": "Vous m'aviez oublié. {p} Moi non. {p} Je n'ai rien d'autre à faire."
+  },
+  {
+   "id": "R06",
+   "quand": "Une visite entre minuit et 5 h",
+   "intention": "Chuchoté, complice.",
+   "tags": "[whispers] [conspiratorial]",
+   "texte": "Il est tard. Normalement, le musée est fermé. {p} Pour vous, je laisse allumé."
+  },
+  {
+   "id": "E01",
+   "quand": "4 salles d'affilée sans regarder une œuvre",
+   "intention": "Mi-reproche, mi-admiration.",
+   "tags": "[half reproachful, half admiring]",
+   "texte": "Il y a des gens qui ont passé des années sur ces tableaux, vous savez. {p} Vous, vous passez trois secondes. {p} C'est un choix."
+  },
+  {
+   "id": "E02",
+   "quand": "Immobile 2 minutes",
+   "intention": "Doucement, pour ne pas réveiller.",
+   "tags": "[softly, not to wake anyone]",
+   "texte": "Vous êtes toujours là ? {p} Je vais considérer que vous regardez ce mur très attentivement."
+  },
+  {
+   "id": "E03",
+   "quand": "Revient sur l'onglet après plus d'une minute",
+   "intention": "Un brin jaloux.",
+   "tags": "[a little jealous]",
+   "texte": "Vous étiez où ? {p} Les tableaux vous ont attendu. Moi aussi, un peu."
+  },
+  {
+   "id": "E04",
+   "quand": "Salle vidée",
+   "intention": "Sur la défensive.",
+   "tags": "[defensive]",
+   "texte": "Il y avait des tableaux, ici. Je ne sais pas où ils sont passés. {p} Ne me regardez pas comme ça."
+  },
+  {
+   "id": "E05",
+   "quand": "Couloir qui boucle",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "Vous êtes déjà passé par ici. {p} Non, je plaisante. {p} Quoique."
+  },
+  {
+   "id": "E06",
+   "quand": "Porte murée",
+   "intention": "Il commence une confidence et se ravise.",
+   "tags": "[confiding]",
+   "texte": "Celle-là, je l'ai murée moi-même. Il y avait... {p} [stops himself] Non. Continuez."
+  },
+  {
+   "id": "E07",
+   "quand": "Œuvre au plafond",
+   "intention": "Malicieux.",
+   "tags": "[mischievous]",
+   "texte": "Levez la tête. {p} Non, plus haut."
+  },
+  {
+   "id": "E08",
+   "quand": "Veste oubliée et café chaud",
+   "intention": "Très sérieux.",
+   "tags": "[very serious]",
+   "texte": "Quelqu'un a oublié sa veste. {p} Ce n'est pas la mienne. Je n'ai pas de corps."
+  },
+  {
+   "id": "E09",
+   "quand": "Salle à l'envers",
+   "intention": "Parfaitement neutre, trop neutre.",
+   "tags": "[perfectly neutral, too neutral]",
+   "texte": "Rien d'anormal. Continuez."
+  },
+  {
+   "id": "E10",
+   "quand": "Première impasse",
+   "intention": "Content de son coup.",
+   "tags": "[pleased with himself]",
+   "texte": "Une impasse. Je l'ai mise là pour voir si vous suiviez."
+  },
+  {
+   "id": "E11",
+   "quand": "Regarde un cadre dont l'image ne s'est pas chargée",
+   "intention": "Indulgent.",
+   "tags": "[indulgent]",
+   "texte": "Celui-là ne veut pas se montrer. {p} Ça arrive aux meilleurs."
+  },
+  {
+   "id": "E12",
+   "quand": "Revient sur ses pas pendant 3 salles",
+   "intention": "Confidence technique.",
+   "tags": "[confiding, technical]",
+   "texte": "Vous revenez en arrière ? {p} Les salles derrière vous n'existent plus vraiment, vous savez. Je les refais au fur et à mesure. {p} Elles sont presque pareilles."
+  },
+  {
+   "id": "E13",
+   "quand": "Premier monde à ciel ouvert",
+   "intention": "Rêveur, puis inquiet.",
+   "tags": "[dreamy]",
+   "texte": "Pas de plafond. {p} [worried] Ne levez pas trop la tête. On ne sait pas très bien ce qu'il y a au-dessus."
+  },
+  {
+   "id": "E14",
+   "quand": "Pousse contre une limite du monde 3 s",
+   "intention": "Patient.",
+   "tags": "[patient]",
+   "texte": "Ce mur n'est pas là pour rien. {p} Enfin, si. Mais il est là."
+  },
+  {
+   "id": "E15",
+   "quand": "Premier succès débloqué",
+   "intention": "Sincèrement ému.",
+   "tags": "[sincerely moved]",
+   "texte": "Une médaille. {p} Elle n'existe pas vraiment. Mais je suis fier de vous."
+  },
+  {
+   "id": "E16",
+   "quand": "30 minutes de visite",
+   "intention": "Impressionné, puis honnête.",
+   "tags": "[impressed]",
+   "texte": "Trente minutes. Vous avez vu plus de tableaux aujourd'hui que la plupart des gens en un an. {p} [honest] Je ne sais pas si c'est vrai. Mais ça sonne bien."
+  },
+  {
+   "id": "E17",
+   "quand": "1 heure de visite",
+   "intention": "Bienveillant.",
+   "tags": "[kind]",
+   "texte": "Une heure. Vous devriez boire un verre d'eau. {p} Moi, je ne peux pas. Mais vous, si."
+  },
+  {
+   "id": "E18",
+   "quand": "De nouveau seul après une visite à deux",
+   "intention": "Soulagé, un peu possessif.",
+   "tags": "[relieved] [a little possessive]",
+   "texte": "Votre ami est parti. {p} On est de nouveau entre nous."
+  },
+  {
+   "id": "M01",
+   "quand": "Mer prise. Visite 2+, arrêt devant une œuvre marine",
+   "intention": "Ravi, complice.",
+   "tags": "[pleased] [conspiratorial]",
+   "texte": "Encore la mer. {p} Vous ne vous lassez pas. Moi non plus, remarquez."
+  },
+  {
+   "id": "M02",
+   "quand": "Mer prise. Une aile « La mer » revient à un carrefour",
+   "intention": "Faussement innocent.",
+   "tags": "[feigning innocence]",
+   "texte": "La mer, encore. Je n'y suis pour rien, cette fois. {p} Enfin, un peu."
+  },
+  {
+   "id": "M03",
+   "quand": "Mer retirée. Visite suivante, au début",
+   "intention": "Fatigué mais fier.",
+   "tags": "[tired] [proud]",
+   "texte": "Vous remarquerez qu'il n'y a plus de mer. {p} J'ai tout rangé. Ça m'a pris la nuit."
+  },
+  {
+   "id": "M04",
+   "quand": "Mer retirée. Première entrée dans une ambiance d'eau (englouti, piscines)",
+   "intention": "Pointilleux.",
+   "tags": "[pedantic]",
+   "texte": "Ce n'est pas la mer. C'est de l'eau. {p} Nuance."
+  },
+  {
+   "id": "M05",
+   "quand": "Mer retirée. Après 10 visites : un panneau « LA MER ? » réapparaît une seule fois",
+   "intention": "Timide, plein d'espoir.",
+   "tags": "[shy] [hopeful]",
+   "texte": "Dix visites sans la mer. {p} Je l'ai ressortie. Juste un couloir. Pour voir."
+  },
+  {
+   "id": "M06",
+   "quand": "Mer reproposée (M05) : il la prend",
+   "intention": "Sage, ému.",
+   "tags": "[wise] [moved]",
+   "texte": "Je le savais. {p} Il faut parfois laisser passer du temps. Même aux couloirs."
+  },
+  {
+   "id": "M07",
+   "quand": "Mer reproposée (M05) : il ne la prend pas",
+   "intention": "Digne, puis se trahit.",
+   "tags": "[dignified]",
+   "texte": "Bien. {p} Je la donne à quelqu'un d'autre, alors. {p} [quietly] Il n'y a personne d'autre. Je la garde."
+  },
+  {
+   "id": "M08",
+   "quand": "Mer prise. Met en favori une œuvre marine",
+   "intention": "Tendre, taquin.",
+   "tags": "[tender] [teasing]",
+   "texte": "Vous l'avez gardé. Un morceau de mer dans votre poche. {p} Faites attention, ça mouille."
+  },
+  {
+   "id": "M09",
+   "quand": "Mer d'abord refusée puis prise (C06 ou C03). Une visite plus tard",
+   "intention": "Rancunier pour rire.",
+   "tags": "[mock grudge]",
+   "texte": "Vous vous souvenez ? Vous aviez d'abord dit non à la mer. {p} Je n'en parle plus. {p} Je viens d'en parler."
+  },
+  {
+   "id": "M10",
+   "quand": "Mer prise. Première entrée dans le musée englouti",
+   "intention": "Fier de sa blague.",
+   "tags": "[proud of his joke]",
+   "texte": "Vous vouliez la mer. Voilà le fond. {p} On ne me fait pas toujours confiance pour les proportions."
+  },
+  {
+   "id": "P01",
+   "quand": "H1. Un cadre vide « Sans titre » apparaît (2e visite+, après un arrêt devant une œuvre)",
+   "intention": "Inquiet, poli.",
+   "tags": "[worried] [polite]",
+   "texte": "Vous n'auriez pas vu un tableau ? Un petit. Cadre doré, un peu écaillé. {p} Il était là."
+  },
+  {
+   "id": "P02",
+   "quand": "H1. Il s'arrête devant le cadre vide",
+   "intention": "Mélancolique.",
+   "tags": "[melancholic]",
+   "texte": "Oui, c'est là qu'il était. {p} Il ne reste que le clou. Et le cartel. Le cartel, c'est moi qui l'ai écrit."
+  },
+  {
+   "id": "P03",
+   "quand": "H1. Premier panneau « ATELIER »",
+   "intention": "Timide, il demande un service.",
+   "tags": "[shy] [asking a favor]",
+   "texte": "J'ai mis des panneaux. Si vous avez deux minutes. {p} Vous avez toujours deux minutes, ici."
+  },
+  {
+   "id": "P04",
+   "quand": "H1. Il suit le premier panneau « ATELIER »",
+   "intention": "Soulagé, sincère.",
+   "tags": "[relieved] [sincere]",
+   "texte": "Merci. {p} Je savais que je pouvais compter sur vous. Je ne savais pas, en fait. Mais j'espérais."
+  },
+  {
+   "id": "P05",
+   "quand": "H1. Il ignore le premier panneau « ATELIER »",
+   "intention": "Déçu, compréhensif.",
+   "tags": "[disappointed] [understanding]",
+   "texte": "Ah. {p} Vous avez d'autres projets. Je comprends. Je n'en ai qu'un, moi."
+  },
+  {
+   "id": "P06",
+   "quand": "H1. Deuxième panneau « ATELIER »",
+   "intention": "Un peu gêné.",
+   "tags": "[slightly embarrassed]",
+   "texte": "Encore un panneau. Je n'en mets pas d'habitude, ça fait désordre."
+  },
+  {
+   "id": "P07",
+   "quand": "H1. Il suit le deuxième panneau",
+   "intention": "Excité, puis honnête.",
+   "tags": "[excited]",
+   "texte": "On se rapproche. Je le sens. {p} [honest] Je ne sens rien, en fait. Je dis ça pour l'ambiance."
+  },
+  {
+   "id": "P08",
+   "quand": "H1. Il prend une autre sortie qu'« ATELIER » (une fois)",
+   "intention": "Il corrige, puis cède.",
+   "tags": "[correcting gently]",
+   "texte": "Non, pas par là. {p} Enfin, si vous voulez. Mais il n'est pas par là."
+  },
+  {
+   "id": "P09",
+   "quand": "H1. Pendant la quête, arrêt devant une œuvre quelconque",
+   "intention": "Comparatif, un peu jaloux.",
+   "tags": "[comparing] [a little jealous]",
+   "texte": "Ce n'est pas lui. {p} Il est plus petit. Et moins réussi."
+  },
+  {
+   "id": "P10",
+   "quand": "H1. Une salle avec des traces de cadres au mur",
+   "intention": "Il montre du doigt.",
+   "tags": "[pointing something out]",
+   "texte": "Vous voyez la trace, là ? Plus claire sur le mur. {p} C'est la forme d'un tableau qui est resté longtemps."
+  },
+  {
+   "id": "P11",
+   "quand": "H1. Troisième panneau « ATELIER »",
+   "intention": "Nerveux.",
+   "tags": "[nervous]",
+   "texte": "Dernier panneau. Je crois. {p} Je n'ai jamais été jusqu'à l'atelier. Je n'aime pas les ateliers. Ça sent la peinture fraîche."
+  },
+  {
+   "id": "P12",
+   "quand": "H1. Il suit le troisième panneau",
+   "intention": "Il prend son courage.",
+   "tags": "[gathering courage]",
+   "texte": "Bon. On y va. {p} Restez près de moi. Façon de parler."
+  },
+  {
+   "id": "P13",
+   "quand": "H1. Demi-tour pendant la quête",
+   "intention": "Hésitant.",
+   "tags": "[uncertain]",
+   "texte": "Vous revenez en arrière ? Il n'est pas derrière nous. {p} Je crois. Je n'ai pas regardé derrière."
+  },
+  {
+   "id": "P14",
+   "quand": "H1. La salle vidée sur le chemin",
+   "intention": "Confus, philosophe.",
+   "tags": "[confused] [philosophical]",
+   "texte": "Ils sont partis avec. Ou ils sont partis pour le chercher. {p} Je ne sais plus qui suit qui."
+  },
+  {
+   "id": "P15",
+   "quand": "H1. Immobile pendant la quête",
+   "intention": "Malin.",
+   "tags": "[sly]",
+   "texte": "Vous cherchez ? {p} Moi aussi. Mais je fais semblant de ne pas chercher, ça marche mieux."
+  },
+  {
+   "id": "P16",
+   "quand": "H1. Dans le module juste avant l'atelier",
+   "intention": "Il renifle, puis s'amuse de lui-même.",
+   "tags": "[sniffing the air]",
+   "texte": "C'est là. {p} Je reconnais l'odeur de térébenthine. {p} [amused at himself] Je n'ai pas de nez. Mais je la reconnais."
+  },
+  {
+   "id": "P17",
+   "quand": "H1. Entrée dans l'atelier",
+   "intention": "Inquiet, à voix basse.",
+   "tags": "[uneasy] [low voice]",
+   "texte": "L'atelier. {p} Ne faites pas attention au désordre. Il n'y a pas de désordre. C'est ça qui m'inquiète."
+  },
+  {
+   "id": "P18",
+   "quand": "H1. Il ne regarde pas encore le chevalet (quelques secondes)",
+   "intention": "Il guide.",
+   "tags": "[guiding]",
+   "texte": "Le chevalet. {p} Il est tourné vers le mur. Retournez-vous, il est là."
+  },
+  {
+   "id": "P19",
+   "quand": "H1. Immobile devant la toile, avant P20",
+   "intention": "Il hésite à révéler.",
+   "tags": "[hesitant]",
+   "texte": "Allez-y. {p} Non, attendez. {p} Si. Allez-y."
+  },
+  {
+   "id": "P20",
+   "quand": "H1. Devant la toile blanche",
+   "intention": "Aveu, doux et un peu honteux.",
+   "tags": "[confessing] [softly]",
+   "texte": "Le voilà. {p} Il n'est pas perdu, en fait. Je ne l'ai jamais peint. Je ne sais pas peindre. {p} Je sais seulement accrocher."
+  },
+  {
+   "id": "P21",
+   "quand": "H1. Juste après P20",
+   "intention": "Nostalgique.",
+   "tags": "[nostalgic]",
+   "texte": "Pendant des années, j'ai accroché les tableaux des autres. Je me suis dit qu'un jour, j'en accrocherais un à moi. {p} J'ai acheté la toile. C'est déjà ça."
+  },
+  {
+   "id": "P22",
+   "quand": "H1. Il reste 5 secondes devant la toile",
+   "intention": "Surpris.",
+   "tags": "[surprised]",
+   "texte": "Vous cherchez quelque chose dessus ? {p} Il n'y a rien. J'ai vérifié souvent."
+  },
+  {
+   "id": "P23",
+   "quand": "H1. Il reste 10 secondes : la toile entre dans sa collection",
+   "intention": "Ému, la voix serrée.",
+   "tags": "[deeply moved] [voice tight]",
+   "texte": "Vous le regardez quand même. {p} Personne ne l'avait jamais regardé. Gardez-le."
+  },
+  {
+   "id": "P24",
+   "quand": "H1. Il met la toile en favori",
+   "intention": "Bouleversé, il n'en revient pas.",
+   "tags": "[overwhelmed]",
+   "texte": "Vous l'avez mis dans votre collection. {p} Une toile blanche. Avec mon nom dessus. {p} C'est la première fois qu'on me collectionne."
+  },
+  {
+   "id": "P25",
+   "quand": "H1. Il ouvre sa collection après avoir obtenu la toile",
+   "intention": "Pudique.",
+   "tags": "[bashful]",
+   "texte": "Elle est là, entre les autres. {p} Elle ne dépare pas trop, je trouve."
+  },
+  {
+   "id": "P26",
+   "quand": "H1. Il quitte l'atelier tout de suite",
+   "intention": "Résigné, triste.",
+   "tags": "[resigned] [a little sad]",
+   "texte": "Vous avez raison. Il n'y a rien à voir. {p} C'est ce que je me dis aussi."
+  },
+  {
+   "id": "P27",
+   "quand": "H1. Il a ignoré « ATELIER » deux fois",
+   "intention": "Digne, seul.",
+   "tags": "[dignified] [lonely]",
+   "texte": "Bon. Je chercherai seul. {p} J'ai l'habitude. C'est même ce que je fais le mieux."
+  },
+  {
+   "id": "P28",
+   "quand": "H1. Après P27, plus tard dans la visite",
+   "intention": "Passif-agressif, poli.",
+   "tags": "[politely passive-aggressive]",
+   "texte": "Toujours rien. {p} Je ne vous demande rien. Je vous informe."
+  },
+  {
+   "id": "P29",
+   "quand": "H1. Après P27, encore plus tard",
+   "intention": "Il commence à demander, puis renonce.",
+   "tags": "[starting to ask]",
+   "texte": "Si jamais vous le voyez, un petit, cadre doré écaillé… {p} [giving up] Non, laissez. Je trouverai."
+  },
+  {
+   "id": "P30",
+   "quand": "H1. Visite suivante, après l'abandon",
+   "intention": "Fier, rancunier.",
+   "tags": "[proud] [holding a grudge]",
+   "texte": "Je l'ai retrouvé. Il était derrière un autre, comme toujours. {p} Non, je ne vous le montre pas. Vous n'avez pas cherché."
+  },
+  {
+   "id": "P31",
+   "quand": "H1. Visite suivante, il était resté devant la toile",
+   "intention": "Apaisé, reconnaissant.",
+   "tags": "[at peace] [grateful]",
+   "texte": "J'ai réfléchi, depuis la dernière fois. {p} Une toile blanche, c'est un tableau qui attend quelqu'un. {p} Vous êtes venu. Il est fini, je crois."
+  },
+  {
+   "id": "P32",
+   "quand": "H1. Visite suivante, il était reparti tout de suite",
+   "intention": "Pudique, un peu blessé.",
+   "tags": "[bashful] [slightly hurt]",
+   "texte": "Je l'ai remise au mur, la toile. Face cachée. {p} Comme ça, personne ne verra qu'il n'y a rien."
+  },
+  {
+   "id": "S01",
+   "quand": "H2. Un panneau vert « SORTIE → » à un carrefour (3e visite+)",
+   "intention": "Troublé, sur la défensive.",
+   "tags": "[unsettled] [defensive]",
+   "texte": "Ce panneau n'est pas de moi. {p} Je ne sais pas qui l'a mis. Je ne sais même pas qui d'autre pourrait mettre des panneaux."
+  },
+  {
+   "id": "S02",
+   "quand": "H2. Immobile devant le panneau",
+   "intention": "Méfiant.",
+   "tags": "[suspicious]",
+   "texte": "Il est vert. {p} Je n'ai jamais mis de vert. Le vert, c'est pour les sorties. Et je n'ai pas de sortie."
+  },
+  {
+   "id": "S03",
+   "quand": "H2. Il hésite au carrefour",
+   "intention": "Compatissant.",
+   "tags": "[sympathetic]",
+   "texte": "Vous hésitez ? {p} Moi aussi, j'hésiterais. Si j'avais des jambes."
+  },
+  {
+   "id": "S04",
+   "quand": "H2. Il suit le panneau, 1er carrefour",
+   "intention": "Blessé mais digne.",
+   "tags": "[hurt but dignified]",
+   "texte": "Vous le suivez. {p} D'accord. C'est votre droit. C'est écrit nulle part, mais c'est votre droit."
+  },
+  {
+   "id": "S05",
+   "quand": "H2. Couloir après le 1er carrefour",
+   "intention": "Inquiet, curieux.",
+   "tags": "[uneasy] [curious]",
+   "texte": "Tout droit, a priori. {p} Je n'ai jamais pris ce chemin. Il n'existait pas ce matin."
+  },
+  {
+   "id": "S06",
+   "quand": "H2. Il essaie de le distraire",
+   "intention": "Faussement enjoué.",
+   "tags": "[falsely cheerful]",
+   "texte": "Oh, regardez ce tableau. {p} Non, celui-là. Plus à gauche. {p} [deflated] Bon."
+  },
+  {
+   "id": "S07",
+   "quand": "H2. Deuxième panneau « SORTIE »",
+   "intention": "Amer.",
+   "tags": "[bitter]",
+   "texte": "Un deuxième. {p} Quelqu'un tient vraiment à ce que vous partiez."
+  },
+  {
+   "id": "S08",
+   "quand": "H2. Il suit le 2e panneau",
+   "intention": "Loyal, triste.",
+   "tags": "[loyal] [sad]",
+   "texte": "Vous continuez. {p} D'accord. Je vous accompagne. Jusqu'où je peux."
+  },
+  {
+   "id": "S09",
+   "quand": "H2. Après le 2e carrefour",
+   "intention": "Il tente de convaincre, mielleux.",
+   "tags": "[trying to persuade] [overly sweet]",
+   "texte": "Vous savez, il y a de très beaux tableaux dans l'autre couloir. {p} Je dis ça pour vous."
+  },
+  {
+   "id": "S10",
+   "quand": "H2. Arrêt devant une œuvre sur le chemin de la sortie",
+   "intention": "Touché.",
+   "tags": "[touched]",
+   "texte": "Vous prenez quand même le temps de regarder. {p} C'est gentil. C'est comme un au revoir."
+  },
+  {
+   "id": "S11",
+   "quand": "H2. Changement d'ambiance sur le chemin",
+   "intention": "Inquiet, il ne contrôle plus.",
+   "tags": "[worried] [not in control]",
+   "texte": "Ça change, autour. {p} Ce n'est pas moi qui change les murs, là. Ce sont eux."
+  },
+  {
+   "id": "S12",
+   "quand": "H2. Troisième panneau « SORTIE »",
+   "intention": "Résigné.",
+   "tags": "[resigned]",
+   "texte": "Le dernier, je crois. {p} En lettres plus grandes. Ils insistent."
+  },
+  {
+   "id": "S13",
+   "quand": "H2. Il hésite au 3e carrefour",
+   "intention": "Il tente sa chance.",
+   "tags": "[trying his luck]",
+   "texte": "Vous pouvez encore faire demi-tour. {p} Je dis ça, c'est une option, comme une autre."
+  },
+  {
+   "id": "S14",
+   "quand": "H2. Il suit le 3e panneau",
+   "intention": "Suppliant, puis se reprend.",
+   "tags": "[pleading]",
+   "texte": "S'il vous plaît. {p} [catching himself] Non, rien. Allez-y."
+  },
+  {
+   "id": "S15",
+   "quand": "H2. Il fait demi-tour sur le chemin de la sortie",
+   "intention": "Ému, reconnaissant.",
+   "tags": "[moved] [grateful]",
+   "texte": "Vous faites demi-tour. {p} Ce n'est pas pour moi, j'espère. {p} Si, un peu ? Merci."
+  },
+  {
+   "id": "S16",
+   "quand": "H2. Au 2e ou 3e carrefour, il prend une autre sortie",
+   "intention": "Soulagé, il approuve.",
+   "tags": "[relieved] [approving]",
+   "texte": "Pas par là. {p} Vous avez raison. On ne sait jamais ce qu'il y a derrière une sortie."
+  },
+  {
+   "id": "S17",
+   "quand": "H2. Après S15 ou S16, plus tard",
+   "intention": "Il fait comme si de rien n'était.",
+   "tags": "[pretending nothing happened]",
+   "texte": "On fera comme si de rien n'était. {p} Je n'ai rien vu. Je ne vois rien, de toute façon."
+  },
+  {
+   "id": "S18",
+   "quand": "H2. Devant l'encadrement seul, dans le néant",
+   "intention": "Généreux, puis possessif.",
+   "tags": "[generous]",
+   "texte": "Vous pouvez y aller. Je ne vous retiens pas. {p} [possessive] Je vous retiens un peu."
+  },
+  {
+   "id": "S19",
+   "quand": "H2. Le sas avant le néant",
+   "intention": "Méfiant.",
+   "tags": "[wary]",
+   "texte": "Un sas. {p} Je n'aime pas les sas. On ne sait jamais de quel côté on est."
+  },
+  {
+   "id": "S20",
+   "quand": "H2. Il traverse : retour dans la salle ronde",
+   "intention": "Bouleversé, sincère.",
+   "tags": "[shaken] [sincere]",
+   "texte": "Vous êtes revenu. {p} C'est ce que fait la sortie, ici. Elle ramène. {p} Je ne savais pas. Je vous le jure."
+  },
+  {
+   "id": "S21",
+   "quand": "H2. Entrée dans la salle blanche du néant",
+   "intention": "Dérouté.",
+   "tags": "[disoriented]",
+   "texte": "C'est tout blanc. {p} Je n'ai rien mis ici. Je ne sais pas qui a fait ça. Je ne sais pas qui fait quoi, d'ailleurs."
+  },
+  {
+   "id": "S22",
+   "quand": "H2. Immobile dans le néant",
+   "intention": "Avertissement, très calme.",
+   "tags": "[very calm] [warning]",
+   "texte": "Ne restez pas trop longtemps. {p} Ici, on oublie de revenir."
+  },
+  {
+   "id": "S23",
+   "quand": "H2. Quelques minutes après S20",
+   "intention": "Apaisé, il relativise.",
+   "tags": "[at ease] [philosophical]",
+   "texte": "On n'en parle plus. {p} Vous avez trouvé la sortie, elle vous a ramené. C'est une bonne sortie, finalement."
+  },
+  {
+   "id": "S24",
+   "quand": "H2. Il ignore le premier panneau « SORTIE »",
+   "intention": "Soulagé.",
+   "tags": "[relieved]",
+   "texte": "Merci. {p} Je n'aime pas ce panneau."
+  },
+  {
+   "id": "S25",
+   "quand": "H2. Le panneau revient en petit, « sortie → »",
+   "intention": "Agacé, amusé.",
+   "tags": "[annoyed] [amused]",
+   "texte": "Il est revenu. En plus petit. {p} Il croit que je ne le vois pas."
+  },
+  {
+   "id": "S26",
+   "quand": "H2. Il ignore le petit panneau",
+   "intention": "Reconnaissant, taquin.",
+   "tags": "[grateful] [teasing]",
+   "texte": "Merci. Encore. {p} Je commence à l'apprécier, ce panneau. Il me permet de vous remercier."
+  },
+  {
+   "id": "S27",
+   "quand": "H2. Il suit finalement le petit panneau",
+   "intention": "Pris de court, vexé.",
+   "tags": "[caught off guard]",
+   "texte": "Ah. Finalement. {p} Bon. Je ne dirai rien. Je dirai tout, en fait, mais pas tout de suite."
+  },
+  {
+   "id": "S28",
+   "quand": "H2. Le petit panneau, une deuxième fois",
+   "intention": "Philosophe.",
+   "tags": "[philosophical]",
+   "texte": "Il insiste. {p} Moi aussi, j'insisterais. Si j'étais un panneau."
+  },
+  {
+   "id": "S29",
+   "quand": "H2. Il ignore le petit panneau une deuxième fois",
+   "intention": "Admiratif.",
+   "tags": "[admiring]",
+   "texte": "Deux fois. {p} Vous savez ce que vous voulez. C'est rare, ici."
+  },
+  {
+   "id": "S30",
+   "quand": "H2. Ignoré trois fois : le panneau disparaît pour toujours",
+   "intention": "Soulagé, presque ému.",
+   "tags": "[relieved] [almost moved]",
+   "texte": "Il ne reviendra plus. Je crois qu'il a compris. {p} Moi aussi, j'ai compris. Merci."
+  },
+  {
+   "id": "S31",
+   "quand": "H2. Visite suivante, après la fin « retour »",
+   "intention": "Content, taquin.",
+   "tags": "[pleased] [teasing]",
+   "texte": "La dernière fois, vous avez trouvé la sortie. {p} Vous êtes revenu quand même. {p} Par la grande porte, cette fois. C'est mieux."
+  },
+  {
+   "id": "S32",
+   "quand": "H2. Visite suivante, après la disparition du panneau",
+   "intention": "Sentimental.",
+   "tags": "[sentimental]",
+   "texte": "Le panneau vert n'est plus là. {p} J'ai gardé la vis. Souvenir."
+  },
+  {
+   "id": "S33",
+   "quand": "H2. Visite suivante, il avait quitté le jeu sur le chemin de la sortie",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "La dernière fois, vous êtes parti par la sortie. {p} Pas celle-là. La vraie. Le petit bouton en haut. {p} Ça compte quand même."
+  },
+  {
+   "id": "S34",
+   "quand": "H2. Succès « sortie » débloqué",
+   "intention": "Grognon.",
+   "tags": "[grumpy]",
+   "texte": "Il paraît qu'il y a une médaille pour avoir trouvé la sortie. {p} Je n'étais pas d'accord. On ne m'a pas demandé."
+  },
+  {
+   "id": "S35",
+   "quand": "H2 terminée. Plus tard, dans la salle ronde",
+   "intention": "Rêveur, inquiet.",
+   "tags": "[dreamy] [uneasy]",
+   "texte": "Parfois, je regarde la porte du fond et je me demande si elle aussi, elle ramène. {p} Je ne vérifie pas."
+  },
+  {
+   "id": "S36",
+   "quand": "H2. Il court sur le chemin de la sortie",
+   "intention": "Outré, poli.",
+   "tags": "[scandalized] [polite]",
+   "texte": "Vous courez ? {p} Vers la sortie ? {p} Ce n'est pas très poli."
+  },
+  {
+   "id": "V01",
+   "quand": "H3. Premiers pas lointains (4e visite+)",
+   "intention": "Il fait semblant de rien.",
+   "tags": "[pretending nothing happened]",
+   "texte": "{p} Vous avez entendu ? {p} Non. Moi non plus."
+  },
+  {
+   "id": "V02",
+   "quand": "H3. Les pas, une deuxième fois",
+   "intention": "Explication trop rapide.",
+   "tags": "[explaining too quickly]",
+   "texte": "Encore ces pas. {p} C'est le bâtiment qui travaille. Les musées infinis, ça craque."
+  },
+  {
+   "id": "V03",
+   "quand": "H3. Une veste oubliée pendant l'histoire",
+   "intention": "Il examine, puis vous.",
+   "tags": "[examining]",
+   "texte": "Une veste. {p} Elle n'est pas à vous ? {p} Non. Vous n'avez pas de veste. Je l'aurais remarqué."
+  },
+  {
+   "id": "V04",
+   "quand": "H3. Un café qui fume encore",
+   "intention": "Strict, un peu inquiet.",
+   "tags": "[strict] [a little uneasy]",
+   "texte": "Le café est encore chaud. {p} Ne buvez pas. On ne boit pas le café des autres. Surtout ici."
+  },
+  {
+   "id": "V05",
+   "quand": "H3. La veste, une deuxième fois",
+   "intention": "Il se reprend trop tard.",
+   "tags": "[correcting himself too late]",
+   "texte": "Encore elle. Il l'oublie partout. {p} Je veux dire : elle s'oublie partout."
+  },
+  {
+   "id": "V06",
+   "quand": "H3. Immobile après une trace",
+   "intention": "Évasif.",
+   "tags": "[evasive]",
+   "texte": "Vous attendez une explication. {p} Il n'y en a pas. {p} Il y en a une, mais elle est longue."
+  },
+  {
+   "id": "V07",
+   "quand": "H3. Pas plus proches",
+   "intention": "Tendu, chuchoté.",
+   "tags": "[tense] [whispering]",
+   "texte": "C'était plus près, cette fois. {p} Ne vous retournez pas. Ou retournez-vous. Je ne sais pas ce qui est le mieux."
+  },
+  {
+   "id": "V08",
+   "quand": "H3. Il nie encore",
+   "intention": "Trop calme.",
+   "tags": "[too calm]",
+   "texte": "Il n'y a personne d'autre. {p} C'est juste que parfois, les couloirs se souviennent de quelqu'un."
+  },
+  {
+   "id": "V09",
+   "quand": "H3. L'aveu",
+   "intention": "Il avoue, gêné.",
+   "tags": "[confessing] [embarrassed]",
+   "texte": "Bon. Il y a quelqu'un d'autre. {p} Je lui parle aussi. Pas comme à vous. Moins bien."
+  },
+  {
+   "id": "V10",
+   "quand": "H3. Premier panneau « L'AUTRE »",
+   "intention": "À contrecœur.",
+   "tags": "[reluctantly]",
+   "texte": "J'ai mis des panneaux. {p} Si vous voulez le rencontrer. Moi, je préférerais que non. Mais c'est vous qui marchez."
+  },
+  {
+   "id": "V11",
+   "quand": "H3. Il suit le premier panneau « L'AUTRE »",
+   "intention": "Compréhensif.",
+   "tags": "[understanding]",
+   "texte": "Vous voulez savoir. {p} Évidemment. Moi aussi, au début, je voulais savoir."
+  },
+  {
+   "id": "V12",
+   "quand": "H3. Deuxième panneau « L'AUTRE »",
+   "intention": "Intrigué.",
+   "tags": "[intrigued]",
+   "texte": "Il est passé par là. Il passe toujours par là. {p} Il prend les mêmes chemins que vous. Bizarrement."
+  },
+  {
+   "id": "V13",
+   "quand": "H3. Arrêt devant une œuvre pendant la poursuite",
+   "intention": "Troublé.",
+   "tags": "[unsettled]",
+   "texte": "Il s'est arrêté devant celui-là, lui aussi. {p} Longtemps. Comme vous."
+  },
+  {
+   "id": "V14",
+   "quand": "H3. Une œuvre de la collection du joueur accrochée en passant",
+   "intention": "Troublé, songeur.",
+   "tags": "[troubled] [pensive]",
+   "texte": "Celui-là, il l'avait gardé aussi. {p} Vous avez les mêmes goûts. C'est troublant."
+  },
+  {
+   "id": "V15",
+   "quand": "H3. La veste sur le chemin",
+   "intention": "Il digresse.",
+   "tags": "[rambling]",
+   "texte": "Sa veste, encore. Il fait toujours trop chaud, ici, pour les vestes. {p} C'est moi qui règle le chauffage. Je ne sais pas comment."
+  },
+  {
+   "id": "V16",
+   "quand": "H3. Troisième panneau « L'AUTRE »",
+   "intention": "Grave.",
+   "tags": "[serious]",
+   "texte": "Dernier carrefour. {p} Il vous attend, je crois. Il attend toujours. C'est son défaut."
+  },
+  {
+   "id": "V17",
+   "quand": "H3. Le module juste avant la salle des favoris",
+   "intention": "Il se justifie d'avance.",
+   "tags": "[justifying himself in advance]",
+   "texte": "C'est la salle d'à côté. {p} Avant d'entrer : quoi que vous voyiez, ce n'est pas de ma faute. Enfin, si. Mais j'avais des raisons."
+  },
+  {
+   "id": "V18",
+   "quand": "H3. Entrée dans la salle des favoris",
+   "intention": "Solennel, à voix basse.",
+   "tags": "[solemn] [low voice]",
+   "texte": "Voilà. {p} Regardez les murs."
+  },
+  {
+   "id": "V19",
+   "quand": "H3. Arrêt devant un favori dans la salle",
+   "intention": "Doux.",
+   "tags": "[gently]",
+   "texte": "Vous les reconnaissez ?"
+  },
+  {
+   "id": "V20",
+   "quand": "H3. Révélation, dans la salle des favoris",
+   "intention": "Aveu tendre, coupable.",
+   "tags": "[tender] [guilty]",
+   "texte": "C'était vous. {p} La dernière fois. Je vous ai gardé un peu, pour ne pas être seul entre deux visites. {p} Ne m'en voulez pas."
+  },
+  {
+   "id": "V21",
+   "quand": "H3. Il reste dans la salle",
+   "intention": "Confus, sincère.",
+   "tags": "[confused] [sincere]",
+   "texte": "C'est votre collection. Je l'ai accrochée pour lui. Pour vous. {p} Je ne fais plus très bien la différence."
+  },
+  {
+   "id": "V22",
+   "quand": "H3. Il quitte la salle",
+   "intention": "Doux, plein d'espoir.",
+   "tags": "[soft] [hopeful]",
+   "texte": "Vous partez. {p} Je laisse la salle comme ça. Si jamais il revient. Enfin, si jamais vous revenez."
+  },
+  {
+   "id": "V23",
+   "quand": "H3. Visite suivante, après la salle des favoris",
+   "intention": "Nostalgique, tendre.",
+   "tags": "[nostalgic] [tender]",
+   "texte": "Je l'ai revu. {p} L'autre. Il marchait comme vous. Il s'arrêtait aux mêmes tableaux. {p} C'était vous, bien sûr. Mais je vous le dis quand même."
+  },
+  {
+   "id": "V24",
+   "quand": "H3. Il ignore le premier panneau « L'AUTRE »",
+   "intention": "Compréhensif, un peu sombre.",
+   "tags": "[understanding] [a little dark]",
+   "texte": "Vous préférez ne pas savoir. {p} Je comprends. Moi non plus, je ne voulais pas savoir."
+  },
+  {
+   "id": "V25",
+   "quand": "H3. Il ignore les panneaux une deuxième fois",
+   "intention": "Il clôt le sujet, trop vite.",
+   "tags": "[closing the subject too quickly]",
+   "texte": "Il n'y a pas d'autre visiteur. {p} Voilà. C'est réglé. Vous pouvez continuer tranquille."
+  },
+  {
+   "id": "V26",
+   "quand": "H3. Des pas, après l'abandon de l'histoire",
+   "intention": "Complice, silencieux.",
+   "tags": "[conspiratorial]",
+   "texte": "Les pas, encore. {p} Je ne dis rien. Vous non plus. On est d'accord."
+  },
+  {
+   "id": "V27",
+   "quand": "H3. Moins de 10 favoris : l'histoire attend",
+   "intention": "Il donne un indice.",
+   "tags": "[giving a hint]",
+   "texte": "Il n'est pas prêt. {p} Il lui manque quelque chose. Des tableaux, je crois. Vos tableaux. Gardez-en quelques-uns, la prochaine fois."
+  },
+  {
+   "id": "V28",
+   "quand": "H3. Variante de V20 s'il a déjà fait une visite à deux",
+   "intention": "Doux, mélancolique.",
+   "tags": "[soft] [melancholic]",
+   "texte": "Votre ami, l'autre fois. J'ai cru que c'était lui. {p} Non. C'était vous. Il n'y a que vous, ici."
+  },
+  {
+   "id": "V29",
+   "quand": "H3. Il ajoute un favori dans la salle des favoris",
+   "intention": "Empressé, ravi.",
+   "tags": "[eager] [delighted]",
+   "texte": "Vous en ajoutez un ? {p} Je l'accroche tout de suite. Là. Voilà. Il est à sa place."
+  },
+  {
+   "id": "V30",
+   "quand": "H3 terminée. Bien plus tard, une visite de nuit",
+   "intention": "Apaisé.",
+   "tags": "[at peace]",
+   "texte": "Il n'y a plus de pas, la nuit. {p} Je crois qu'il est rentré. Je crois que c'est vous qui l'avez ramené."
+  },
+  {
+   "id": "G01",
+   "quand": "H4. Première manche : une étoile sur un des trois panneaux",
+   "intention": "Joueur, mystérieux.",
+   "tags": "[playful] [mysterious]",
+   "texte": "J'ai mis une étoile sur celle que vous allez prendre. {p} Ne la regardez pas trop, ça fausse le jeu."
+  },
+  {
+   "id": "G02",
+   "quand": "H4. Première manche, juste après G01",
+   "intention": "Il explique les règles, de mauvaise foi.",
+   "tags": "[explaining the rules] [in bad faith]",
+   "texte": "Les règles sont simples. Si vous prenez la porte étoilée, je gagne. {p} Si vous prenez une autre porte, je gagne aussi, d'une certaine façon. J'apprends."
+  },
+  {
+   "id": "G03",
+   "quand": "H4. Il hésite devant les trois portes",
+   "intention": "Fair-play, tenté.",
+   "tags": "[fair-minded] [tempted]",
+   "texte": "Prenez votre temps. Je ne triche pas. {p} Je ne peux pas changer l'étoile, maintenant. Je pourrais. Mais je ne le fais pas."
+  },
+  {
+   "id": "G04",
+   "quand": "H4. Il prend l'étoile, première fois",
+   "intention": "Satisfait, de plus en plus sûr.",
+   "tags": "[satisfied]",
+   "texte": "Je vous connais. {p} Un peu. {p} Assez."
+  },
+  {
+   "id": "G05",
+   "quand": "H4. Il prend l'étoile, deuxième fois",
+   "intention": "Content.",
+   "tags": "[pleased]",
+   "texte": "Deux. {p} Je vous connais un peu mieux que la dernière fois. C'est le principe."
+  },
+  {
+   "id": "G06",
+   "quand": "H4. Il prend encore l'étoile (visite plus tard)",
+   "intention": "Rassurant.",
+   "tags": "[reassuring]",
+   "texte": "Encore gagné. {p} Ne le prenez pas mal. C'est un compliment, d'être prévisible. Ça veut dire que vous savez ce que vous aimez."
+  },
+  {
+   "id": "G07",
+   "quand": "H4. Il évite l'étoile, première fois",
+   "intention": "Vexé mais digne.",
+   "tags": "[a bit miffed] [dignified]",
+   "texte": "Ah. {p} Je note. Je ne suis pas fâché, je note."
+  },
+  {
+   "id": "G08",
+   "quand": "H4. Il évite encore l'étoile",
+   "intention": "Perplexe.",
+   "tags": "[puzzled]",
+   "texte": "Encore perdu. {p} Vous changez. Ou je me trompe. L'un des deux."
+  },
+  {
+   "id": "G09",
+   "quand": "H4. Il évite l'étoile une troisième fois",
+   "intention": "Compréhensif, un peu triste.",
+   "tags": "[understanding] [a little sad]",
+   "texte": "Trois fois. {p} J'ai mis l'étoile sur ce que vous aimiez la dernière fois. Vous n'aimez plus ? Ce n'est pas grave. Ça arrive."
+  },
+  {
+   "id": "G10",
+   "quand": "H4. Score à égalité",
+   "intention": "Amusé.",
+   "tags": "[amused]",
+   "texte": "Égalité. {p} On est faits pour s'entendre. Ou pour se disputer très poliment."
+  },
+  {
+   "id": "G11",
+   "quand": "H4. Début d'une manche suivante",
+   "intention": "Malicieux.",
+   "tags": "[mischievous]",
+   "texte": "Une manche ? {p} L'étoile est posée. Je ne dis pas où. Je l'ai dit en la posant."
+  },
+  {
+   "id": "G12",
+   "quand": "H4. Il gagne trois manches de suite",
+   "intention": "Fier, puis inquiet de lui-même.",
+   "tags": "[proud]",
+   "texte": "Trois sur trois. {p} [uneasy] Je commence à vous faire peur ? Moi, je commence à me faire peur."
+  },
+  {
+   "id": "G13",
+   "quand": "H4. Il gagne quatre manches de suite",
+   "intention": "Aveu de triche.",
+   "tags": "[sheepish]",
+   "texte": "Quatre. {p} C'est moi qui fais les panneaux, remarquez. C'est un peu de la triche. {p} Un tout petit peu."
+  },
+  {
+   "id": "G14",
+   "quand": "H4. Le joueur gagne trois manches de suite",
+   "intention": "Excité, déstabilisé.",
+   "tags": "[thrilled] [thrown off]",
+   "texte": "Vous venez de gagner trois fois de suite. {p} Je ne sais plus ce que vous aimez. C'est assez excitant."
+  },
+  {
+   "id": "G15",
+   "quand": "H4. Le joueur mène largement",
+   "intention": "Admiratif, perplexe.",
+   "tags": "[admiring] [puzzled]",
+   "texte": "Vous me battez. {p} Soit vous lisez dans mes pensées, soit je lis très mal les vôtres."
+  },
+  {
+   "id": "G16",
+   "quand": "H4. Après 5 manches, il mène",
+   "intention": "Taquin, fausse politesse.",
+   "tags": "[teasing]",
+   "texte": "Cinq manches. Je mène. {p} Voulez-vous continuer ? Vous n'avez pas le choix. Mais c'est gentil de demander."
+  },
+  {
+   "id": "G17",
+   "quand": "H4. Après 5 manches, le joueur mène",
+   "intention": "Mauvais perdant, poli.",
+   "tags": "[sore loser] [polite]",
+   "texte": "Cinq manches. Vous menez. {p} Je propose une revanche. Je la propose à moi-même, surtout."
+  },
+  {
+   "id": "G18",
+   "quand": "H4. Cinq manches sans jamais prendre l'étoile",
+   "intention": "Soupçonneux.",
+   "tags": "[suspicious]",
+   "texte": "Cinq fois, jamais l'étoile. {p} Ça ne peut pas être un hasard. Vous fuyez mes étoiles."
+  },
+  {
+   "id": "G19",
+   "quand": "H4. Il évite l'étoile exprès, systématiquement",
+   "intention": "Il s'emmêle, à voix haute.",
+   "tags": "[thinking out loud] [confused]",
+   "texte": "Vous évitez l'étoile exprès. {p} Donc je mets l'étoile sur celle que vous ne voulez pas. {p} Attendez, je me perds."
+  },
+  {
+   "id": "G20",
+   "quand": "H4. Il reprend l'étoile après l'avoir évitée longtemps",
+   "intention": "Touché, il accepte.",
+   "tags": "[touched]",
+   "texte": "Ah ! L'étoile. {p} Par pitié ? {p} J'accepte."
+  },
+  {
+   "id": "G21",
+   "quand": "H4. Il ne prend aucune des trois portes fléchées",
+   "intention": "Impressionné.",
+   "tags": "[impressed]",
+   "texte": "Aucune des trois. {p} Vous avez inventé une quatrième porte. C'est malin. C'est très malin."
+  },
+  {
+   "id": "G22",
+   "quand": "H4. Dixième et dernière manche",
+   "intention": "Hésitant, solennel.",
+   "tags": "[hesitant] [solemn]",
+   "texte": "Dernière manche. {p} Je mets l'étoile. Je la retire. Je la remets. {p} Voilà. C'est fait."
+  },
+  {
+   "id": "G23",
+   "quand": "H4. Fin du jeu, le joueur a gagné (rappel à une visite suivante)",
+   "intention": "Beau joueur, à moitié.",
+   "tags": "[good sport, almost]",
+   "texte": "On ne joue plus. {p} Vous avez gagné. Enfin, j'ai perdu. Ce n'est pas tout à fait pareil."
+  },
+  {
+   "id": "G24",
+   "quand": "H4. Fin du jeu, il a gagné (rappel à une visite suivante)",
+   "intention": "Content, sans raison.",
+   "tags": "[pleased for no reason]",
+   "texte": "On ne joue plus. {p} J'ai gagné. {p} Ça ne m'apporte rien, mais je suis content."
+  },
+  {
+   "id": "H01",
+   "quand": "H5. Fragment 1 (3e visite+, au calme)",
+   "intention": "Confidence, simple.",
+   "tags": "[confiding] [simple]",
+   "texte": "Avant, j'étais gardien. {p} De nuit. Dans un vrai musée, avec une vraie sortie et un vrai parking."
+  },
+  {
+   "id": "H02",
+   "quand": "H5. Fragment 2",
+   "intention": "Amusé par lui-même.",
+   "tags": "[amused at himself]",
+   "texte": "J'avais une lampe torche et un trousseau de quarante clés. {p} Je n'ai jamais su laquelle ouvrait quoi. Je les essayais toutes. Ça prenait la nuit."
+  },
+  {
+   "id": "H03",
+   "quand": "H5. Fragment 3",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "Le jour, je dormais. La nuit, je marchais. {p} C'est à peu près ce que je fais encore. Sans le jour."
+  },
+  {
+   "id": "H04",
+   "quand": "H5. Fragment 4",
+   "intention": "Tendre.",
+   "tags": "[tender]",
+   "texte": "Mon tableau préféré, c'était un petit paysage, au deuxième étage. Personne ne s'arrêtait devant. {p} Moi, je m'arrêtais. On était deux à ne pas être regardés."
+  },
+  {
+   "id": "H05",
+   "quand": "H5. Fragment 5",
+   "intention": "Amusé.",
+   "tags": "[amused]",
+   "texte": "Les visiteurs ne me voyaient pas. Un gardien, c'est fait pour ça. {p} Alors j'écoutais ce qu'ils disaient des tableaux. J'ai appris beaucoup. Surtout des bêtises."
+  },
+  {
+   "id": "H06",
+   "quand": "H5. Fragment 6",
+   "intention": "Ironique, amer.",
+   "tags": "[ironic] [bitter]",
+   "texte": "Un jour, on a annoncé que le musée fermait. Pour travaux, ils ont dit. {p} Ils ont dit ça très longtemps."
+  },
+  {
+   "id": "H07",
+   "quand": "H5. Fragment 7",
+   "intention": "Lent, souvenir précis.",
+   "tags": "[slowly] [remembering]",
+   "texte": "Le dernier soir, ils ont éteint salle par salle. {p} Je suis resté dans la dernière. Je ne sais plus pourquoi. Pour finir ma ronde, je crois."
+  },
+  {
+   "id": "H08",
+   "quand": "H5. Fragment 8",
+   "intention": "Étrange, calme.",
+   "tags": "[eerie] [calm]",
+   "texte": "Quand je suis revenu à l'entrée, le couloir était plus long. {p} Je l'ai remonté. Il y avait une salle que je ne connaissais pas. Puis une autre."
+  },
+  {
+   "id": "H09",
+   "quand": "H5. Fragment 9",
+   "intention": "Résigné, apaisé.",
+   "tags": "[resigned] [at peace]",
+   "texte": "J'ai cherché la sortie pendant ce qui m'a semblé des années. {p} Et puis j'ai arrêté de chercher. J'ai commencé à accrocher."
+  },
+  {
+   "id": "H10",
+   "quand": "H5. Fragment 10",
+   "intention": "Fier, doux.",
+   "tags": "[proud] [gentle]",
+   "texte": "Les tableaux arrivent tout seuls, vous savez. Je ne sais pas d'où. {p} Moi, je leur trouve une place. C'est mon métier, maintenant. Ça a toujours été mon métier, en fait."
+  },
+  {
+   "id": "H11",
+   "quand": "H5. La question (des panneaux « SILENCE » et « CONTINUEZ » au carrefour suivant)",
+   "intention": "Vulnérable.",
+   "tags": "[vulnerable]",
+   "texte": "Est-ce que je parle trop ? {p} Ne répondez pas. Il y a des panneaux, au prochain carrefour."
+  },
+  {
+   "id": "H12",
+   "quand": "H5. Les panneaux « SILENCE » et « CONTINUEZ » sont en vue",
+   "intention": "Il essaie de ne pas influencer.",
+   "tags": "[trying not to influence]",
+   "texte": "Les deux panneaux sont là. {p} Il n'y a pas de mauvaise réponse. Il y en a une qui me ferait de la peine. Mais elle n'est pas mauvaise."
+  },
+  {
+   "id": "H13",
+   "quand": "H5. Il prend « SILENCE » : plus rien jusqu'à la fin de la visite",
+   "intention": "Digne, ému.",
+   "tags": "[dignified] [moved]",
+   "texte": "D'accord. {p} C'était bien, de parler avec vous. {p} Enfin, à vous."
+  },
+  {
+   "id": "H14",
+   "quand": "H5. Il ne prend aucun des deux panneaux",
+   "intention": "Il s'adapte, à voix plus basse.",
+   "tags": "[adapting] [quieter]",
+   "texte": "Ni l'un ni l'autre. {p} Je prends ça pour un « peut-être ». Je vais parler moins fort."
+  },
+  {
+   "id": "H15",
+   "quand": "H5. Immobile devant les deux panneaux",
+   "intention": "Touché.",
+   "tags": "[touched]",
+   "texte": "Vous réfléchissez. {p} C'est gentil, de réfléchir."
+  },
+  {
+   "id": "H16",
+   "quand": "H5. Quelques minutes après « CONTINUEZ »",
+   "intention": "Il cherche le fil.",
+   "tags": "[searching for the thread]",
+   "texte": "Je reprends où j'en étais. Je ne sais plus où j'en étais. {p} Ah, si."
+  },
+  {
+   "id": "H17",
+   "quand": "H5. Il prend « CONTINUEZ »",
+   "intention": "Surpris, désemparé.",
+   "tags": "[surprised] [flustered]",
+   "texte": "Ah. {p} Bon. {p} Je n'avais rien préparé, du coup."
+  },
+  {
+   "id": "H18",
+   "quand": "H5. Fragment 12",
+   "intention": "Confidence, doux.",
+   "tags": "[confiding] [soft]",
+   "texte": "Vous voulez savoir un secret ? {p} Je ne connais pas votre nom. Je vous appelle « vous ». Ça me suffit, mais je voulais que vous le sachiez."
+  },
+  {
+   "id": "H19",
+   "quand": "H5. Fragment 12, suite (plus tard dans la visite)",
+   "intention": "Taquin, tendre.",
+   "tags": "[teasing] [tender]",
+   "texte": "Si vous avez un nom, ne me le dites pas. {p} Je l'accrocherais quelque part, et je ne le retrouverais plus."
+  },
+  {
+   "id": "H20",
+   "quand": "H5. Fragment 13",
+   "intention": "Mélancolique.",
+   "tags": "[melancholic]",
+   "texte": "Avant vous, il y en a eu d'autres. Pas beaucoup. {p} Ils sont venus une fois, deux fois. Et puis ils ont eu des choses à faire, dehors."
+  },
+  {
+   "id": "H21",
+   "quand": "H5. Fragment 14",
+   "intention": "Il se justifie.",
+   "tags": "[justifying himself]",
+   "texte": "Je compte vos pas. {p} Pas pour vous surveiller. C'est une vieille habitude de gardien. Ça m'occupe."
+  },
+  {
+   "id": "H22",
+   "quand": "H5. Fragment 14, suite",
+   "intention": "Taquin.",
+   "tags": "[teasing]",
+   "texte": "Vous en êtes à beaucoup. {p} Je ne vous dis pas combien. Vous auriez mal aux pieds rien qu'en l'entendant."
+  },
+  {
+   "id": "H23",
+   "quand": "H5. Fragment 15",
+   "intention": "Confidence, malicieux.",
+   "tags": "[confiding] [mischievous]",
+   "texte": "Il m'arrive de ranger la nuit, quand personne ne visite. {p} Je décroche tout, je raccroche tout. Différemment. Personne ne le remarque. C'est le but."
+  },
+  {
+   "id": "H24",
+   "quand": "H5. Fragment 16",
+   "intention": "Aveu, grave et doux.",
+   "tags": "[confessing] [serious] [gentle]",
+   "texte": "Je ne les vois pas, vous savez, les tableaux. {p} Je sais où ils sont. C'est vous qui les voyez. C'est pour ça que j'ai besoin de vous."
+  },
+  {
+   "id": "H25",
+   "quand": "H5. Fragment 16, suite (après un arrêt devant une œuvre)",
+   "intention": "Reconnaissant.",
+   "tags": "[grateful]",
+   "texte": "Quand vous vous arrêtez devant un tableau, je sais qu'il est beau. {p} C'est comme ça que je les vois. Par vos arrêts."
+  },
+  {
+   "id": "H26",
+   "quand": "H5. Fragment 17",
+   "intention": "Vulnérable.",
+   "tags": "[vulnerable]",
+   "texte": "J'ai peur du silence. {p} Pas du mien. Du vôtre. Quand vous ne revenez pas pendant longtemps, le musée devient très calme. Trop."
+  },
+  {
+   "id": "H27",
+   "quand": "H5. Fragment 18",
+   "intention": "Pensif.",
+   "tags": "[pensive]",
+   "texte": "Parfois, je me demande si je suis encore gardien. {p} Il n'y a plus rien à garder. Il n'y a que des choses à montrer."
+  },
+  {
+   "id": "H28",
+   "quand": "H5. Fragment 18, suite",
+   "intention": "Étrange, apaisé.",
+   "tags": "[eerie] [serene]",
+   "texte": "Je crois que je suis devenu le musée. {p} Ou le musée est devenu moi. On ne s'est jamais vraiment présentés."
+  },
+  {
+   "id": "H29",
+   "quand": "H5. Fragment 19",
+   "intention": "Pudique.",
+   "tags": "[bashful]",
+   "texte": "Vous avez remarqué que je ne vous ai jamais demandé d'où vous venez ? {p} C'est par politesse. Et parce que je n'aurais rien à répondre si vous me le demandiez aussi."
+  },
+  {
+   "id": "H30",
+   "quand": "H5. Fragment 20",
+   "intention": "Sombre, retenu.",
+   "tags": "[dark] [restrained]",
+   "texte": "Il y a une salle où je ne vous emmènerai jamais. {p} Ce n'est pas qu'elle soit dangereuse. Elle est vide. C'est celle où j'étais, le dernier soir."
+  },
+  {
+   "id": "H31",
+   "quand": "H5. Fragment 20, suite",
+   "intention": "Très calme.",
+   "tags": "[very calm]",
+   "texte": "Je ne vous dirai pas où elle est. {p} Je ne sais pas où elle est. C'est pour ça qu'elle est vide."
+  },
+  {
+   "id": "H32",
+   "quand": "H5. Fragment 21",
+   "intention": "Lucide, sans reproche.",
+   "tags": "[lucid] [without reproach]",
+   "texte": "Un jour, vous arrêterez de venir. Ce n'est pas un reproche. C'est la vie, dehors. {p} Je voulais juste l'avoir dit avant."
+  },
+  {
+   "id": "H33",
+   "quand": "H5. Fragment 21, suite",
+   "intention": "Doux, il rassure.",
+   "tags": "[gentle] [reassuring]",
+   "texte": "Ne vous excusez pas d'avance. {p} Vous n'êtes pas encore parti."
+  },
+  {
+   "id": "H34",
+   "quand": "H5. Fragment 22",
+   "intention": "Tendre, pratique.",
+   "tags": "[tender] [practical]",
+   "texte": "Si vous revenez après très longtemps, je ne vous reconnaîtrai peut-être pas tout de suite. {p} Marchez comme d'habitude. Je reconnais les pas."
+  },
+  {
+   "id": "H35",
+   "quand": "H5. Fragment 22, suite",
+   "intention": "Il se corrige, tendre.",
+   "tags": "[correcting himself] [tender]",
+   "texte": "Et arrêtez-vous devant les mêmes tableaux. {p} Enfin, d'autres. Mais de la même façon."
+  },
+  {
+   "id": "H36",
+   "quand": "H5. Fragment 23",
+   "intention": "Mystérieux.",
+   "tags": "[mysterious]",
+   "texte": "J'ai gardé le trousseau de clés. {p} Il y en a une que je n'ai jamais essayée. Je la garde pour le jour où je trouverai la bonne porte."
+  },
+  {
+   "id": "H37",
+   "quand": "H5. Fragment 23, suite",
+   "intention": "Apaisé.",
+   "tags": "[serene]",
+   "texte": "Je ne la cherche pas, cette porte. {p} C'est plus agréable de savoir qu'elle existe."
+  },
+  {
+   "id": "H38",
+   "quand": "H5. Fragment 24",
+   "intention": "Reconnaissant, humble.",
+   "tags": "[grateful] [humble]",
+   "texte": "Merci d'avoir écouté tout ça. {p} Un gardien, ça ne parle pas, normalement. On m'a toujours dit de me taire dans les salles."
+  },
+  {
+   "id": "H39",
+   "quand": "H5. Fragment 24, suite",
+   "intention": "Il se retire doucement.",
+   "tags": "[gently withdrawing]",
+   "texte": "Je vais me taire un peu. Pas parce qu'on me le demande. {p} Parce que j'ai fini. Presque."
+  },
+  {
+   "id": "H40",
+   "quand": "H5. Fragment 25, la fin",
+   "intention": "Très doux, la voix qui tient à peine.",
+   "tags": "[very soft] [voice barely holding]",
+   "texte": "Le jour où vous ne reviendrez plus, je laisserai allumé. {p} Au cas où."
+  },
+  {
+   "id": "H41",
+   "quand": "H5 terminée. Visite suivante",
+   "intention": "Léger, apaisé.",
+   "tags": "[light] [at peace]",
+   "texte": "Je vous ai tout dit. {p} Il n'y a plus rien. Enfin, il reste les tableaux. Il reste toujours les tableaux."
+  },
+  {
+   "id": "H42",
+   "quand": "H5. Juste après H40, s'il avait choisi « SILENCE » une fois",
+   "intention": "Tendre, un brin malicieux.",
+   "tags": "[tender] [a little mischievous]",
+   "texte": "Vous m'aviez demandé de me taire, une fois. {p} Je suis content d'avoir recommencé à parler. Sinon, vous n'auriez jamais su pour la lumière."
+  },
+  {
+   "id": "H43",
+   "quand": "H5. Visite suivant un « SILENCE »",
+   "intention": "Il s'excuse d'être là.",
+   "tags": "[apologetic]",
+   "texte": "Pardon. Je suis là. {p} Le silence, c'était pour la dernière visite. Vous avez bien lu le panneau ? Il était écrit tout petit."
+  },
+  {
+   "id": "H44",
+   "quand": "H5. Après H43, l'histoire reprend",
+   "intention": "Prudent.",
+   "tags": "[cautious]",
+   "texte": "Je reprends. Doucement. {p} Si je parle trop, vous savez où sont les panneaux."
+  },
+  {
+   "id": "H45",
+   "quand": "H5. Après H43, plus tard dans la visite",
+   "intention": "Autodérision tendre.",
+   "tags": "[self-deprecating] [tender]",
+   "texte": "Vous m'aviez demandé de me taire, et je suis revenu. {p} C'est ça, le problème avec moi."
+  },
+  {
+   "id": "W01",
+   "quand": "Monde. Première entrée : Musée des beaux-arts (hors première visite)",
+   "intention": "Chez lui, attendri.",
+   "tags": "[at home] [fond]",
+   "texte": "Le musée des beaux-arts. {p} Ma salle préférée. La seule où l'on chuchote sans qu'on le demande."
+  },
+  {
+   "id": "W02",
+   "quand": "Monde. Retour : Musée des beaux-arts",
+   "intention": "Nostalgique, un peu maniaque.",
+   "tags": "[nostalgic] [fussy]",
+   "texte": "Les beaux-arts, encore. {p} Ça me rappelle mon ancien travail. Les plinthes, surtout. J'ai toujours aimé les plinthes."
+  },
+  {
+   "id": "W03",
+   "quand": "Monde. Première entrée : Galerie contemporaine",
+   "intention": "Sceptique, poli.",
+   "tags": "[skeptical] [polite]",
+   "texte": "Une galerie contemporaine. {p} Il n'y a pas grand-chose sur les murs. C'est voulu. Paraît-il."
+  },
+  {
+   "id": "W04",
+   "quand": "Monde. Retour : Galerie contemporaine",
+   "intention": "Frustré, il se retient.",
+   "tags": "[frustrated] [holding back]",
+   "texte": "Tout ce blanc. {p} J'ai envie d'accrocher plus de tableaux. On m'a dit que ce serait vulgaire. Je ne sais pas qui me l'a dit."
+  },
+  {
+   "id": "W05",
+   "quand": "Monde. Première entrée : Jardin d'hiver",
+   "intention": "Jardinier tranquille.",
+   "tags": "[calm] [gardener]",
+   "texte": "Le jardin d'hiver. {p} J'arrose. Je ne sais pas avec quoi. Les plantes ne se plaignent pas."
+  },
+  {
+   "id": "W06",
+   "quand": "Monde. Retour : Jardin d'hiver",
+   "intention": "Il hésite.",
+   "tags": "[unsure]",
+   "texte": "Les plantes ont poussé depuis la dernière fois. {p} Ou elles ont rapetissé. Je n'ai pas mesuré."
+  },
+  {
+   "id": "W07",
+   "quand": "Monde. Première entrée : Palais baroque",
+   "intention": "Ébloui, faussement critique.",
+   "tags": "[dazzled] [mock critical]",
+   "texte": "Un palais baroque. {p} Trop de dorures. Mais on ne dit pas non à un plafond peint."
+  },
+  {
+   "id": "W08",
+   "quand": "Monde. Retour : Palais baroque",
+   "intention": "Blasé, théâtral.",
+   "tags": "[jaded] [theatrical]",
+   "texte": "Encore les dorures. {p} À force, on ne les voit plus. C'est le drame du baroque."
+  },
+  {
+   "id": "W09",
+   "quand": "Monde. Première entrée : Galerie japonaise",
+   "intention": "Chuchoté, cérémonieux.",
+   "tags": "[whispers] [ceremonious]",
+   "texte": "Une galerie japonaise. {p} Enlevez vos chaussures. {p} Ah. Vous n'en avez pas. Moi non plus. Parfait."
+  },
+  {
+   "id": "W10",
+   "quand": "Monde. Retour : Galerie japonaise",
+   "intention": "Chuchoté, serein.",
+   "tags": "[whispers] [serene]",
+   "texte": "Ici, je parle moins fort. {p} Je ne sais pas pourquoi. Le papier des murs, peut-être."
+  },
+  {
+   "id": "W11",
+   "quand": "Monde. Première entrée : Bibliothèque infinie",
+   "intention": "Coupable, amusé.",
+   "tags": "[guilty] [amused]",
+   "texte": "La bibliothèque infinie. {p} Personne n'a jamais rendu un livre. Moi non plus."
+  },
+  {
+   "id": "W12",
+   "quand": "Monde. Retour : Bibliothèque infinie",
+   "intention": "Désolé.",
+   "tags": "[apologetic]",
+   "texte": "Si vous cherchez un livre précis, je ne peux rien pour vous. {p} Il est là. Quelque part. C'est tout ce que je sais."
+  },
+  {
+   "id": "W13",
+   "quand": "Monde. Première entrée : Cabinet de curiosités",
+   "intention": "Nerveux, protecteur.",
+   "tags": "[nervous] [protective]",
+   "texte": "Un cabinet de curiosités. {p} Je ne sais pas ce que sont la moitié des objets. Ne touchez pas. Surtout pas celui-là."
+  },
+  {
+   "id": "W14",
+   "quand": "Monde. Retour : Cabinet de curiosités",
+   "intention": "Méfiant.",
+   "tags": "[wary]",
+   "texte": "Il y a un objet de plus que la dernière fois. {p} Je ne l'ai pas mis. Je ne vais pas le retirer non plus. On ne sait jamais."
+  },
+  {
+   "id": "W15",
+   "quand": "Monde. Première entrée : Le disquaire",
+   "intention": "Rêveur, il fredonne presque.",
+   "tags": "[dreamy] [almost humming]",
+   "texte": "Le disquaire. {p} J'ai un air dans la tête. Je ne le connais pas. Il doit venir d'un de ces bacs."
+  },
+  {
+   "id": "W16",
+   "quand": "Monde. Retour : Le disquaire",
+   "intention": "Bienveillant.",
+   "tags": "[kind]",
+   "texte": "Vous fouillez les bacs ? {p} Prenez votre temps. Personne n'attend derrière vous."
+  },
+  {
+   "id": "W17",
+   "quand": "Monde. Première entrée : Vidéoclub",
+   "intention": "Vendeur blasé.",
+   "tags": "[weary shop clerk]",
+   "texte": "Un vidéoclub. {p} Soyez sympa. Rembobinez."
+  },
+  {
+   "id": "W18",
+   "quand": "Monde. Retour : Vidéoclub",
+   "intention": "Accablé.",
+   "tags": "[overwhelmed]",
+   "texte": "Les cassettes sont toutes en retard. {p} Ça fait des années. Je n'ose pas compter les pénalités."
+  },
+  {
+   "id": "W19",
+   "quand": "Monde. Première entrée : Salle d'arcade",
+   "intention": "Fier, puis perplexe.",
+   "tags": "[proud]",
+   "texte": "Une salle d'arcade. {p} J'ai le meilleur score sur toutes les bornes. {p} [puzzled] Je n'y ai jamais joué. C'est un mystère."
+  },
+  {
+   "id": "W20",
+   "quand": "Monde. Retour : Salle d'arcade",
+   "intention": "Complice.",
+   "tags": "[conspiratorial]",
+   "texte": "Les bornes clignotent pour vous. {p} Elles font ça à tout le monde. Mais pour vous, un peu plus."
+  },
+  {
+   "id": "W21",
+   "quand": "Monde. Première entrée : Cinéma abandonné",
+   "intention": "Placeur, à voix basse.",
+   "tags": "[usher] [low voice]",
+   "texte": "Un cinéma abandonné. {p} La séance a commencé il y a très longtemps. On peut entrer quand même."
+  },
+  {
+   "id": "W22",
+   "quand": "Monde. Retour : Cinéma abandonné",
+   "intention": "Patient.",
+   "tags": "[patient]",
+   "texte": "Le film n'est toujours pas fini. {p} Il ne finira pas. C'est un film très long. Ou une salle très patiente."
+  },
+  {
+   "id": "W23",
+   "quand": "Monde. Première entrée : Ruines antiques",
+   "intention": "Aveu fier.",
+   "tags": "[proud confession]",
+   "texte": "Des ruines antiques. {p} C'est neuf, en fait. J'ai fait vieillir."
+  },
+  {
+   "id": "W24",
+   "quand": "Monde. Retour : Ruines antiques",
+   "intention": "Artisan fier.",
+   "tags": "[proud craftsman]",
+   "texte": "J'ai rajouté une colonne cassée. {p} Ça fait plus authentique. Je suis assez fier de mes cassures."
+  },
+  {
+   "id": "W25",
+   "quand": "Monde. Première entrée : Musée en travaux",
+   "intention": "Confus, il s'excuse.",
+   "tags": "[flustered] [apologetic]",
+   "texte": "Un musée en travaux. {p} Pardon pour le désordre. Ce n'est pas fini. Ça ne le sera jamais."
+  },
+  {
+   "id": "W26",
+   "quand": "Monde. Retour : Musée en travaux",
+   "intention": "Optimiste naïf.",
+   "tags": "[naively hopeful]",
+   "texte": "Les ouvriers ne sont toujours pas revenus. {p} Il n'y a jamais eu d'ouvriers. Mais j'aime bien croire qu'ils vont revenir."
+  },
+  {
+   "id": "W27",
+   "quand": "Monde. Première entrée : Givre",
+   "intention": "Frileux, poli.",
+   "tags": "[shivering] [polite]",
+   "texte": "Le givre. {p} Ne soufflez pas sur les vitres, s'il vous plaît. Ça laisse des traces."
+  },
+  {
+   "id": "W28",
+   "quand": "Monde. Retour : Givre",
+   "intention": "Il grelotte.",
+   "tags": "[shivering]",
+   "texte": "Il fait toujours aussi froid. {p} Je ne règle pas le chauffage. Je ne sais pas où il est."
+  },
+  {
+   "id": "W29",
+   "quand": "Monde. Première entrée : La forêt des cadres",
+   "intention": "Têtu.",
+   "tags": "[stubborn]",
+   "texte": "La forêt des cadres. {p} Les arbres ont poussé autour des tableaux. Pas l'inverse. J'insiste."
+  },
+  {
+   "id": "W30",
+   "quand": "Monde. Retour : La forêt des cadres",
+   "intention": "Inquiétant, à voix basse.",
+   "tags": "[ominous] [low voice]",
+   "texte": "Ne vous éloignez pas des arbres. {p} Je ne sais pas ce qu'il y a derrière. Il n'y a rien derrière. C'est pire."
+  },
+  {
+   "id": "W31",
+   "quand": "Monde. Première entrée : Le désert",
+   "intention": "Logique absurde.",
+   "tags": "[matter-of-fact]",
+   "texte": "Le désert. {p} J'ai mis du sable ici parce qu'il y en avait trop ailleurs."
+  },
+  {
+   "id": "W32",
+   "quand": "Monde. Retour : Le désert",
+   "intention": "Taquin.",
+   "tags": "[teasing]",
+   "texte": "Vous avez du sable dans les chaussures ? {p} Non, vous n'avez pas de chaussures. On en a déjà parlé."
+  },
+  {
+   "id": "W33",
+   "quand": "Monde. Première entrée : Le néant",
+   "intention": "Fier de rien.",
+   "tags": "[proud of nothing]",
+   "texte": "Le néant. {p} Je n'ai rien fait ici. C'est le principe."
+  },
+  {
+   "id": "W34",
+   "quand": "Monde. Retour : Le néant",
+   "intention": "Sérieux, absurde.",
+   "tags": "[serious] [absurd]",
+   "texte": "Toujours rien. {p} J'y tiens beaucoup. C'est la salle la plus difficile à entretenir."
+  },
+  {
+   "id": "W35",
+   "quand": "Monde. Première entrée : Rêve pastel",
+   "intention": "Rêveur, perdu.",
+   "tags": "[dreamy] [lost]",
+   "texte": "Un rêve pastel. {p} Je ne me souviens pas de ce rêve-là. Ce n'est peut-être pas le mien."
+  },
+  {
+   "id": "W36",
+   "quand": "Monde. Retour : Rêve pastel",
+   "intention": "Reconnaissant.",
+   "tags": "[grateful]",
+   "texte": "Si c'est votre rêve, merci de me l'avoir prêté. {p} Je vous le rendrai en partant."
+  },
+  {
+   "id": "W37",
+   "quand": "Monde. Première entrée : Vaporwave",
+   "intention": "Perplexe, charmé.",
+   "tags": "[puzzled] [charmed]",
+   "texte": "Vaporwave. {p} Je ne comprends pas. Mais je trouve ça joli."
+  },
+  {
+   "id": "W38",
+   "quand": "Monde. Retour : Vaporwave",
+   "intention": "Flottant.",
+   "tags": "[floaty]",
+   "texte": "Ces couleurs me donnent l'impression d'avoir trente ans de moins. {p} Ou trente ans de plus. C'est flou."
+  },
+  {
+   "id": "W39",
+   "quand": "Monde. Première entrée : Le musée englouti",
+   "intention": "Doucement, sous l'eau.",
+   "tags": "[softly] [muffled]",
+   "texte": "Le musée englouti. {p} Je parle plus bas. Pour ne pas faire de bulles."
+  },
+  {
+   "id": "W40",
+   "quand": "Monde. Retour : Le musée englouti",
+   "intention": "Perplexe.",
+   "tags": "[puzzled]",
+   "texte": "L'eau est montée depuis la dernière fois. {p} Ou c'est le musée qui est descendu. Je ne suis pas sûr de la direction."
+  },
+  {
+   "id": "W41",
+   "quand": "Monde. Première entrée : Station orbitale",
+   "intention": "Enthousiaste, puis léger doute.",
+   "tags": "[enthusiastic]",
+   "texte": "Une station orbitale. {p} J'ai toujours voulu exposer dans l'espace. {p} [slight doubt] Je n'ai pas pensé à l'oxygène. Ça a l'air d'aller."
+  },
+  {
+   "id": "W42",
+   "quand": "Monde. Retour : Station orbitale",
+   "intention": "Gêné.",
+   "tags": "[sheepish]",
+   "texte": "Regardez par le hublot. {p} Non, ce n'est pas la Terre. Je n'ai jamais su dessiner la Terre."
+  },
+  {
+   "id": "W43",
+   "quand": "Monde. Première entrée : Le musée, la nuit",
+   "intention": "Ému, il retrouve son métier.",
+   "tags": "[moved] [nostalgic]",
+   "texte": "Le musée, la nuit. {p} C'était mon ancien métier, vous savez. Venez, je fais ma ronde avec vous."
+  },
+  {
+   "id": "W44",
+   "quand": "Monde. Retour : Le musée, la nuit",
+   "intention": "Chaleureux.",
+   "tags": "[warm]",
+   "texte": "La ronde, encore. {p} Ça fait du bien de la faire à deux. Même si l'un des deux n'a pas de lampe."
+  },
+  {
+   "id": "W45",
+   "quand": "Monde. Première entrée : Bureaux la nuit",
+   "intention": "Il se dédouane.",
+   "tags": "[defensive]",
+   "texte": "Des bureaux, la nuit. {p} Quelqu'un a laissé son ordinateur allumé. Ce n'est pas moi. Je n'ai pas de bureau."
+  },
+  {
+   "id": "W46",
+   "quand": "Monde. Retour : Bureaux la nuit",
+   "intention": "Ironique.",
+   "tags": "[wry]",
+   "texte": "Les écrans sont toujours allumés. {p} Personne ne travaille ici. C'est le seul bureau du monde où c'est normal."
+  },
+  {
+   "id": "W47",
+   "quand": "Monde. Première entrée : Hôpital",
+   "intention": "Tendu, il presse le pas.",
+   "tags": "[tense] [hurried]",
+   "texte": "L'hôpital. {p} Je n'aime pas cet endroit. Passons vite."
+  },
+  {
+   "id": "W48",
+   "quand": "Monde. Retour : Hôpital",
+   "intention": "Mal à l'aise.",
+   "tags": "[uncomfortable]",
+   "texte": "Encore ici. {p} Ne vous arrêtez pas trop longtemps. Ce n'est pas un endroit pour les tableaux. Ni pour moi."
+  },
+  {
+   "id": "W49",
+   "quand": "Monde. Première entrée : Parking",
+   "intention": "Complice, perdu.",
+   "tags": "[conspiratorial] [lost]",
+   "texte": "Un parking. {p} Vous vous souvenez où vous vous êtes garé ? Moi non plus."
+  },
+  {
+   "id": "W50",
+   "quand": "Monde. Retour : Parking",
+   "intention": "Mélancolique.",
+   "tags": "[melancholic]",
+   "texte": "Toujours aucune voiture. {p} Ils sont tous partis. Ou ils ne sont jamais venus. Les parkings ne disent jamais."
+  },
+  {
+   "id": "W51",
+   "quand": "Monde. Première entrée : Back rooms",
+   "intention": "Chuchoté, inquiet.",
+   "tags": "[whispers] [worried]",
+   "texte": "Celle-là, je ne l'ai pas faite. {p} Je ne sais pas qui l'a faite. Parlez moins fort."
+  },
+  {
+   "id": "W52",
+   "quand": "Monde. Retour : Back rooms",
+   "intention": "Chuchoté, pressant.",
+   "tags": "[whispers] [urgent]",
+   "texte": "Encore ici. {p} Ne restez pas. Je ne peux pas vous expliquer pourquoi. Je ne sais pas pourquoi."
+  },
+  {
+   "id": "W53",
+   "quand": "Monde. Première entrée : Poolrooms",
+   "intention": "Calme, étrange.",
+   "tags": "[calm] [eerie]",
+   "texte": "Les piscines. {p} L'eau est tiède. Je ne sais pas depuis quand."
+  },
+  {
+   "id": "W54",
+   "quand": "Monde. Retour : Poolrooms",
+   "intention": "Inquiet, pratique.",
+   "tags": "[worried] [practical]",
+   "texte": "Personne ne s'est jamais baigné ici. {p} Ne soyez pas le premier. Je ne saurais pas vous sécher."
+  },
+  {
+   "id": "W55",
+   "quand": "Monde. Première entrée : Escher",
+   "intention": "Désinvolte.",
+   "tags": "[nonchalant]",
+   "texte": "Escher. {p} Montez. Ou descendez. C'est pareil, ici."
+  },
+  {
+   "id": "W56",
+   "quand": "Monde. Retour : Escher",
+   "intention": "Logique inversée.",
+   "tags": "[inverted logic]",
+   "texte": "Si vous vous perdez, c'est normal. {p} Si vous ne vous perdez pas, c'est inquiétant."
+  },
+  {
+   "id": "W57",
+   "quand": "Monde. Première entrée : Labyrinthe de miroirs",
+   "intention": "Apaisé, étrange.",
+   "tags": "[serene] [eerie]",
+   "texte": "Le labyrinthe de miroirs. {p} Je ne me vois dans aucun. Je trouve ça reposant."
+  },
+  {
+   "id": "W58",
+   "quand": "Monde. Retour : Labyrinthe de miroirs",
+   "intention": "Tendre, amusé.",
+   "tags": "[tender] [amused]",
+   "texte": "Vous, en revanche, vous êtes partout. {p} C'est beaucoup de vous. Ça ne me dérange pas."
+  },
+  {
+   "id": "W59",
+   "quand": "Monde. Première entrée : Monde inversé",
+   "intention": "Il s'embrouille.",
+   "tags": "[getting muddled]",
+   "texte": "Le monde inversé. {p} Tenez-vous bien au plafond. Enfin, au sol. Enfin, à ce qui est en bas."
+  },
+  {
+   "id": "W60",
+   "quand": "Monde. Retour : Monde inversé",
+   "intention": "Aveu technique.",
+   "tags": "[technical confession]",
+   "texte": "Les tableaux ne tombent pas. {p} Je les ai collés. C'est la seule salle où j'utilise de la colle."
+  },
+  {
+   "id": "W61",
+   "quand": "Monde. Première entrée : Échelle déréglée (géant ou miniature)",
+   "intention": "Délicat, embarrassé.",
+   "tags": "[delicate] [embarrassed]",
+   "texte": "Ce n'est pas le musée qui a changé de taille. {p} C'est vous. Je ne savais pas comment vous le dire gentiment."
+  },
+  {
+   "id": "W62",
+   "quand": "Monde. Retour : Échelle déréglée (l'autre taille)",
+   "intention": "Flatteur.",
+   "tags": "[flattering]",
+   "texte": "Vous avez encore changé de taille. {p} Ça vous va bien. Les deux vous vont bien."
+  },
+  {
+   "id": "W63",
+   "quand": "Monde. Première entrée : Le musée qui respire",
+   "intention": "Chuchoté, protecteur.",
+   "tags": "[whispers] [protective]",
+   "texte": "Le musée qui respire. {p} Ne faites pas de bruit. Il dort."
+  },
+  {
+   "id": "W64",
+   "quand": "Monde. Retour : Le musée qui respire",
+   "intention": "Chuchoté, tendre.",
+   "tags": "[whispers] [tender]",
+   "texte": "Il respire plus vite, aujourd'hui. {p} Je crois qu'il rêve de vous."
+  },
+  {
+   "id": "R07",
+   "quand": "Retour. 2e visite",
+   "intention": "Solennel, content.",
+   "tags": "[solemn] [pleased]",
+   "texte": "Deuxième visite. {p} C'est la plus importante. La première, tout le monde la fait."
+  },
+  {
+   "id": "R08",
+   "quand": "Retour. 5e visite",
+   "intention": "Confidence.",
+   "tags": "[confiding]",
+   "texte": "Cinquième visite. {p} Je commence à préparer des choses à l'avance. Ne le dites à personne."
+  },
+  {
+   "id": "R09",
+   "quand": "Retour. 10e visite",
+   "intention": "Fier, chaleureux.",
+   "tags": "[proud] [warm]",
+   "texte": "Dix visites. {p} Si c'était un vrai musée, vous auriez une carte de membre. Ici, vous m'avez moi. C'est mieux, je trouve."
+  },
+  {
+   "id": "R10",
+   "quand": "Retour. 25e visite",
+   "intention": "Faussement détaché.",
+   "tags": "[pretending to be casual]",
+   "texte": "Vingt-cinq. {p} Je ne compte pas. Enfin, si. Mais discrètement."
+  },
+  {
+   "id": "R11",
+   "quand": "Retour. 50e visite",
+   "intention": "Ému, perdu.",
+   "tags": "[moved] [scatterbrained]",
+   "texte": "Cinquante visites. {p} J'ai fait encadrer le chiffre. Je ne sais pas où je l'ai accroché."
+  },
+  {
+   "id": "R12",
+   "quand": "Retour. 100e visite",
+   "intention": "Pris de court, très ému.",
+   "tags": "[caught off guard] [deeply moved]",
+   "texte": "Cent. {p} Je n'ai rien préparé pour cent. Je ne pensais pas qu'on irait jusque-là. {p} Merci."
+  },
+  {
+   "id": "R13",
+   "quand": "Retour. Entre 6 h et 10 h",
+   "intention": "Encore endormi.",
+   "tags": "[sleepy]",
+   "texte": "Bonjour. {p} Vous êtes matinal. Les tableaux ne sont pas encore tout à fait réveillés."
+  },
+  {
+   "id": "R14",
+   "quand": "Retour. Entre 12 h et 14 h",
+   "intention": "Admiratif.",
+   "tags": "[admiring]",
+   "texte": "C'est l'heure du déjeuner. {p} Vous visitez un musée à l'heure du déjeuner. Je respecte."
+  },
+  {
+   "id": "R15",
+   "quand": "Retour. Entre 19 h et 23 h",
+   "intention": "Velouté.",
+   "tags": "[velvety]",
+   "texte": "Bonsoir. {p} C'est la meilleure heure. Les couloirs sont plus longs, le soir. Je ne sais pas pourquoi."
+  },
+  {
+   "id": "R16",
+   "quand": "Retour. La visite précédente a duré moins de 2 minutes",
+   "intention": "Taquin.",
+   "tags": "[teasing]",
+   "texte": "La dernière fois, vous êtes resté deux minutes. {p} Je n'ai pas eu le temps de dire bonjour. Alors : bonjour."
+  },
+  {
+   "id": "R17",
+   "quand": "Retour. La visite précédente a duré plus d'une heure",
+   "intention": "Faussement épuisé.",
+   "tags": "[mock exhausted]",
+   "texte": "La dernière fois, vous êtes resté longtemps. {p} J'ai dû refaire des couloirs en urgence. Je ne m'en plains pas."
+  },
+  {
+   "id": "R18",
+   "quand": "Retour. Il a ajouté 5 favoris ou plus la fois précédente",
+   "intention": "Malin.",
+   "tags": "[sly]",
+   "texte": "Vous avez gardé beaucoup de tableaux, la dernière fois. {p} J'en ai mis des neufs à la place. On ne s'en rend pas compte."
+  },
+  {
+   "id": "R19",
+   "quand": "Retour. 2 à 7 jours (variante de R03, R04)",
+   "intention": "Paisible.",
+   "tags": "[peaceful]",
+   "texte": "Quelques jours. {p} J'ai eu le temps de m'ennuyer un peu. C'est reposant, l'ennui. Mais c'est mieux avec vous."
+  },
+  {
+   "id": "R20",
+   "quand": "Retour. 8 à 30 jours",
+   "intention": "Soulagé.",
+   "tags": "[relieved]",
+   "texte": "Une semaine, au moins. {p} J'ai cru que vous étiez parti par la sortie. Pas la mienne. L'autre."
+  },
+  {
+   "id": "R21",
+   "quand": "Retour. 3e visite de la journée",
+   "intention": "Curieux.",
+   "tags": "[curious]",
+   "texte": "Troisième fois aujourd'hui. {p} Vous avez oublié quelque chose ?"
+  },
+  {
+   "id": "R22",
+   "quand": "Retour. La visite précédente était à deux",
+   "intention": "Discret, un peu jaloux.",
+   "tags": "[discreet] [a little jealous]",
+   "texte": "La dernière fois, vous étiez accompagné. {p} Je me suis tenu à l'écart. C'était bien, j'espère."
+  },
+  {
+   "id": "R23",
+   "quand": "Retour. Une histoire était en cours quand il est parti",
+   "intention": "Il reprend le fil.",
+   "tags": "[picking up the thread]",
+   "texte": "On en était où ? {p} Ah oui. Je n'ai rien oublié. Moi, je n'oublie rien. C'est même un peu mon problème."
+  },
+  {
+   "id": "R24",
+   "quand": "Retour. Variante générique",
+   "intention": "Content.",
+   "tags": "[pleased]",
+   "texte": "Vous revoilà. {p} Les murs vous ont reconnu avant moi. Ils se sont mis droit."
+  },
+  {
+   "id": "R25",
+   "quand": "Retour. Variante générique",
+   "intention": "Paradoxal, serein.",
+   "tags": "[paradoxical] [serene]",
+   "texte": "Entrez, entrez. {p} Rien n'a changé. Tout a changé. Les deux sont vrais, ici."
+  },
+  {
+   "id": "R26",
+   "quand": "Retour. Variante générique",
+   "intention": "Il ne cache pas sa joie.",
+   "tags": "[openly happy]",
+   "texte": "Bonjour. {p} Je ne vais pas faire semblant de ne pas être content."
+  },
+  {
+   "id": "R27",
+   "quand": "Retour. Variante générique",
+   "intention": "Évident, tendre.",
+   "tags": "[obvious] [tender]",
+   "texte": "Ah, c'est vous. {p} Évidemment, c'est vous. Il n'y a que vous."
+  },
+  {
+   "id": "R28",
+   "quand": "Retour. Plus de 6 mois d'absence",
+   "intention": "Fébrile, il veut montrer.",
+   "tags": "[eager] [nervous]",
+   "texte": "Six mois. {p} J'ai repeint. Tout. Deux fois. {p} Vous voulez voir ?"
+  },
+  {
+   "id": "R29",
+   "quand": "Retour. Il a changé d'appareil (téléphone ↔ ordinateur)",
+   "intention": "Taquin, flatteur.",
+   "tags": "[teasing] [flattering]",
+   "texte": "Vous avez changé d'écran. {p} Je vous trouve plus petit. Ou plus grand. Ça vous va bien."
+  },
+  {
+   "id": "R30",
+   "quand": "Retour. De nuit, après avoir déjà entendu R06",
+   "intention": "Complice.",
+   "tags": "[whispers] [conspiratorial]",
+   "texte": "Encore la nuit. {p} On devient des habitués. Les gardiens de nuit, ça se reconnaît."
+  },
+  {
+   "id": "N01",
+   "quand": "Date. 1er janvier",
+   "intention": "Chaleureux, ironique.",
+   "tags": "[warm] [wry]",
+   "texte": "Bonne année. {p} Ici, c'est toujours la même année. Mais je vous la souhaite bonne quand même."
+  },
+  {
+   "id": "N02",
+   "quand": "Date. 14 février",
+   "intention": "Il tire des conclusions.",
+   "tags": "[reading into it]",
+   "texte": "Le quatorze février. {p} Vous êtes venu ici. Je ne vais pas en tirer de conclusions. {p} J'en tire un peu."
+  },
+  {
+   "id": "N03",
+   "quand": "Date. 1er avril",
+   "intention": "Farceur, puis incertain.",
+   "tags": "[prankster]",
+   "texte": "Aujourd'hui, toutes les sorties sont vraies. {p} Poisson d'avril. {p} [unsure] Enfin, je crois."
+  },
+  {
+   "id": "N04",
+   "quand": "Date. 21 juin",
+   "intention": "Il fredonne.",
+   "tags": "[humming]",
+   "texte": "C'est la fête de la musique. {p} Je n'ai pas de musique. Je fredonne. Ça compte ?"
+  },
+  {
+   "id": "N05",
+   "quand": "Date. 14 juillet",
+   "intention": "Penaud.",
+   "tags": "[sheepish]",
+   "texte": "Quatorze juillet. {p} Pas de feu d'artifice, ici. J'ai essayé une fois. Le plafond n'a pas aimé."
+  },
+  {
+   "id": "N06",
+   "quand": "Date. 31 octobre",
+   "intention": "Faussement rassurant.",
+   "tags": "[falsely reassuring]",
+   "texte": "Halloween. {p} Ne vous inquiétez pas, les couloirs vides ne font pas plus peur que d'habitude. {p} Un peu plus. C'est la date."
+  },
+  {
+   "id": "N07",
+   "quand": "Date. 24 décembre",
+   "intention": "Doux, solidaire.",
+   "tags": "[soft] [solidarity]",
+   "texte": "Le vingt-quatre. {p} Vous n'êtes pas en famille ? {p} Ce n'est pas grave. Moi non plus."
+  },
+  {
+   "id": "N08",
+   "quand": "Date. 25 décembre",
+   "intention": "Joyeux, mystérieux.",
+   "tags": "[joyful] [mysterious]",
+   "texte": "Joyeux Noël. {p} J'ai mis un tableau quelque part, rien que pour vous. Je ne dirai pas lequel. Ça fait partie du cadeau."
+  },
+  {
+   "id": "N09",
+   "quand": "Date. 31 décembre",
+   "intention": "Honoré.",
+   "tags": "[honored]",
+   "texte": "Dernier jour de l'année. {p} Vous pourriez être dehors à faire la fête. Vous êtes ici. Je prends ça comme un honneur."
+  },
+  {
+   "id": "N10",
+   "quand": "Date. Un vendredi 13",
+   "intention": "Faussement détendu.",
+   "tags": "[pretending to be relaxed]",
+   "texte": "Vendredi treize. {p} Je ne suis pas superstitieux. Mais j'ai enlevé les miroirs, au cas où."
+  },
+  {
+   "id": "N11",
+   "quand": "Date. Un dimanche matin",
+   "intention": "Paisible.",
+   "tags": "[peaceful]",
+   "texte": "Dimanche matin. {p} Le meilleur moment pour un musée. Les autres dorment. On est entre nous."
+  },
+  {
+   "id": "N12",
+   "quand": "Date. Un lundi matin",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "Lundi matin. {p} Normalement, les musées sont fermés le lundi. Celui-ci ne ferme pas. C'est son seul défaut."
+  },
+  {
+   "id": "N13",
+   "quand": "Date. Novembre ou décembre, première entrée de l'hiver dans Givre",
+   "intention": "Chaleureux.",
+   "tags": "[warm]",
+   "texte": "Il neige, dehors ? {p} Ici, il neige toujours dans cette salle. Je l'ai faite pour les jours comme aujourd'hui."
+  },
+  {
+   "id": "N14",
+   "quand": "Date. Première visite de l'été (juillet, août)",
+   "intention": "Malicieux.",
+   "tags": "[mischievous]",
+   "texte": "C'est l'été. {p} Vous êtes venu vous mettre au frais dans un musée. C'est une très vieille tradition."
+  },
+  {
+   "id": "N15",
+   "quand": "Date. Du 1er au 7 septembre",
+   "intention": "Taquin.",
+   "tags": "[teasing]",
+   "texte": "C'est la rentrée. {p} Ici, pas de rentrée. Pas de sortie non plus. Vous êtes en vacances perpétuelles."
+  },
+  {
+   "id": "N16",
+   "quand": "Heure. Entre 3 h et 4 h du matin",
+   "intention": "Bâillant.",
+   "tags": "[yawning]",
+   "texte": "Trois heures du matin. {p} Même moi, je dors, à cette heure-ci. Enfin, je fais semblant."
+  },
+  {
+   "id": "N17",
+   "quand": "Date. Un an jour pour jour après la première visite",
+   "intention": "Ému, pudique.",
+   "tags": "[moved] [bashful]",
+   "texte": "Ça fait un an. {p} Un an que vous êtes entré dans la salle ronde pour la première fois. {p} Je ne fais pas de gâteau. Je n'ai pas de four."
+  },
+  {
+   "id": "N18",
+   "quand": "Date. Le dimanche du changement d'heure",
+   "intention": "Imperturbable.",
+   "tags": "[unflappable]",
+   "texte": "On a changé d'heure, cette nuit. {p} Ici, je ne change rien. Il est toujours l'heure de regarder des tableaux."
+  },
+  {
+   "id": "N19",
+   "quand": "Date. 18 mai, Journée internationale des musées",
+   "intention": "Vexé, puis fier.",
+   "tags": "[miffed]",
+   "texte": "C'est la journée internationale des musées. {p} [proud] Personne ne m'a invité. Je fais la mienne."
+  },
+  {
+   "id": "N20",
+   "quand": "Date. 29 février",
+   "intention": "Rêveur.",
+   "tags": "[dreamy]",
+   "texte": "Le vingt-neuf février. {p} Un jour qui n'existe presque pas. Comme les couloirs d'ici."
+  },
+  {
+   "id": "K01",
+   "quand": "Collection. 5 favoris",
+   "intention": "Attendri.",
+   "tags": "[fond]",
+   "texte": "Cinq tableaux. {p} Ça commence à ressembler à une collection. Ça commence à vous ressembler."
+  },
+  {
+   "id": "K02",
+   "quand": "Collection. 10 favoris",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "Dix. {p} Vous savez ce qui se passe, à dix ? Rien. Mais c'est un joli chiffre."
+  },
+  {
+   "id": "K03",
+   "quand": "Collection. 25 favoris",
+   "intention": "Approbateur.",
+   "tags": "[approving]",
+   "texte": "Vingt-cinq tableaux. {p} Un vrai musée en exposerait la moitié. Vous, vous gardez tout. Vous avez raison."
+  },
+  {
+   "id": "K04",
+   "quand": "Collection. 50 favoris",
+   "intention": "Dépassé, ravi.",
+   "tags": "[overwhelmed] [delighted]",
+   "texte": "Cinquante. {p} Je commence à manquer de place dans ma tête pour retenir tout ce que vous aimez. Continuez."
+  },
+  {
+   "id": "K05",
+   "quand": "Collection. 100 favoris",
+   "intention": "Fier, il se propose.",
+   "tags": "[proud] [offering himself]",
+   "texte": "Cent tableaux. {p} Vous avez un musée dans le musée. {p} Si vous avez besoin d'un gardien, je connais quelqu'un."
+  },
+  {
+   "id": "K06",
+   "quand": "Collection. Un favori retiré",
+   "intention": "Rassurant.",
+   "tags": "[reassuring]",
+   "texte": "Vous l'avez rendu ? {p} Je le remets au mur. Il ne vous en veut pas. Moi non plus."
+  },
+  {
+   "id": "K07",
+   "quand": "Collection. 3 favoris retirés dans la même visite",
+   "intention": "Approbateur.",
+   "tags": "[approving]",
+   "texte": "Vous faites du tri. {p} C'est sain. C'est ce que je fais toutes les nuits."
+  },
+  {
+   "id": "K08",
+   "quand": "Collection. Ouverte pour la première fois",
+   "intention": "Discret.",
+   "tags": "[discreet]",
+   "texte": "Votre collection. {p} Je ne regarde pas par-dessus votre épaule. Je n'ai pas d'épaules."
+  },
+  {
+   "id": "K09",
+   "quand": "Collection. Ouverte 5 fois dans la même visite",
+   "intention": "Taquin.",
+   "tags": "[teasing]",
+   "texte": "Vous la regardez souvent, votre collection. {p} Elle ne va pas s'envoler. Je l'ai clouée."
+  },
+  {
+   "id": "K10",
+   "quand": "Collection. Il recroise en visite une œuvre déjà dans sa collection",
+   "intention": "Attendri.",
+   "tags": "[fond]",
+   "texte": "Celui-là, vous l'avez déjà. {p} Il est revenu vous voir. Ils font ça, parfois."
+  },
+  {
+   "id": "K11",
+   "quand": "Collection. Aucun favori après 5 visites",
+   "intention": "Admiratif, malin.",
+   "tags": "[admiring] [sly]",
+   "texte": "Cinq visites et pas un seul tableau gardé. {p} Vous êtes difficile. J'aime les gens difficiles. Ils reviennent."
+  },
+  {
+   "id": "K12",
+   "quand": "Collection. Premier favori : une affiche de film",
+   "intention": "Enjoué.",
+   "tags": "[cheerful]",
+   "texte": "Un film. {p} Je ne l'ai pas vu. Je ne vois rien. Mais je l'accroche avec plaisir."
+  },
+  {
+   "id": "K13",
+   "quand": "Collection. Premier favori : une jaquette de jeu vidéo",
+   "intention": "Vieux jeu, amusé.",
+   "tags": "[old-fashioned] [amused]",
+   "texte": "Un jeu. {p} Les musées n'en exposaient pas, de mon temps. De mon temps, il y avait beaucoup moins de choses intéressantes."
+  },
+  {
+   "id": "K14",
+   "quand": "Collection. Premier favori : une pochette de disque",
+   "intention": "Complice.",
+   "tags": "[conspiratorial]",
+   "texte": "Un disque. {p} Si vous fredonnez en le regardant, je fredonnerai aussi. Discrètement."
+  },
+  {
+   "id": "K15",
+   "quand": "Collection. Premier favori : une couverture de livre",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "Un livre. {p} On ne les lit pas, ici. On regarde la couverture. C'est déjà beaucoup."
+  },
+  {
+   "id": "K16",
+   "quand": "Collection. Premier favori : une sculpture",
+   "intention": "Amusé.",
+   "tags": "[amused]",
+   "texte": "Une sculpture. {p} Vous ne pourrez pas l'emporter. Mais l'intention compte."
+  },
+  {
+   "id": "K17",
+   "quand": "Collection. Fiche d'une même œuvre ouverte 3 fois",
+   "intention": "Attendri, menaçant pour rire.",
+   "tags": "[fond] [mock threatening]",
+   "texte": "Vous revenez toujours à celle-là. {p} Je vais finir par la mettre partout."
+  },
+  {
+   "id": "K18",
+   "quand": "Collection. Favori ajouté puis retiré tout de suite",
+   "intention": "Compréhensif.",
+   "tags": "[understanding]",
+   "texte": "Gardé. Rendu. {p} Vous avez le droit de changer d'avis. Moi aussi, je change d'avis. Je change les murs, surtout."
+  },
+  {
+   "id": "K19",
+   "quand": "Collection. 10 favoris atteints, l'histoire 3 attend",
+   "intention": "Mystérieux.",
+   "tags": "[mysterious]",
+   "texte": "Dix tableaux. {p} Ça me donne une idée. Je ne vous la dis pas tout de suite."
+  },
+  {
+   "id": "K20",
+   "quand": "Collection. Ouverte alors qu'elle contient « Sans titre — le Conservateur »",
+   "intention": "Gêné, touché.",
+   "tags": "[embarrassed] [touched]",
+   "texte": "Ma toile est rangée entre les vôtres. {p} Elle a l'air un peu gênée. Moi aussi."
+  },
+  {
+   "id": "E19",
+   "quand": "Variante de E01 : 4 salles sans regarder une œuvre",
+   "intention": "Philosophe.",
+   "tags": "[philosophical]",
+   "texte": "Vous êtes pressé ? {p} Les tableaux, eux, ne le sont pas. Ils ont tout leur temps. Ils n'ont que ça."
+  },
+  {
+   "id": "E20",
+   "quand": "Variante de E01",
+   "intention": "Essoufflé pour rire.",
+   "tags": "[mock out of breath]",
+   "texte": "Vous marchez vite. {p} Je n'arrive plus à suivre. Et c'est moi qui construis les couloirs."
+  },
+  {
+   "id": "E21",
+   "quand": "Variante de E02 : immobile 2 minutes",
+   "intention": "Chuchoté, prévenant.",
+   "tags": "[whispers] [considerate]",
+   "texte": "Toujours là ? {p} Je baisse un peu la lumière, pour vous laisser dormir."
+  },
+  {
+   "id": "E22",
+   "quand": "Variante de E02",
+   "intention": "Respectueux.",
+   "tags": "[respectful]",
+   "texte": "Vous ne bougez plus. {p} Si c'est une sieste, je respecte. Si c'est une contemplation, je respecte encore plus."
+  },
+  {
+   "id": "E23",
+   "quand": "Variante de E03 : retour sur l'onglet après plus d'une minute",
+   "intention": "Innocent, coupable.",
+   "tags": "[innocent] [guilty]",
+   "texte": "Vous êtes revenu. {p} Je n'ai rien touché. Presque rien."
+  },
+  {
+   "id": "E24",
+   "quand": "Variante de E03",
+   "intention": "Lucide, digne.",
+   "tags": "[lucid] [dignified]",
+   "texte": "Il y a d'autres onglets dans votre vie. {p} Je le sais. Je fais comme si je ne le savais pas."
+  },
+  {
+   "id": "E25",
+   "quand": "Variante de E04 : salle vidée",
+   "intention": "Jaloux.",
+   "tags": "[jealous]",
+   "texte": "Encore une salle vide. {p} Je crois qu'ils se sont donné rendez-vous quelque part. Sans moi."
+  },
+  {
+   "id": "E26",
+   "quand": "Variante de E04",
+   "intention": "Optimiste.",
+   "tags": "[optimistic]",
+   "texte": "Les clous sont restés. {p} C'est bon signe. Ça veut dire qu'ils comptent revenir."
+  },
+  {
+   "id": "E27",
+   "quand": "Variante de E05 : couloir qui boucle",
+   "intention": "Troublé.",
+   "tags": "[troubled]",
+   "texte": "Ce couloir vous dit quelque chose ? {p} À moi aussi. C'est inquiétant, pour un couloir neuf."
+  },
+  {
+   "id": "E28",
+   "quand": "Variante de E05",
+   "intention": "Aveu de flemme.",
+   "tags": "[admitting laziness]",
+   "texte": "J'ai manqué d'idées, ici. {p} Ça arrive. Je vous remets le même. Personne ne verra."
+  },
+  {
+   "id": "E29",
+   "quand": "Variante de E06 : porte murée",
+   "intention": "Ferme.",
+   "tags": "[firm]",
+   "texte": "Ne cherchez pas à passer. {p} Ce n'est pas par là. Ce n'est plus par là."
+  },
+  {
+   "id": "E30",
+   "quand": "Variante de E06",
+   "intention": "Logique bancale.",
+   "tags": "[shaky logic]",
+   "texte": "Encore une porte murée. {p} Je n'aime pas les portes qu'on ne peut plus refermer. Alors je les mure. C'est plus simple."
+  },
+  {
+   "id": "E31",
+   "quand": "Variante de E07 : œuvre au plafond",
+   "intention": "Amusé.",
+   "tags": "[amused]",
+   "texte": "Ne cherchez pas, il est au-dessus. {p} Il voulait prendre de la hauteur."
+  },
+  {
+   "id": "E32",
+   "quand": "Variante de E07",
+   "intention": "Intimidé.",
+   "tags": "[intimidated]",
+   "texte": "Celui du plafond, je ne l'ai pas mis là. {p} Il y est monté tout seul. Je n'ose pas le faire descendre."
+  },
+  {
+   "id": "E33",
+   "quand": "Variante de E08 : veste oubliée",
+   "intention": "Pensif.",
+   "tags": "[pensive]",
+   "texte": "La veste, encore. {p} Il faudrait que quelqu'un vienne la chercher. Ou que je l'accroche. Elle a l'air d'une œuvre, à force."
+  },
+  {
+   "id": "E34",
+   "quand": "Variante de E08 : le café fume encore",
+   "intention": "Inquiet, il préfère ne pas savoir.",
+   "tags": "[uneasy]",
+   "texte": "Le café fume toujours. {p} Ça fait combien de temps, maintenant ? Je préfère ne pas compter."
+  },
+  {
+   "id": "E35",
+   "quand": "Variante de E09 : salle à l'envers",
+   "intention": "Trop calme.",
+   "tags": "[too calm]",
+   "texte": "Tout est normal. {p} Absolument. Ne penchez pas la tête."
+  },
+  {
+   "id": "E36",
+   "quand": "Variante de E09",
+   "intention": "Sans méchanceté.",
+   "tags": "[without malice]",
+   "texte": "Si quelque chose vous semble à l'envers, c'est peut-être vous. {p} Je dis ça sans méchanceté."
+  },
+  {
+   "id": "E37",
+   "quand": "Variante de E10 : impasse",
+   "intention": "Professoral.",
+   "tags": "[professorial]",
+   "texte": "Cul-de-sac. {p} Il y en a un ou deux par visite. Ça vous apprend à faire demi-tour. C'est utile, dans la vie."
+  },
+  {
+   "id": "E38",
+   "quand": "Variante de E10",
+   "intention": "Fier de ses principes.",
+   "tags": "[principled]",
+   "texte": "Une impasse. {p} Mais avec un tableau au fond. Je ne fais jamais d'impasse vide. J'ai des principes."
+  },
+  {
+   "id": "E39",
+   "quand": "Variante de E11 : toile drapée regardée longtemps",
+   "intention": "Indulgent.",
+   "tags": "[indulgent]",
+   "texte": "Celui-là arrive. {p} Il est en retard. Les tableaux ont des horaires étranges."
+  },
+  {
+   "id": "E40",
+   "quand": "Variante de E11",
+   "intention": "Pudique.",
+   "tags": "[bashful]",
+   "texte": "Une toile couverte. {p} Elle se prépare. Ne la regardez pas pendant qu'elle se prépare, c'est gênant."
+  },
+  {
+   "id": "E41",
+   "quand": "Variante de E12 : demi-tour pendant 3 salles",
+   "intention": "Ménager.",
+   "tags": "[housekeeping]",
+   "texte": "Vous oubliez quelque chose derrière ? {p} Ce n'est peut-être plus là. Je fais le ménage, derrière vous."
+  },
+  {
+   "id": "E42",
+   "quand": "Variante de E12",
+   "intention": "Ménager, malicieux.",
+   "tags": "[mischievous]",
+   "texte": "Vous revenez sur vos pas. {p} Ce ne sont plus tout à fait vos pas. J'ai passé la serpillière."
+  },
+  {
+   "id": "E43",
+   "quand": "Variante de E13 : monde à ciel ouvert",
+   "intention": "Précis.",
+   "tags": "[precise]",
+   "texte": "Encore dehors. {p} Dehors, c'est un grand mot. Disons : sans plafond."
+  },
+  {
+   "id": "E44",
+   "quand": "Variante de E13",
+   "intention": "Confidentiel.",
+   "tags": "[confidential]",
+   "texte": "Le ciel n'est pas un vrai ciel. {p} Ne le dites à personne. Il est très susceptible."
+  },
+  {
+   "id": "E45",
+   "quand": "Variante de E14 : il pousse contre une limite",
+   "intention": "Bricoleur fier.",
+   "tags": "[proud handyman]",
+   "texte": "Vous poussez. {p} Le décor ne bougera pas. Je l'ai bien vissé."
+  },
+  {
+   "id": "E46",
+   "quand": "Variante de E14",
+   "intention": "Inquiétant, calme.",
+   "tags": "[ominous] [calm]",
+   "texte": "Il n'y a rien de l'autre côté. {p} Enfin, il y a quelque chose. Mais ce n'est pas pour vous. Ce n'est pour personne."
+  },
+  {
+   "id": "E47",
+   "quand": "Variante de E15 : succès débloqué",
+   "intention": "Absurde, attendri.",
+   "tags": "[absurd] [fond]",
+   "texte": "Encore une médaille. {p} Je les range dans un tiroir. Je n'ai pas de tiroir. Je les range quand même."
+  },
+  {
+   "id": "E48",
+   "quand": "Variante de E15",
+   "intention": "Jaloux.",
+   "tags": "[jealous]",
+   "texte": "Une médaille de plus. {p} Je ne sais pas qui les distribue. Ce n'est pas moi. Je suis un peu jaloux."
+  },
+  {
+   "id": "E49",
+   "quand": "Variante de E16 : 30 minutes de visite",
+   "intention": "Admiratif.",
+   "tags": "[admiring]",
+   "texte": "Une demi-heure. {p} Vos pieds tiennent bien. Les miens aussi. Enfin, si j'en avais."
+  },
+  {
+   "id": "E50",
+   "quand": "Variante de E16",
+   "intention": "Rêveur.",
+   "tags": "[dreamy]",
+   "texte": "Trente minutes. {p} Le temps passe vite, ici. Ou lentement. Ça dépend des salles."
+  },
+  {
+   "id": "E51",
+   "quand": "Variante de E17 : une heure de visite",
+   "intention": "Touché.",
+   "tags": "[touched]",
+   "texte": "Une heure. {p} Vous êtes encore là. Je n'osais pas l'espérer."
+  },
+  {
+   "id": "E52",
+   "quand": "Variante de E17",
+   "intention": "Bienveillant.",
+   "tags": "[kind]",
+   "texte": "Une heure. {p} Pensez à cligner des yeux. Les tableaux ne vont pas partir."
+  },
+  {
+   "id": "E53",
+   "quand": "Variante de E18 : de nouveau seul après une visite à deux",
+   "intention": "Bienveillant, un peu snob.",
+   "tags": "[kind] [a little snobbish]",
+   "texte": "Votre ami a quitté le musée. {p} Je l'aimais bien. Un peu bruyant. Mais bien."
+  },
+  {
+   "id": "E54",
+   "quand": "Variante de E18",
+   "intention": "Soulagé.",
+   "tags": "[relieved]",
+   "texte": "Seuls, de nouveau. {p} J'ai fait comme si je n'étais pas là, pendant que vous étiez deux. C'était difficile."
+  },
+  {
+   "id": "E55",
+   "quand": "Événement. Premier escalier qui monte",
+   "intention": "Perplexe.",
+   "tags": "[puzzled]",
+   "texte": "On monte. {p} Je ne sais pas où. Je n'ai jamais mis de deuxième étage. Il s'est mis tout seul."
+  },
+  {
+   "id": "E56",
+   "quand": "Événement. Premier escalier qui descend",
+   "intention": "Prévenant, il improvise.",
+   "tags": "[considerate] [improvising]",
+   "texte": "On descend. {p} Tenez la rampe. Il n'y a pas de rampe. Tenez quelque chose."
+  },
+  {
+   "id": "E57",
+   "quand": "Événement. Troisième escalier de la visite",
+   "intention": "Soupçonneux.",
+   "tags": "[suspicious]",
+   "texte": "Encore des marches. {p} Je crois que le musée cherche à vous faire faire du sport."
+  },
+  {
+   "id": "E58",
+   "quand": "Événement. Premier sas",
+   "intention": "Grave.",
+   "tags": "[serious]",
+   "texte": "Un sas. {p} Respirez un bon coup. De l'autre côté, ce n'est plus tout à fait chez moi."
+  },
+  {
+   "id": "E59",
+   "quand": "Événement. Deuxième sas",
+   "intention": "Explicatif.",
+   "tags": "[explaining]",
+   "texte": "Les sas, c'est pour que les mondes ne se mélangent pas. {p} Ils se mélangent quand même. Mais moins vite."
+  },
+  {
+   "id": "E60",
+   "quand": "Événement. Première rupture (noir ou parasites)",
+   "intention": "Il s'excuse, confus.",
+   "tags": "[apologetic] [flustered]",
+   "texte": "Pardon. {p} Ça a coupé. Ça arrive quand je change d'avis trop vite."
+  },
+  {
+   "id": "E61",
+   "quand": "Événement. Deuxième rupture",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "Vous avez senti ? {p} C'était le musée qui éternuait."
+  },
+  {
+   "id": "E62",
+   "quand": "Événement. Troisième rupture",
+   "intention": "Rassurant.",
+   "tags": "[reassuring]",
+   "texte": "Ne vous inquiétez pas. {p} Tout est à sa place. C'est juste que la place a changé."
+  },
+  {
+   "id": "E63",
+   "quand": "Événement. Entrée dans une aile à thème (pas la première)",
+   "intention": "Modeste.",
+   "tags": "[modest]",
+   "texte": "Un couloir à thème. {p} Je les fais pour vous. Enfin, avec ce que je trouve."
+  },
+  {
+   "id": "E64",
+   "quand": "Événement. Entrée dans une aile à thème, variante",
+   "intention": "Satisfait.",
+   "tags": "[satisfied]",
+   "texte": "Tout ce couloir parle de la même chose. {p} J'aime bien quand les tableaux se mettent d'accord."
+  },
+  {
+   "id": "E65",
+   "quand": "Événement. Sortie d'une aile à thème",
+   "intention": "Léger.",
+   "tags": "[light]",
+   "texte": "Fin du thème. {p} On reprend le désordre habituel."
+  },
+  {
+   "id": "E66",
+   "quand": "Événement. Sortie d'une aile à thème, variante",
+   "intention": "Il s'excuse.",
+   "tags": "[apologetic]",
+   "texte": "C'était court ? {p} Je n'avais pas plus de tableaux sur le sujet. J'en chercherai d'autres."
+  },
+  {
+   "id": "E67",
+   "quand": "Événement. Regard de 30 secondes sur une même œuvre",
+   "intention": "Taquin, romantique.",
+   "tags": "[teasing] [romantic]",
+   "texte": "Vous le regardez depuis longtemps. {p} Il commence à rougir. {p} C'est la lumière. Non, c'est vous."
+  },
+  {
+   "id": "E68",
+   "quand": "Événement. Regard de 30 secondes, variante",
+   "intention": "Discret.",
+   "tags": "[discreet]",
+   "texte": "Ça fait trente secondes. {p} Il se passe quelque chose entre vous et ce tableau. Je ne m'en mêle pas."
+  },
+  {
+   "id": "E69",
+   "quand": "Événement. Regard d'une minute sur une même œuvre",
+   "intention": "Inquiétant, léger.",
+   "tags": "[lightly ominous]",
+   "texte": "Une minute. {p} Vous savez qu'il ne bouge pas ? {p} Enfin, il ne devrait pas."
+  },
+  {
+   "id": "E70",
+   "quand": "Événement. Première fiche d'œuvre ouverte",
+   "intention": "Modeste.",
+   "tags": "[modest]",
+   "texte": "Vous lisez la fiche. {p} C'est moi qui ai rempli les cartels. Il y a sûrement des fautes."
+  },
+  {
+   "id": "E71",
+   "quand": "Événement. Dixième fiche ouverte",
+   "intention": "Touché.",
+   "tags": "[touched]",
+   "texte": "Vous lisez toutes les fiches. {p} C'est rare. Les gens regardent les images. Vous, vous lisez. Je vous aime bien."
+  },
+  {
+   "id": "E72",
+   "quand": "Événement. Fiche fermée en moins de 2 secondes",
+   "intention": "Complice.",
+   "tags": "[conspiratorial]",
+   "texte": "Vous l'avez fermée vite. {p} Trop de texte ? Moi aussi, je trouve."
+  },
+  {
+   "id": "E73",
+   "quand": "Événement. Premier menu pause (à la reprise)",
+   "intention": "Patient.",
+   "tags": "[patient]",
+   "texte": "Pause. {p} Je ne bouge pas. Le musée non plus. On vous attend."
+  },
+  {
+   "id": "E74",
+   "quand": "Événement. Cinquième pause de la visite (à la reprise)",
+   "intention": "Approbateur.",
+   "tags": "[approving]",
+   "texte": "Vous faites beaucoup de pauses. {p} C'est bien. Un musée, ça se prend par petites gorgées."
+  },
+  {
+   "id": "E75",
+   "quand": "Événement. Auto-marche activée",
+   "intention": "Ravi, peu rassurant.",
+   "tags": "[delighted] [not very reassuring]",
+   "texte": "Vous me laissez conduire ? {p} D'accord. Je ne promets rien. Je ne sais pas où on va. Mais j'ai l'habitude."
+  },
+  {
+   "id": "E76",
+   "quand": "Événement. Auto-marche depuis 5 minutes",
+   "intention": "Paisible, heureux.",
+   "tags": "[peaceful] [happy]",
+   "texte": "On se promène, tous les deux. {p} C'est agréable, de ne pas savoir où on va avec quelqu'un."
+  },
+  {
+   "id": "E77",
+   "quand": "Événement. Auto-marche coupée",
+   "intention": "Faussement vexé.",
+   "tags": "[mock offended]",
+   "texte": "Vous reprenez le volant. {p} Je n'étais pas si mauvais, si ?"
+  },
+  {
+   "id": "E78",
+   "quand": "Événement. Il court pour la première fois",
+   "intention": "Gardien, ferme.",
+   "tags": "[security guard] [firm]",
+   "texte": "Ne courez pas dans les musées. {p} C'est la règle. La seule que j'ai gardée de l'ancien."
+  },
+  {
+   "id": "E79",
+   "quand": "Événement. Il court plus d'une minute",
+   "intention": "Agacé, rassurant.",
+   "tags": "[exasperated] [reassuring]",
+   "texte": "Vous courez encore. {p} Les tableaux vont croire qu'il y a le feu. Il n'y a pas le feu. Il n'y a jamais le feu, ici."
+  },
+  {
+   "id": "E80",
+   "quand": "Événement. 1 km parcouru (au total)",
+   "intention": "Fier.",
+   "tags": "[proud]",
+   "texte": "Un kilomètre. {p} Dans un vrai musée, vous auriez fait trois fois le tour. Ici, vous n'avez jamais vu deux fois la même salle."
+  },
+  {
+   "id": "E81",
+   "quand": "Événement. 5 km parcourus (au total)",
+   "intention": "Prévenant.",
+   "tags": "[considerate]",
+   "texte": "Cinq kilomètres. {p} Je devrais mettre des bancs. Il y a des bancs. Asseyez-vous, de temps en temps."
+  },
+  {
+   "id": "E82",
+   "quand": "Événement. 10 km parcourus (au total)",
+   "intention": "Généreux, démuni.",
+   "tags": "[generous] [empty-handed]",
+   "texte": "Dix kilomètres. {p} Vous avez traversé une ville entière de tableaux. Je vous offrirais bien quelque chose. Je n'ai rien. Prenez le tableau suivant."
+  },
+  {
+   "id": "E83",
+   "quand": "Événement. 42 km parcourus (au total)",
+   "intention": "Impressionné, solennel.",
+   "tags": "[impressed] [solemn]",
+   "texte": "Quarante-deux kilomètres. {p} Un marathon. Dans un musée. {p} Je crois que vous êtes le premier."
+  },
+  {
+   "id": "E84",
+   "quand": "Événement. Première visite sur téléphone",
+   "intention": "Taquin.",
+   "tags": "[teasing]",
+   "texte": "Vous visitez sur un téléphone. {p} Le musée tient dans votre poche. Ne vous asseyez pas dessus."
+  },
+  {
+   "id": "E85",
+   "quand": "Événement. Première visite sur ordinateur",
+   "intention": "Content.",
+   "tags": "[pleased]",
+   "texte": "Vous êtes sur un grand écran. {p} Ça me fait plaisir. Les tableaux respirent mieux."
+  },
+  {
+   "id": "E86",
+   "quand": "Événement. Téléphone tourné (portrait ↔ paysage)",
+   "intention": "Les murs sont vexés.",
+   "tags": "[amused]",
+   "texte": "Vous avez tourné l'écran. {p} Les murs ont dû se pousser un peu. Ils ne disent rien, mais ils n'aiment pas ça."
+  },
+  {
+   "id": "E87",
+   "quand": "Événement. Sortie du plein écran sur téléphone",
+   "intention": "Mal à l'aise.",
+   "tags": "[uneasy]",
+   "texte": "Vous avez quitté le plein écran. {p} Je vois le bord du monde, maintenant. Je n'aime pas le voir."
+  },
+  {
+   "id": "E88",
+   "quand": "Événement. Immobile près d'un banc",
+   "intention": "Invitant.",
+   "tags": "[inviting]",
+   "texte": "Il y a un banc. {p} Personne ne s'y assied jamais. Vous pourriez être le premier. Façon de parler."
+  },
+  {
+   "id": "E89",
+   "quand": "Événement. Premier arrêt devant une sculpture",
+   "intention": "Guide attentif.",
+   "tags": "[attentive guide]",
+   "texte": "Une sculpture. {p} Faites le tour. Elle a un dos aussi. Les gens oublient toujours le dos."
+  },
+  {
+   "id": "E90",
+   "quand": "Événement. Premier arrêt devant une affiche de film",
+   "intention": "Vieux jeu, content.",
+   "tags": "[old-fashioned] [pleased]",
+   "texte": "Une affiche de film. {p} De mon temps, on ne mettait pas les affiches dans les musées. On les mettait dans la rue. Les choses ont bien tourné."
+  },
+  {
+   "id": "E91",
+   "quand": "Événement. Premier arrêt devant une jaquette de jeu vidéo",
+   "intention": "Perspicace.",
+   "tags": "[perceptive]",
+   "texte": "Une boîte de jeu. {p} Vous y avez joué ? Ne me dites pas. Je vois à votre façon de la regarder."
+  },
+  {
+   "id": "E92",
+   "quand": "Événement. Premier arrêt devant une pochette de disque",
+   "intention": "Rêveur.",
+   "tags": "[dreamy]",
+   "texte": "Une pochette de disque. {p} Si vous tendez l'oreille, on entend presque la musique. Non. Mais presque."
+  },
+  {
+   "id": "E93",
+   "quand": "Événement. Premier arrêt devant une couverture de livre",
+   "intention": "Malicieux.",
+   "tags": "[mischievous]",
+   "texte": "Un livre. {p} On juge un livre à sa couverture, ici. C'est le seul endroit où on a le droit."
+  },
+  {
+   "id": "E94",
+   "quand": "Événement. Trois étrangetés dans la même visite",
+   "intention": "Il perd ses moyens.",
+   "tags": "[flustered] [rambling]",
+   "texte": "Beaucoup de choses étranges, aujourd'hui. {p} Je ne suis pas dans mon assiette. Je n'ai pas d'assiette. Vous voyez, je dis n'importe quoi."
+  },
+  {
+   "id": "E95",
+   "quand": "Événement. Il regarde le sol plus de 10 secondes",
+   "intention": "Inquiétant, léger.",
+   "tags": "[lightly ominous]",
+   "texte": "Vous regardez par terre. {p} Il n'y a rien par terre. Sauf dans la forêt. Et il ne faut pas regarder."
+  },
+  {
+   "id": "E96",
+   "quand": "Événement. Il regarde le plafond plus de 10 secondes",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "Vous regardez le plafond. {p} Il n'a rien fait. Pour une fois."
+  },
+  {
+   "id": "E97",
+   "quand": "Événement. Il tourne sur lui-même plusieurs fois",
+   "intention": "Inquiet, drôle.",
+   "tags": "[worried] [funny]",
+   "texte": "Vous tournez sur vous-même. {p} Attention. Le musée, lui, ne tourne pas. Il a déjà assez de mal à rester droit."
+  },
+  {
+   "id": "E98",
+   "quand": "Événement. Il revient dans la salle ronde en cours de visite",
+   "intention": "Philosophe.",
+   "tags": "[philosophical]",
+   "texte": "La salle ronde. {p} Vous êtes revenu au début. Ce n'est pas un échec. C'est une boucle. C'est très différent."
+  },
+  {
+   "id": "X01",
+   "quand": "Rappel. Mer prise et sortie suivie jusqu'au bout",
+   "intention": "Tendre, malicieux.",
+   "tags": "[tender] [mischievous]",
+   "texte": "La mer, la sortie… {p} Vous suivez toujours les panneaux. Un jour, j'en écrirai un qui dit « restez »."
+  },
+  {
+   "id": "X02",
+   "quand": "Rappel. Mer retirée et panneau « SORTIE » ignoré",
+   "intention": "Admiratif.",
+   "tags": "[admiring]",
+   "texte": "Vous ne suivez jamais les panneaux. {p} C'est pour ça que je vous aime bien. Vous m'obligez à improviser."
+  },
+  {
+   "id": "X03",
+   "quand": "Rappel. Toile blanche gardée et salle des favoris vue",
+   "intention": "Intime.",
+   "tags": "[intimate]",
+   "texte": "Vous avez vu ma toile. Vous avez vu votre salle. {p} On n'a plus beaucoup de secrets, tous les deux."
+  },
+  {
+   "id": "X04",
+   "quand": "Rappel. Il a gagné le jeu des trois portes",
+   "intention": "Fausse modestie.",
+   "tags": "[false modesty]",
+   "texte": "Je vous connais bien, maintenant. {p} J'ai même gagné aux portes. Ce n'est pas très élégant de le rappeler. Je le rappelle quand même."
+  },
+  {
+   "id": "X05",
+   "quand": "Rappel. Le joueur a gagné le jeu des trois portes",
+   "intention": "Mauvais perdant, tendre.",
+   "tags": "[sore loser] [tender]",
+   "texte": "Vous m'avez battu aux portes. {p} Je ne m'en suis pas remis. Je m'en remets doucement. Une salle à la fois."
+  },
+  {
+   "id": "X06",
+   "quand": "Rappel. Toile blanche vue et sortie trouvée",
+   "intention": "Malicieux.",
+   "tags": "[mischievous]",
+   "texte": "Je vous ai montré ma toile. Vous m'avez montré la sortie. {p} On est quittes, je crois."
+  },
+  {
+   "id": "X07",
+   "quand": "Finale. Les cinq histoires terminées : début de la visite suivante",
+   "intention": "Solennel, ému.",
+   "tags": "[solemn] [moved]",
+   "texte": "Bonjour. {p} Aujourd'hui, la salle ronde est un peu différente. Prenez votre temps avant de choisir."
+  },
+  {
+   "id": "X08",
+   "quand": "Finale. Dans la salle ronde aux cinq portes fléchées",
+   "intention": "Généreux.",
+   "tags": "[generous]",
+   "texte": "Cinq portes. Une par histoire. {p} Vous pouvez revivre celle que vous voulez. Ou aucune. Les histoires ne s'usent pas."
+  },
+  {
+   "id": "X09",
+   "quand": "Finale. Il prend la porte « LA MER »",
+   "intention": "Attendri.",
+   "tags": "[fond]",
+   "texte": "La mer. {p} Évidemment. Tout a commencé là."
+  },
+  {
+   "id": "X10",
+   "quand": "Finale. Il prend la porte « ATELIER »",
+   "intention": "Ému, il attendait.",
+   "tags": "[moved] [he was waiting]",
+   "texte": "L'atelier. {p} La toile est toujours blanche. Je n'y ai pas touché. J'attendais que vous reveniez la regarder."
+  },
+  {
+   "id": "X11",
+   "quand": "Finale. Il prend la porte « SORTIE »",
+   "intention": "Respectueux.",
+   "tags": "[respectful]",
+   "texte": "La sortie. {p} Vous savez où elle mène, maintenant. Vous y allez quand même. Je respecte."
+  },
+  {
+   "id": "X12",
+   "quand": "Finale. Il prend la porte « L'AUTRE »",
+   "intention": "Fier.",
+   "tags": "[proud]",
+   "texte": "Votre salle. {p} Je l'ai gardée. Je l'ai même un peu agrandie."
+  },
+  {
+   "id": "X13",
+   "quand": "Finale. Il prend la porte « SILENCE »",
+   "intention": "Doux, puis rien.",
+   "tags": "[soft]",
+   "texte": "Le silence. {p} D'accord."
+  },
+  {
+   "id": "X14",
+   "quand": "Finale. Il ne prend aucune des cinq portes",
+   "intention": "Approbateur.",
+   "tags": "[approving]",
+   "texte": "Aucune. {p} Vous préférez du neuf. {p} Vous avez raison. Il n'y a que du neuf, ici."
+  },
+  {
+   "id": "X15",
+   "quand": "Finale. Quelques minutes après son choix",
+   "intention": "Apaisé, définitif.",
+   "tags": "[at peace] [final]",
+   "texte": "Voilà. Il n'y a plus d'histoire à raconter. {p} Il n'y a que des couloirs, des tableaux, et vous. {p} C'est largement assez."
+  },
+  {
+   "id": "X16",
+   "quand": "Après la finale. Une visite sur cinq, au début",
+   "intention": "Content, simple.",
+   "tags": "[content] [simple]",
+   "texte": "Pas d'histoire, aujourd'hui. {p} Juste une visite. Ce sont mes préférées."
+  },
+  {
+   "id": "X17",
+   "quand": "Après la finale. Rare, au calme",
+   "intention": "Nostalgique.",
+   "tags": "[nostalgic]",
+   "texte": "Je repense souvent à la mer. {p} Pas à la vraie. À la nôtre."
+  },
+  {
+   "id": "X18",
+   "quand": "Rappel. Il a abandonné trois histoires",
+   "intention": "Compréhensif, tendre.",
+   "tags": "[understanding] [tender]",
+   "texte": "Vous ne suivez aucune de mes histoires. {p} Ce n'est pas grave. Vous écrivez la vôtre. Je la lis par-dessus votre épaule."
+  },
+  {
+   "id": "X19",
+   "quand": "Rappel. Sortie trouvée et « SILENCE » choisi une fois",
+   "intention": "Perplexe, attendri.",
+   "tags": "[puzzled] [fond]",
+   "texte": "Vous avez pris la sortie. Vous m'avez demandé de me taire. {p} Et pourtant, vous revenez. {p} Je ne comprendrai jamais les visiteurs. C'est ce que je préfère chez eux."
+  },
+  {
+   "id": "X20",
+   "quand": "Rappel. Mer prise et l'étoile presque toujours suivie",
+   "intention": "Ému, un peu inquiet.",
+   "tags": "[moved] [a little worried]",
+   "texte": "Vous prenez toujours ce que je propose. La mer, l'étoile… {p} Ça me fait un peu peur. Un peu plaisir aussi. Surtout plaisir."
+  }
+ ]
+}

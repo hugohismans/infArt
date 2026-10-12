@@ -52,7 +52,8 @@ function arrowTo(spot: Vec2, n: Vec2, target: Vec2): -1 | 1 {
 /** Où poser le panneau de l'ouverture `index` (null : pas de place). */
 export function signSpot(def: ModuleDef, preset: AmbiancePreset, index: number): SignSpot | null {
   const c = def.connectors[index];
-  if (!c || index === 0) return null;
+  // (L'entrée d'un module n'a pas de panneau, sauf dans la salle ronde où toutes les portes se valent.)
+  if (!c || (index === 0 && def.kind !== 'rotonde')) return null;
   const ceiling = def.ceilingHeight ?? preset.geometry.ceilingHeight * def.ceilingScale;
   const top = c.top ?? preset.geometry.ceilingHeight;
   const inward = { x: -c.normal.x, z: -c.normal.z };
@@ -119,24 +120,47 @@ function words(title: string): { small: string | null; big: string } {
 }
 
 /**
+ * Allure d'un panneau : lettres peintes du musée ; « vert » : panneau lumineux de sortie de
+ * secours (pas le style de la maison) ; « petit » : le même en minuscules, discret.
+ */
+export type SignStyle = 'mur' | 'vert' | 'petit';
+
+export interface SignLook {
+  title: string;
+  style?: SignStyle;
+  /** Étoile devant le nom (le pari du Conservateur, jeu des trois portes). */
+  star?: boolean;
+}
+
+/**
  * Le panneau lui-même : lettres peintes (encre sombre sur mur clair, claire sur mur
  * sombre), flèche, et un poteau quand le mur est invisible (ciel ouvert).
  */
-export function buildSign(spot: SignSpot, title: string, preset: AmbiancePreset): { object: THREE.Object3D; dispose(): void } {
+export function buildSign(spot: SignSpot, look: SignLook, preset: AmbiancePreset): { object: THREE.Object3D; dispose(): void } {
+  const style = look.style ?? 'mur';
+  const green = style === 'vert' || style === 'petit';
   const dark = luminance(preset.palette.wall) > 0.45;
-  const ink = dark ? '#1d1c1a' : '#f4efe4';
-  const { small, big } = words(title);
+  const ink = green ? '#ffffff' : dark ? '#1d1c1a' : '#f4efe4';
+  const { small, big } = words(look.title);
   const canvas = document.createElement('canvas');
   const g = canvas.getContext('2d')!;
   const H = 256;
-  const bigFont = `700 ${small ? 120 : 150}px Georgia, 'Times New Roman', serif`;
+  const family = green ? `'Helvetica Neue', Arial, sans-serif` : `Georgia, 'Times New Roman', serif`;
+  const bigFont = `700 ${small ? 120 : 150}px ${family}`;
   g.font = bigFont;
-  const bigText = big.toUpperCase();
+  const bigText = (look.star ? '★ ' : '') + (style === 'petit' ? big.toLowerCase() : big.toUpperCase());
   const arrowW = spot.arrow !== 0 ? 260 : 0;
   const textW = g.measureText(bigText).width;
   // (Un blanc entre le mot et la flèche.)
   canvas.width = Math.min(2048, Math.ceil(textW + arrowW + (arrowW ? 140 : 80)));
   canvas.height = H;
+  if (green) {
+    // Le caisson vert d'une sortie de secours.
+    g.fillStyle = '#12924a';
+    g.beginPath();
+    g.roundRect(4, 16, canvas.width - 8, H - 32, 26);
+    g.fill();
+  }
   g.font = bigFont;
   g.fillStyle = ink;
   g.textBaseline = 'middle';
@@ -171,14 +195,17 @@ export function buildSign(spot: SignSpot, title: string, preset: AmbiancePreset)
   tex.anisotropy = 4;
   const aspect = canvas.width / H;
   // Au-dessus d'une porte, le linteau entier ; au mur, des lettres d'une cinquantaine de cm.
-  let h = spot.arrow === 0 ? spot.maxHeight : Math.min(spot.maxHeight, small ? 1 : 0.85);
+  let h = (spot.arrow === 0 ? spot.maxHeight : Math.min(spot.maxHeight, small ? 1 : 0.85)) * (style === 'petit' ? 0.4 : green ? 0.7 : 1);
   let w = h * aspect;
   if (w > spot.maxWidth) {
     w = spot.maxWidth;
     h = w / aspect;
   }
   const geo = new THREE.PlaneGeometry(w, h);
-  const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.2, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.25, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  // Le caisson de sortie est lumineux ; les lettres peintes prennent la lumière de la salle.
+  const mat = green
+    ? new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.2, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })
+    : new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.2, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.25, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
   const mesh = new THREE.Mesh(geo, mat);
   const group = new THREE.Group();
   const off = CONFIG.world.wallGap + 0.01;

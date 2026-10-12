@@ -8,10 +8,20 @@ import { isOpenAir, ResourceCache } from './resources';
 import { signSpot } from './signs';
 import type { ArtTheme } from '../../shared/themes';
 import { computeVisibility, modulesContaining, type VisibilityResult } from './visibility';
-import { WorldModule, type LoopSource, type RemoteArt } from './WorldModule';
+import { WorldModule, type LoopSource, type ModuleSign, type RemoteArt } from './WorldModule';
+import type { Artwork } from '../../shared/artwork';
 import type { ArtContext } from '../art/ArtPiece';
 import { AMBIANCES } from '../ambiances';
 import { Director, type ZoneState } from '../director/Director';
+
+/** Salle ronde de départ : thème promis par la voix off, variante de la finale, mise en scène. */
+export interface HubOptions {
+  firstTheme?: ArtTheme | null;
+  /** Salle ronde à cinq portes (finale des histoires). */
+  finale?: boolean;
+  /** Appelé avant la construction : panneaux et sorties décidés par la voix off. */
+  prepare?: (m: WorldModule, world: World) => void;
+}
 
 export interface WorldStats {
   modules: number;
@@ -57,6 +67,20 @@ export interface WorldNet {
   blocked(poly: Vec2[], y0: number, y1: number): boolean;
   created(parent: WorldModule, connector: number, child: WorldModule): void;
   destroyed(m: WorldModule): void;
+}
+
+/** Salle mise en scène par la voix off, derrière une ouverture fléchée. */
+export type SpecialRoom = { kind: 'atelier' } | { kind: 'favoris'; art: Artwork[] };
+
+/**
+ * Ce que la voix off veut au prochain carrefour : ses panneaux, et ce qui attend derrière
+ * chaque ouverture (une aile à thème, une zone, une salle spéciale).
+ */
+export interface SignPlan {
+  signs: ModuleSign[];
+  wings?: Record<number, ArtTheme>;
+  zones?: Record<number, ZoneState>;
+  specials?: Record<number, SpecialRoom>;
 }
 
 /** Description d'un module à instancier (reçu de l'atlas partagé). */
@@ -105,8 +129,11 @@ export class World {
   private popInLog: string[] = [];
 
   private lodTimer = 0;
-  /** Thème à flécher aux prochains carrefours qui s'y prêtent (deuxième chance de la voix off). */
-  forcedSign: ArtTheme | null = null;
+  /**
+   * La voix off décide des panneaux d'un carrefour qui vient d'être créé : un plan, null
+   * (aucun panneau), ou undefined (panneaux ordinaires vers un thème prêt).
+   */
+  signPlanner: ((m: WorldModule, exits: number[]) => SignPlan | null | undefined) | null = null;
   /** Panneaux d'orientation aux carrefours (désactivés pour les essais). */
   signsEnabled = true;
   private sinceSign = 0;
@@ -153,12 +180,14 @@ export class World {
    * Elle n'existe qu'au départ : une fois loin et hors de vue, elle est détruite comme
    * le reste, et le chemin du retour mène ailleurs.
    */
-  init(hub = false, firstTheme: ArtTheme | null = null): { position: Vec2; yaw: number } {
+  init(hub = false, opts: HubOptions = {}): { position: Vec2; yaw: number } {
     const zone = this.director.initial();
+    const firstTheme = opts.firstTheme ?? null;
     if (hub) {
-      const def = this.defsFor(this.startPreset)['rotonde']!;
+      const def = this.defsFor(this.startPreset)[opts.finale ? 'rotonde-finale' : 'rotonde']!;
       const rotonde = this.createModule(def, { x: 0, z: 0, angle: 0 }, 0, zone, this.startPreset, null, (m) => {
         m.exitZones = this.director.hubExits(def.connectors.length);
+        opts.prepare?.(m, this);
         // Première visite : une des portes porte un thème choisi pour le visiteur (voix off).
         if (firstTheme) {
           // La porte du fond, pile en face du visiteur (il regarde vers +Z) : il la voit en arrivant.
@@ -535,6 +564,15 @@ export class World {
     // Transition « seuil » : la zone commence par un sas.
     const forceSas = zone.step === 0 && zone.zone.transition === 'seuil';
 
+    // Salle mise en scène par la voix off (si elle tient ; sinon, génération ordinaire).
+    const special = forceSas ? null : this.specialDef(parent, connector, zone);
+    if (special && this.overlapping(special.def, special.preset, transform, baseY, parent).every((m) => this.canEvict(m, parent))) {
+      for (const m of this.overlapping(special.def, special.preset, transform, baseY, parent)) this.destroyModule(m);
+      if (!parent.alive) return;
+      place(this.createModule(special.def, transform, baseY, { ...zone, oddity: undefined, wing: undefined }, special.preset, null, special.prepare));
+      return;
+    }
+
     // Couloir qui revient sur lui-même : on prolonge par une copie conforme, si elle tient.
     const loop = parent.loop;
     if (loop && loop.remaining > 0 && !forceSas && parent.def.connectors.length === 2 && connector === 1) {
@@ -683,25 +721,71 @@ export class World {
    */
   private planSigns(m: WorldModule): void {
     this.sinceSign++;
-    if (!this.signsEnabled || this.net || m.def.connectors.length < 3 || m.preset.inverted || m.zone.wing) return;
-    if (m.zone.zone.ambiance.art.density < CONFIG.director.wingMinDensity) return;
+    if (!this.signsEnabled || this.net || m.def.connectors.length < 3 || m.preset.inverted) return;
     const exits = m.def.connectors.map((_, i) => i).filter((i) => i > 0 && signSpot(m.def, m.preset, i));
     if (exits.length === 0) return;
-    const rng = new Rng(m.seed, 'panneau');
-    // Un thème imposé est fléché à chaque carrefour jusqu'à ce que le visiteur en croise un
-    // (c'est la voix off qui le retire) : on ne sait pas quelle branche il prendra.
-    let theme = this.forcedSign;
-    if (!theme) {
-      if (this.sinceSign < CONFIG.signs.gap || !rng.chance(CONFIG.signs.chance)) return;
-      theme = this.director.claimTheme?.() ?? null;
-      if (!theme) return;
+    // La voix off d'abord : ses histoires passent avant les panneaux ordinaires.
+    const plan = this.signPlanner?.(m, exits);
+    if (plan) {
+      this.applyPlan(m, plan);
+      return;
     }
-    this.sinceSign = 0;
+    if (plan === null || m.zone.wing || m.zone.zone.ambiance.art.density < CONFIG.director.wingMinDensity) return;
+    const rng = new Rng(m.seed, 'panneau');
+    if (this.sinceSign < CONFIG.signs.gap || !rng.chance(CONFIG.signs.chance)) return;
+    const theme = this.director.claimTheme?.() ?? null;
+    if (!theme) return;
     const exit = rng.pick(exits);
-    m.exitZones = m.def.connectors.map((_, i) => (i === 0 ? m.zone : this.director.next(m.zone, `${m.id}:${i}`, i >= 2)));
+    this.applyPlan(m, { signs: [{ connector: exit, title: theme.title, themeId: theme.id }], wings: { [exit]: theme } });
+  }
+
+  /** Pose les panneaux d'un plan et décide dès maintenant de ce qui attend derrière chaque sortie. */
+  private applyPlan(m: WorldModule, plan: SignPlan): void {
+    this.sinceSign = 0;
+    const rng = new Rng(m.seed, 'panneau');
     const [a, b] = CONFIG.signs.wingLength;
-    m.exitZones[exit] = { ...m.exitZones[exit]!, wing: this.director.makeWing(theme, rng.int(a, b)) };
-    m.signs = [{ connector: exit, title: theme.title, themeId: theme.id }];
+    m.exitZones = m.def.connectors.map((_, i) => {
+      if (i === 0) return m.zone;
+      const forced = plan.zones?.[i];
+      if (forced) return forced;
+      const z = this.director.next(m.zone, `${m.id}:${i}`, i >= 2);
+      const theme = plan.wings?.[i];
+      return theme ? { ...z, wing: this.director.makeWing(theme, rng.int(a, b)) } : z;
+    });
+    if (plan.specials) m.exitSpecial = plan.specials;
+    m.signs = plan.signs;
+  }
+
+  /** Salle spéciale derrière une ouverture (voix off) : le type de module et sa préparation. */
+  private specialDef(parent: WorldModule, connector: number, zone: ZoneState): { def: ModuleDef; preset: AmbiancePreset; prepare: (m: WorldModule) => void } | null {
+    if (this.net) return null;
+    // Le bout du chemin de la sortie : l'encadrement seul, dans une impasse du néant.
+    if (zone.zone.special === 'sortie' && zone.step > 0) {
+      const preset = this.director.presetFor(zone);
+      const def = this.defsFor(preset)['deadend'];
+      return def ? { def, preset, prepare: (m) => (m.special = 'sortie') } : null;
+    }
+    const sp = parent.exitSpecial?.[connector];
+    if (!sp) return null;
+    const preset = this.director.presetFor(zone);
+    const defs = this.defsFor(preset);
+    if (sp.kind === 'atelier') {
+      const def = defs['deadend'];
+      return def ? { def, preset, prepare: (m) => (m.special = 'atelier') } : null;
+    }
+    const def = defs['room-l'] ?? defs['room-s'];
+    return def ? { def, preset, prepare: (m) => ((m.special = 'favoris'), (m.forcedArt = sp.art.slice())) } : null;
+  }
+
+  /**
+   * Repart de zéro dans une salle ronde neuve (la sortie ramène au début) : tout le reste
+   * est effacé. Renvoie la position et l'orientation de départ.
+   */
+  restart(opts: HubOptions = {}): { position: Vec2; yaw: number } {
+    this.current = null;
+    for (const m of Array.from(this.modules)) this.destroyModule(m);
+    this.warm = false;
+    return this.init(true, opts);
   }
 
   private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number, zone: ZoneState, preset: AmbiancePreset, loop: LoopSource | null = null, prepare?: (m: WorldModule) => void): WorldModule {

@@ -9,6 +9,9 @@ import type { ArtTheme } from '../../shared/themes';
  * - « direct » : sans Worker (ou s'il est injoignable), le navigateur interroge lui-même
  *   les sources qui le permettent (API et images en CORS, sans clé).
  */
+/** Source des œuvres livrées avec le jeu (fichiers dans public/oeuvres). */
+export const LOCAL_SOURCE = 'ailleurs';
+
 export class ArtClient {
   private readonly apiUrl: string | null;
   private workerDown = false;
@@ -73,12 +76,15 @@ export class ArtClient {
 
   /** L'image de cette œuvre peut-elle devenir une texture (CORS direct ou via le Worker) ? */
   canDisplay(art: Artwork): boolean {
+    if (art.source === LOCAL_SOURCE) return true;
     const adapter = ADAPTERS_BY_ID[art.source];
     return !!adapter && (adapter.imageCors || this.mode === 'worker');
   }
 
   /** URLs à essayer, dans l'ordre, pour une largeur souhaitée. */
   imageUrls(art: Artwork, width: number): string[] {
+    // Œuvre livrée avec le jeu (la toile du Conservateur) : servie à côté de la page.
+    if (art.source === LOCAL_SOURCE) return [new URL(art.imageUrl, document.baseURI).href];
     const adapter = ADAPTERS_BY_ID[art.source];
     const raw = adapter?.imageForWidth ? adapter.imageForWidth(art, width) : art.imageUrl;
     const urls: string[] = [];

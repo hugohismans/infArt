@@ -61,7 +61,9 @@
   const audio = new AudioEngine();
   // La voix off (solo) ; à la première visite, l'aile qu'elle promet se prépare dès l'accueil.
   const narrator = new Narrator(library, audio);
-  const firstTheme = narrator.firstTheme();
+  // (Première visite : l'aile de la mer se prépare dès l'accueil ; finale : la salle aux cinq portes.)
+  const hubOptions = narrator.hubOptions();
+  const firstTheme = hubOptions.firstTheme ?? null;
 
   let screen = $state<'home' | 'visit'>('home');
   let sound = $state(settings.sound);
@@ -228,7 +230,7 @@
       seed,
       ambiance: forced ?? DEFAULT_AMBIANCE,
       startHub: hub,
-      firstTheme: hub ? firstTheme : null,
+      hub: hub ? hubOptions : {},
       quality,
       autoWalk,
       timeScale: params.timeScale,
@@ -256,6 +258,7 @@
       titleTimer = window.setTimeout(() => (themeTitle = null), CONFIG.director.titleDuration * 1000);
     };
     e.onRupture = (style) => {
+      narrator.rupture();
       // Flash et parasites : jamais avec « réduire les mouvements » (sensibilité visuelle).
       if (reduceMotion) return;
       rupture = style;
@@ -267,7 +270,7 @@
     narrator.setSound(sound);
     narrator.start(e, hub);
     observeVisit(e);
-    (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, audio, stats: () => e.stats(), openSheet, lobby, duo: () => session, voice: () => voice };
+    (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, audio, stats: () => e.stats(), openSheet, lobby, duo: () => session, voice: () => voice, narrator };
 
     if (!isTouchDevice()) {
       e.requestPointerLock();
@@ -310,12 +313,14 @@
     engine.setPaused(true);
     progress.openedSheet();
     library.noteInterest(art, CONFIG.interest.strength.fiche);
+    narrator.sheetOpened(art);
   }
 
 
 
   function closeSheet() {
     sheetArtwork = null;
+    narrator.sheetClosed();
     // Ouverte depuis la collection : on y revient.
     if (!engine || collectionOpen) return;
     engine.setPaused(false);
@@ -323,6 +328,7 @@
   }
 
   function openCollection() {
+    narrator.collectionOpened();
     collectionOpen = true;
     menuOpen = false;
     engine?.setPaused(true);
@@ -343,6 +349,7 @@
 
   function resume() {
     if (!engine) return;
+    if (menuOpen) narrator.resumed();
     menuOpen = false;
     engine.setPaused(false);
     engine.requestPointerLock();
@@ -383,8 +390,12 @@
     }
   }
 
+  let lastAutoWalk = params.autoWalk;
   $effect(() => {
     engine?.setAutoWalk(autoWalk);
+    // (Réglage du menu : la voix off le remarque aussi.)
+    if (engine && autoWalk !== lastAutoWalk) narrator.autoWalkChanged(autoWalk);
+    lastAutoWalk = autoWalk;
   });
   $effect(() => {
     engine?.setReduceMotion(reduceMotion);
@@ -502,9 +513,9 @@
   <CollectionPanel {client} onOpen={(art) => (sheetArtwork = art)} onClose={closeCollection} />
 {/if}
 {#if sheetArtwork}
-  {#key sheetArtwork.id}<ArtworkSheet artwork={sheetArtwork} {client} onClose={closeSheet} onFavorite={(art) => {
-        library.noteInterest(art, CONFIG.interest.strength.favori);
-        narrator.favorite();
+  {#key sheetArtwork.id}<ArtworkSheet artwork={sheetArtwork} {client} onClose={closeSheet} onFavorite={(art, added) => {
+        if (added) library.noteInterest(art, CONFIG.interest.strength.favori);
+        narrator.favorite(art, added);
       }} />{/key}
 {/if}
 {#if screen === 'visit' && lobby.invitations[0] && !lobby.pairing}
