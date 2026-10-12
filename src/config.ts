@@ -138,6 +138,23 @@ export const CONFIG = {
     pickDistance: 7,
   },
 
+  director: {
+    /** Durée de la zone de départ (musée classique), en modules. */
+    firstZoneLength: [9, 13] as [number, number],
+    /** Durée des zones suivantes. */
+    zoneLength: [3, 15] as [number, number],
+    /** Nombre de modules d'une transition progressive. */
+    blendSteps: [2, 4] as [number, number],
+    /** Probabilité qu'une sortie latérale d'embranchement mène à une autre zone. */
+    branchNewZone: 0.35,
+    /** Poids des types de transition. */
+    transitionWeights: { progressive: 0.6, seuil: 0.28, rupture: 0.12 },
+    /** Vitesse d'interpolation de l'environnement (brouillard, lumière) quand l'ambiance change. */
+    envLerpRate: 1.4,
+    /** Durée d'affichage du nom d'une aile (s). */
+    titleDuration: 4.5,
+  },
+
   quality: {
     /** Résolution de rendu max (multiple des pixels CSS). Plus haut = plus net, plus coûteux. */
     maxPixelRatio: { desktop: 2, mobile: 2 },

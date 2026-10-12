@@ -9,6 +9,7 @@ import { KeyboardInput } from './input/KeyboardInput';
 import { MouseInput } from './input/MouseInput';
 import { TouchInput } from './input/TouchInput';
 import { Player } from './Player';
+import { Rng } from '../world/random';
 import type { Artwork } from '../../shared/artwork';
 import type { ArtContext, ArtPiece } from '../art/ArtPiece';
 import type { LibraryStats } from '../art/ArtLibrary';
@@ -81,6 +82,12 @@ export class Engine {
   private aimTimer = 0;
   private aimed: Artwork | null = null;
   private pumpTimer = 0;
+  private readonly background: THREE.Color;
+  private readonly fog: THREE.Fog;
+  private readonly hemi: THREE.HemisphereLight;
+  /** Zones déjà annoncées (nom affiché) et dernière zone traversée. */
+  private readonly announced = new Set<number>();
+  private lastZoneId = -1;
   private readonly frustum = new THREE.Frustum();
   private readonly projView = new THREE.Matrix4();
   private readonly sphere = new THREE.Sphere();
@@ -93,6 +100,10 @@ export class Engine {
   onArtworkOpen: ((artwork: Artwork) => void) | null = null;
   /** L'œuvre visée au centre de l'écran change (PC, souris capturée). */
   onAimChange: ((artwork: Artwork | null) => void) | null = null;
+  /** Entrée dans une aile qui a un nom (pas les zones liminales). */
+  onZoneTitle: ((name: string) => void) | null = null;
+  /** Transition « rupture » : fondu au noir ou faux glitch. */
+  onRupture: ((style: 'noir' | 'glitch') => void) | null = null;
 
   constructor(
     private readonly container: HTMLElement,
@@ -112,9 +123,12 @@ export class Engine {
     container.appendChild(this.renderer.domElement);
 
     const amb = options.ambiance;
-    this.scene.background = new THREE.Color(amb.palette.background);
-    this.scene.fog = new THREE.Fog(amb.fog.color, amb.fog.near, amb.fog.far);
-    this.scene.add(new THREE.HemisphereLight(amb.lighting.hemiSky, amb.lighting.hemiGround, amb.lighting.hemiIntensity));
+    this.background = new THREE.Color(amb.palette.background);
+    this.scene.background = this.background;
+    this.fog = new THREE.Fog(amb.fog.color, amb.fog.near, amb.fog.far);
+    this.scene.fog = this.fog;
+    this.hemi = new THREE.HemisphereLight(amb.lighting.hemiSky, amb.lighting.hemiGround, amb.lighting.hemiIntensity);
+    this.scene.add(this.hemi);
 
     this.camera = new THREE.PerspectiveCamera(CONFIG.camera.fovLandscape, 1, CONFIG.camera.near, amb.fog.far + 5);
     this.camera.rotation.order = 'YXZ';
@@ -191,6 +205,49 @@ export class Engine {
     if (this.sphere.center.distanceTo(this.camera.position) > 18) return false;
     return this.frustum.intersectsSphere(this.sphere);
   }
+
+  /**
+   * L'environnement global (fond, brouillard, lumière) suit l'ambiance du module où se
+   * trouve le visiteur : interpolé en douceur, ou basculé d'un coup lors d'une rupture.
+   * Annonce aussi le nom des ailes.
+   */
+  private updateEnvironment(dt: number): void {
+    const m = this.world.currentModule;
+    if (!m) return;
+    const zone = m.zone.zone;
+    let snap = false;
+    if (zone.id !== this.lastZoneId) {
+      // Le nom de l'aile précédente s'efface dès qu'on la quitte.
+      if (this.lastZoneId >= 0) this.onZoneTitle?.('');
+      this.lastZoneId = zone.id;
+      if (zone.transition === 'rupture' && m.zone.step === 0 && !this.announced.has(-zone.id - 1)) {
+        this.announced.add(-zone.id - 1);
+        snap = true;
+        this.onRupture?.(new Rng(this.options.seed, 'rupture', zone.id).chance(0.5) ? 'noir' : 'glitch');
+      }
+    }
+    // Le nom s'affiche une fois la transition achevée, s'il y en a un.
+    if (zone.ambiance.name && m.zone.step >= zone.blendSteps && !this.announced.has(zone.id)) {
+      this.announced.add(zone.id);
+      this.onZoneTitle?.(zone.ambiance.name);
+    }
+    const p = m.preset;
+    const k = snap ? 1 : 1 - Math.exp(-dt * CONFIG.director.envLerpRate);
+    this.background.lerp(this.tmpColor.set(p.palette.background), k);
+    this.fog.color.lerp(this.tmpColor.set(p.fog.color), k);
+    this.fog.near += (p.fog.near - this.fog.near) * k;
+    this.fog.far += (p.fog.far - this.fog.far) * k;
+    this.hemi.color.lerp(this.tmpColor.set(p.lighting.hemiSky), k);
+    this.hemi.groundColor.lerp(this.tmpColor.set(p.lighting.hemiGround), k);
+    this.hemi.intensity += (p.lighting.hemiIntensity - this.hemi.intensity) * k;
+    const far = this.fog.far + 5;
+    if (Math.abs(this.camera.far - far) > 0.5) {
+      this.camera.far = far;
+      this.camera.updateProjectionMatrix();
+    }
+  }
+
+  private readonly tmpColor = new THREE.Color();
 
   private openAt(ndcX: number, ndcY: number): void {
     if (this.paused) return;
@@ -355,6 +412,8 @@ export class Engine {
       this.autoWalk.shift(shift.x, shift.z);
     }
 
+    this.updateEnvironment(dt);
+    this.world.cache.animate(dt);
     this.camera.position.set(this.player.position.x, this.player.floorY + this.player.eyeY, this.player.position.z);
     this.camera.rotation.set(this.player.pitch, this.player.yaw, 0);
     this.camera.updateMatrixWorld();

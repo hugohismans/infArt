@@ -8,6 +8,8 @@ import { ResourceCache } from './resources';
 import { computeVisibility, modulesContaining, type VisibilityResult } from './visibility';
 import { WorldModule } from './WorldModule';
 import type { ArtContext } from '../art/ArtPiece';
+import { AMBIANCES } from '../ambiances';
+import { Director, type ZoneState } from '../director/Director';
 
 export interface WorldStats {
   modules: number;
@@ -27,6 +29,8 @@ export interface WorldStats {
   /** Impasses retirées pour retenter une génération. */
   capRetries: number;
   currentModule: string;
+  /** Zone courante (Directeur). */
+  zone: string;
 }
 
 /**
@@ -42,8 +46,10 @@ export interface WorldStats {
 export class World {
   readonly root = new THREE.Group();
   readonly modules = new Set<WorldModule>();
-  private readonly defs: Record<string, ModuleDef>;
-  private readonly cache = new ResourceCache();
+  /** Catalogues de modules par ambiance (largeur, mobilier). */
+  private readonly defsByPreset = new Map<string, Record<string, ModuleDef>>();
+  readonly director: Director;
+  readonly cache = new ResourceCache();
   private nextId = 0;
   private current: WorldModule | null = null;
   private lastVisibility: VisibilityResult = { modules: new Set(), openConnectors: [] };
@@ -55,20 +61,39 @@ export class World {
 
   constructor(
     readonly seed: string,
-    private preset: AmbiancePreset,
+    private readonly startPreset: AmbiancePreset,
     /** Accès aux vraies œuvres (null : œuvres factices, comme en phase 1). */
     private readonly artCtx: ArtContext | null = null,
+    /** Ambiances disponibles pour le Directeur. */
+    ambiances: Record<string, AmbiancePreset> = AMBIANCES,
   ) {
-    this.defs = makeModuleDefs(preset.geometry.corridorWidth);
+    this.director = new Director(seed, ambiances, startPreset);
   }
 
+  /** Ambiance du module où se trouve le visiteur. */
   get ambiance(): AmbiancePreset {
-    return this.preset;
+    return this.current?.preset ?? this.startPreset;
+  }
+
+  /** Catalogue de modules d'une ambiance (mis en cache). */
+  private defsFor(preset: AmbiancePreset): Record<string, ModuleDef> {
+    let defs = this.defsByPreset.get(preset.id);
+    if (!defs) {
+      defs = makeModuleDefs(preset.geometry.corridorWidth, preset.furniture);
+      this.defsByPreset.set(preset.id, defs);
+      // Borne la mémoire : les ambiances intermédiaires des transitions sont nombreuses.
+      if (this.defsByPreset.size > 40) {
+        const used = new Set([...this.modules].map((m) => m.preset.id));
+        for (const k of this.defsByPreset.keys()) if (!used.has(k) && k !== preset.id) this.defsByPreset.delete(k);
+      }
+    }
+    return defs;
   }
 
   /** Crée le premier module ; renvoie la position et l'orientation de départ du joueur. */
   init(): { position: Vec2; yaw: number } {
-    const first = this.createModule(this.defs['straight-l']!, { x: 0, z: 0, angle: 0 }, 0);
+    const zone = this.director.initial();
+    const first = this.createModule(this.defsFor(this.startPreset)['straight-l']!, { x: 0, z: 0, angle: 0 }, 0, zone, this.startPreset);
     // Le joueur commence au milieu du premier couloir, face à +Z.
     const mid = applyTransform(first.transform, { x: 0, z: 9.9 });
     this.current = first;
@@ -90,7 +115,8 @@ export class World {
 
     // 2. Visibilité à 360° depuis le joueur et des points autour de lui.
     const eyes = this.visibilitySamples(player);
-    const maxDistance = this.preset.fog.far + cfg.visibilityMargin;
+    // Brouillard le plus lointain entre l'ambiance du visiteur et celle de départ (prudence).
+    const maxDistance = Math.max(this.ambiance.fog.far, this.startPreset.fog.far) + cfg.visibilityMargin;
     const vis = computeVisibility(eyes, this.modules, maxDistance, playerY);
     this.lastVisibility = vis;
     for (const m of this.modules) m.visible = vis.modules.has(m);
@@ -104,7 +130,7 @@ export class World {
       this.counters.urgentFills++;
       // Une vraie apparition à l'écran : ouverture vue depuis la position du joueur, en deçà du brouillard.
       const d = pointSegmentDistance(player, c.portal.a, c.portal.b);
-      const fog = this.preset.fog;
+      const fog = this.ambiance.fog;
       if (this.warm && open.fromFirstEye && d < fog.near + (fog.far - fog.near) * cfg.popInFogThreshold) {
         this.counters.popIns++;
         const msg = `module #${open.module.id} ${open.module.def.id}, ouverture ${open.connector} à ${d.toFixed(1)} m`;
@@ -244,6 +270,9 @@ export class World {
       evictions: this.counters.evictions,
       capRetries: this.counters.capRetries,
       currentModule: this.current ? `#${this.current.id} ${this.current.def.id}` : '-',
+      zone: this.current
+        ? `${this.current.zone.zone.id} · ${this.current.preset.id} · ${this.current.zone.step + 1}/${this.current.zone.zone.length} · ${this.current.zone.zone.transition} · tension ${this.current.zone.zone.tension.toFixed(2)}`
+        : '-',
     };
   }
 
@@ -343,26 +372,40 @@ export class World {
     const baseY = c.y;
     const rng = new Rng(this.seed, 'pick', this.nextId);
 
-    const weights: Record<string, number> = { ...CONFIG.world.moduleWeights };
+    // Le Directeur décide de la zone (et donc de l'ambiance) du nouveau module.
+    const branch = parent.connectors.length >= 3 && connector >= 2;
+    const zone = this.director.next(parent.zone, `${parent.id}:${connector}`, branch);
+    const preset = this.director.presetFor(zone);
+    const defs = this.defsFor(preset);
+
+    const weights: Record<string, number> = {};
+    for (const [id, w] of Object.entries(CONFIG.world.moduleWeights)) weights[id] = w * (preset.modules?.[id] ?? 1);
     const [t1, t2] = this.recentTurns(parent, connector);
     for (const id of Object.keys(weights)) {
-      const def = this.defs[id];
+      const def = defs[id];
       const turn = def ? this.defTurn(def) : 0;
       // Deux virages de suite dans le même sens = demi-tour sur 9 m : le couloir se mord la queue.
       if (turn !== 0 && turn === t1) weights[id] = 0;
       else if (turn !== 0 && turn === t2) weights[id]! *= 0.35;
     }
 
+    // Transition « seuil » : la zone commence par un sas.
+    const forceSas = zone.step === 0 && zone.zone.transition === 'seuil';
+
     let fallback: { def: ModuleDef; obstacles: WorldModule[] } | null = null;
-    for (let attempt = 0; attempt < 6; attempt++) {
-      const ids = Object.keys(weights).filter((k) => (weights[k] ?? 0) > 0 && this.defs[k]);
-      if (ids.length === 0) break;
-      const id = rng.weighted(Object.fromEntries(ids.map((k) => [k, weights[k]!])));
-      const def = this.defs[id]!;
+    for (let attempt = 0; attempt < 7; attempt++) {
+      let id: string;
+      if (attempt === 0 && forceSas) id = 'sas';
+      else {
+        const ids = Object.keys(weights).filter((k) => (weights[k] ?? 0) > 0 && defs[k]);
+        if (ids.length === 0) break;
+        id = rng.weighted(Object.fromEntries(ids.map((k) => [k, weights[k]!])));
+      }
+      const def = defs[id]!;
       weights[id] = 0;
-      const obstacles = this.overlapping(def, transform, baseY, parent);
+      const obstacles = this.overlapping(def, preset, transform, baseY, parent);
       if (obstacles.length === 0) {
-        this.link(parent, connector, this.createModule(def, transform, baseY));
+        this.link(parent, connector, this.createModule(def, transform, baseY, zone, preset));
         return;
       }
       if (!fallback && obstacles.every((m) => this.canEvict(m, parent))) fallback = { def, obstacles };
@@ -371,20 +414,22 @@ export class World {
       for (const m of fallback.obstacles) this.destroyModule(m);
       this.counters.evictions += fallback.obstacles.length;
       if (!parent.alive) return;
-      this.link(parent, connector, this.createModule(fallback.def, transform, baseY));
+      this.link(parent, connector, this.createModule(fallback.def, transform, baseY, zone, preset));
       return;
     }
-    // Rien ne rentre sans toucher à ce que le visiteur voit : impasse (toujours placée).
-    this.link(parent, connector, this.createModule(this.defs['cap']!, transform, baseY));
+    // Rien ne rentre sans toucher à ce que le visiteur voit : bouchon (toujours placé),
+    // aux dimensions du parent pour fermer exactement son ouverture.
+    const capPreset = parent.preset;
+    this.link(parent, connector, this.createModule(this.defsFor(capPreset)['cap']!, transform, baseY, parent.zone, capPreset));
   }
 
   /**
    * Modules chargés que chevaucherait `def` placé en `transform` à la hauteur `baseY`.
    * Deux modules superposés sans se recouper verticalement (étages) ne se gênent pas.
    */
-  private overlapping(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number, parent: WorldModule): WorldModule[] {
+  private overlapping(def: ModuleDef, preset: AmbiancePreset, transform: { x: number; z: number; angle: number }, baseY: number, parent: WorldModule): WorldModule[] {
     const poly = shrinkConvex(def.footprint.map((p) => applyTransform(transform, p)), 0.05);
-    const H = this.preset.geometry.ceilingHeight * def.ceilingScale;
+    const H = def.ceilingHeight ?? preset.geometry.ceilingHeight * def.ceilingScale;
     const y0 = baseY + Math.min(0, def.rise), y1 = baseY + Math.max(0, def.rise) + H;
     const out: WorldModule[] = [];
     for (const m of this.modules) {
@@ -411,11 +456,15 @@ export class World {
     parent.connectors[connector]!.neighbor = { module: child, connector: 0 };
     child.connectors[0]!.neighbor = { module: parent, connector };
     child.graphDistance = parent.graphDistance + 1;
+    // Ouvertures de tailles différentes (autre ambiance, sas) : chacun referme l'écart de son côté.
+    const a = parent.opening(connector), b = child.opening(0);
+    parent.applyAdapter(connector, b);
+    child.applyAdapter(0, a);
   }
 
-  private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number): WorldModule {
+  private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number, zone: ZoneState, preset: AmbiancePreset): WorldModule {
     const id = this.nextId++;
-    const m = new WorldModule(id, def, { ...transform }, baseY, this.preset, `${this.seed}:${id}`, this.cache);
+    const m = new WorldModule(id, def, { ...transform }, baseY, preset, zone, `${this.seed}:${id}`, this.cache);
     m.build(this.artCtx);
     this.root.add(m.group);
     this.modules.add(m);

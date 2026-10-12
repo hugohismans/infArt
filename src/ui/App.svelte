@@ -47,6 +47,10 @@
   let sheetArtwork = $state<Artwork | null>(null);
   let aimed = $state<Artwork | null>(null);
   let locked = $state(false);
+  let zoneTitle = $state<string | null>(null);
+  let titleKey = $state(0);
+  let titleTimer = 0;
+  let rupture = $state<'noir' | 'glitch' | null>(null);
   let seed = $state(params.seed ?? '');
   let showLookHint = $state(false);
   let engine = $state<Engine | null>(null);
@@ -78,6 +82,20 @@
     e.onAutoWalkChange = (v) => (autoWalk = v);
     e.onArtworkOpen = (art) => openSheet(art);
     e.onAimChange = (art) => (aimed = art);
+    e.onZoneTitle = (name) => {
+      if (!name) {
+        zoneTitle = null;
+        return;
+      }
+      zoneTitle = name;
+      titleKey++;
+      clearTimeout(titleTimer);
+      titleTimer = window.setTimeout(() => (zoneTitle = null), CONFIG.director.titleDuration * 1000);
+    };
+    e.onRupture = (style) => {
+      rupture = style;
+      window.setTimeout(() => (rupture = null), style === 'noir' ? 1400 : 700);
+    };
     e.start();
     engine = e;
     (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, stats: () => e.stats(), openSheet };
@@ -196,6 +214,12 @@
     {#if aimed}<div class="aim-label">{t('hud.view')}</div>{/if}
   {/if}
 
+  {#if zoneTitle && !menuOpen && !sheetArtwork}
+    {#key titleKey}<div class="zone-title" style="animation-duration: {CONFIG.director.titleDuration}s">{zoneTitle}</div>{/key}
+  {/if}
+
+  {#if rupture}<div class="rupture {rupture}" aria-hidden="true"></div>{/if}
+
   {#if sheetArtwork}
     <ArtworkSheet artwork={sheetArtwork} {client} onClose={closeSheet} />
   {/if}
@@ -242,6 +266,54 @@
   }
   .hud-btn:hover {
     opacity: 1;
+  }
+  .zone-title {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 16%;
+    text-align: center;
+    font-family: var(--serif);
+    font-size: clamp(1.1rem, 4vw, 1.9rem);
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(255, 252, 244, 0.92);
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    animation-name: title;
+    animation-timing-function: ease-in-out;
+    animation-fill-mode: forwards;
+  }
+  @keyframes title {
+    0% { opacity: 0; letter-spacing: 0.4em; }
+    20%, 75% { opacity: 1; letter-spacing: 0.32em; }
+    100% { opacity: 0; }
+  }
+  /* Rupture : on « tombe » dans un autre monde. */
+  .rupture {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 15;
+  }
+  .rupture.noir {
+    background: #000;
+    animation: noir 1.4s ease-in forwards;
+  }
+  @keyframes noir {
+    0%, 35% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .rupture.glitch {
+    background: repeating-linear-gradient(0deg, rgba(255, 0, 80, 0.25) 0 3px, rgba(0, 255, 220, 0.18) 3px 6px, transparent 6px 14px);
+    mix-blend-mode: screen;
+    animation: glitch 0.7s steps(7) forwards;
+  }
+  @keyframes glitch {
+    0% { transform: translate(-12px, 4px); opacity: 1; }
+    30% { transform: translate(9px, -6px); }
+    60% { transform: translate(-5px, 2px); opacity: 0.8; }
+    100% { transform: translate(0, 0); opacity: 0; }
   }
   .crosshair {
     position: fixed;

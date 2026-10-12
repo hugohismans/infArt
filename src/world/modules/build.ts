@@ -35,6 +35,21 @@ class GeometryBuilder {
     }
   }
 
+  /** Triangle à normale plate (feuillages low-poly). */
+  tri(p: [V3, V3, V3], colors: [THREE.Color, THREE.Color, THREE.Color]): void {
+    const e1 = [p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]];
+    const e2 = [p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]];
+    const n = [e1[1]! * e2[2]! - e1[2]! * e2[1]!, e1[2]! * e2[0]! - e1[0]! * e2[2]!, e1[0]! * e2[1]! - e1[1]! * e2[0]!];
+    const l = Math.hypot(n[0]!, n[1]!, n[2]!) || 1;
+    for (let i = 0; i < 3; i++) {
+      this.positions.push(...p[i]!);
+      this.normals.push(n[0]! / l, n[1]! / l, n[2]! / l);
+      const c = colors[i]!;
+      this.colors.push(c.r, c.g, c.b);
+      this.uvs.push(0, 0);
+    }
+  }
+
   get empty(): boolean {
     return this.positions.length === 0;
   }
@@ -51,8 +66,12 @@ class GeometryBuilder {
 }
 
 export interface ModuleGeometries {
-  /** Murs, plinthes, moulures, plafond (couleurs par sommet). */
-  structure: THREE.BufferGeometry | null;
+  /** Murs et linteaux (couleurs par sommet, motif éventuel). */
+  walls: THREE.BufferGeometry | null;
+  /** Plinthes, corniches, obstacles (couleurs par sommet). */
+  trims: THREE.BufferGeometry | null;
+  /** Plafond. */
+  ceiling: THREE.BufferGeometry | null;
   /** Sol texturé. */
   floor: THREE.BufferGeometry | null;
   /** Bandes lumineuses (matériau non éclairé). */
@@ -162,10 +181,42 @@ function steps(b: GeometryBuilder, halfW: number, length: number, rise: number, 
   b.quad([[-halfW, treadY(n - 1), length], [halfW, treadY(n - 1), length], [halfW, rise, length], [-halfW, rise, length]], riserFacing, four(color.clone().multiplyScalar(0.8)));
 }
 
+/** Feuillage low-poly : octaèdre subdivisé, aux sommets légèrement déformés. */
+function foliage(b: GeometryBuilder, cx: number, cy: number, cz: number, r: number, seed: number): void {
+  // Octaèdre de base, subdivisé une fois (32 triangles).
+  const top: V3 = [0, 1, 0], bottom: V3 = [0, -1, 0];
+  const ring: V3[] = [[1, 0, 0], [0, 0, 1], [-1, 0, 0], [0, 0, -1]];
+  let faces: Array<[V3, V3, V3]> = [];
+  for (let i = 0; i < 4; i++) {
+    faces.push([top, ring[i]!, ring[(i + 1) % 4]!]);
+    faces.push([bottom, ring[(i + 1) % 4]!, ring[i]!]);
+  }
+  const mid = (a: V3, c: V3): V3 => {
+    const m: V3 = [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2, (a[2] + c[2]) / 2];
+    const l = Math.hypot(...m);
+    return [m[0] / l, m[1] / l, m[2] / l];
+  };
+  faces = faces.flatMap(([a, c, d]) => {
+    const ab = mid(a, c), bc = mid(c, d), ca = mid(d, a);
+    return [[a, ab, ca], [ab, c, bc], [ca, bc, d], [ab, bc, ca]] as Array<[V3, V3, V3]>;
+  });
+  // Déformation déterministe (pas d'aléatoire global : la géométrie est partagée).
+  const jitter = (v: V3): V3 => {
+    const k = 1 + 0.18 * Math.sin(seed * 12.9898 + v[0] * 7.1 + v[1] * 3.7 + v[2] * 5.3);
+    return [cx + v[0] * r * k, cy + v[1] * r * 0.85 * k, cz + v[2] * r * k];
+  };
+  const greens = [new THREE.Color('#3f6b35'), new THREE.Color('#4f7d3e'), new THREE.Color('#355a2c'), new THREE.Color('#5d8a46')];
+  faces.forEach(([a, c, d], i) => {
+    // (seed peut être négatif : modulo toujours positif.)
+    const g = greens[(((i + seed) % greens.length) + greens.length) % greens.length]!;
+    b.tri([jitter(a), jitter(c), jitter(d)], [g, g, g]);
+  });
+}
+
 /** Construit les géométries (partageables) d'un type de module pour une ambiance. */
 export function buildModuleGeometries(def: ModuleDef, preset: AmbiancePreset): ModuleGeometries {
   const Hc = preset.geometry.ceilingHeight;
-  const H = Hc * def.ceilingScale;
+  const H = def.ceilingHeight ?? Hc * def.ceilingScale;
   const pal = preset.palette;
   const wall = col(pal.wall);
   const shade = col(pal.wallShade);
@@ -178,59 +229,75 @@ export function buildModuleGeometries(def: ModuleDef, preset: AmbiancePreset): M
   const ceiling = col(pal.ceiling);
   const at = (p: Vec2) => def.floorAt(p);
   const baseOf = (s: Segment): Base => [at(s.a), at(s.b)];
+  const trimsOn = preset.surfaces.trims && def.kind !== 'sas';
+  // Un sas est sombre : ses murs sont assombris.
+  const dim = def.dark ? 0.35 : 1;
 
-  const structure = new GeometryBuilder();
+  const walls = new GeometryBuilder();
+  const trims = new GeometryBuilder();
+  const ceil = new GeometryBuilder();
   const floor = new GeometryBuilder();
   const lights = new GeometryBuilder();
 
-  const skirtH = 0.14, skirtD = 0.022;
-  const moldH = 0.16, moldD = 0.05;
+  const skirtH = trimsOn ? 0.14 : 0, skirtD = 0.022;
+  const moldH = trimsOn ? 0.16 : 0, moldD = 0.05;
+  const wl = wallLow.clone().multiplyScalar(dim), wm = wallMid.clone().multiplyScalar(dim), wt = wallTop.clone().multiplyScalar(dim);
 
   for (const w of def.walls) {
     if (w.obstacle) continue; // dessinés avec leur obstacle
     const base = baseOf(w.seg);
     // Mur principal, en deux bandes pour un dégradé plus doux.
-    strip(structure, w.seg, base, skirtH, 1.4, wallLow, wallMid);
-    strip(structure, w.seg, base, 1.4, H - moldH, wallMid, wallTop);
-    if (def.hasFloor) {
+    strip(walls, w.seg, base, skirtH, Math.min(1.4, H - moldH), wl, wm);
+    strip(walls, w.seg, base, Math.min(1.4, H - moldH), H - moldH, wm, wt);
+    if (trimsOn && def.hasFloor) {
       // Plinthe : face avant + dessus.
-      strip(structure, offsetSegment(w.seg, skirtD), base, 0, skirtH, skirting, skirting);
-      ledge(structure, w.seg, base, skirtH, skirtD, skirting, 1);
+      strip(trims, offsetSegment(w.seg, skirtD), base, 0, skirtH, skirting, skirting);
+      ledge(trims, w.seg, base, skirtH, skirtD, skirting, 1);
       // Corniche sous le plafond.
-      strip(structure, offsetSegment(w.seg, moldD), base, H - moldH, H, molding, molding);
-      ledge(structure, w.seg, base, H - moldH, moldD, molding.clone().multiplyScalar(0.7), -1);
-    } else {
+      strip(trims, offsetSegment(w.seg, moldD), base, H - moldH, H, molding, molding);
+      ledge(trims, w.seg, base, H - moldH, moldD, molding.clone().multiplyScalar(0.7), -1);
+    } else if (trimsOn) {
       // Bouchon sans sol propre : le mur descend jusqu'au sol et monte jusqu'au plafond.
-      strip(structure, w.seg, base, 0, skirtH, skirting, skirting);
-      strip(structure, w.seg, base, H - moldH, H, molding, molding);
+      strip(trims, w.seg, base, 0, skirtH, skirting, skirting);
+      strip(trims, w.seg, base, H - moldH, H, molding, molding);
     }
   }
 
   // Linteaux : le mur au-dessus des portes d'une salle plus haute que les couloirs.
   for (const l of def.lintels) {
     if (H - Hc < 0.01) break;
-    strip(structure, l, baseOf(l), Hc, H - moldH, wallTop, wallTop);
-    strip(structure, offsetSegment(l, moldD), baseOf(l), H - moldH, H, molding, molding);
-    ledge(structure, l, baseOf(l), Hc, 0.25, wallMid.clone().multiplyScalar(0.8), -1);
+    strip(walls, l, baseOf(l), Hc, H - moldH, wallTop, wallTop);
+    if (trimsOn) strip(trims, offsetSegment(l, moldD), baseOf(l), H - moldH, H, molding, molding);
+    ledge(trims, l, baseOf(l), Hc, 0.25, wallMid.clone().multiplyScalar(0.8), -1);
   }
 
-  // Obstacles : cimaise (cloison basse peinte comme les murs) et banc de velours.
+  // Obstacles : cimaise, banc de velours, jardinière.
   for (const o of def.obstacles) {
     const x0 = o.center.x - o.size.x / 2, x1 = o.center.x + o.size.x / 2;
     const z0 = o.center.z - o.size.z / 2, z1 = o.center.z + o.size.z / 2;
     if (o.kind === 'cimaise') {
-      box(structure, x0, x1, z0, z1, 0, o.height, wallLow, wallTop, molding);
-      box(structure, x0 - skirtD, x1 + skirtD, z0 - skirtD, z1 + skirtD, 0, skirtH, skirting, skirting, skirting);
-    } else {
+      box(trims, x0, x1, z0, z1, 0, o.height, wallLow, wallTop, molding);
+      if (trimsOn) box(trims, x0 - skirtD, x1 + skirtD, z0 - skirtD, z1 + skirtD, 0, 0.14, skirting, skirting, skirting);
+    } else if (o.kind === 'bench') {
       const velvet = col(pal.wallShade).lerp(col('#7a1f2b'), 0.6);
       const wood = col(pal.skirting);
-      box(structure, x0 + 0.08, x1 - 0.08, z0 + 0.06, z1 - 0.06, 0, o.height - 0.1, wood, wood, wood);
-      box(structure, x0, x1, z0, z1, o.height - 0.1, o.height, velvet, velvet.clone().multiplyScalar(1.15), velvet.clone().multiplyScalar(1.2));
+      box(trims, x0 + 0.08, x1 - 0.08, z0 + 0.06, z1 - 0.06, 0, o.height - 0.1, wood, wood, wood);
+      box(trims, x0, x1, z0, z1, o.height - 0.1, o.height, velvet, velvet.clone().multiplyScalar(1.15), velvet.clone().multiplyScalar(1.2));
+    } else {
+      // Jardinière en terre cuite et feuillage.
+      const pot = col('#9a5536'), soil = col('#3b2a1e');
+      box(trims, x0, x1, z0, z1, 0, o.height, pot.clone().multiplyScalar(0.8), pot, soil);
+      const n = Math.max(1, Math.round(o.size.x / 1.1));
+      for (let i = 0; i < n; i++) {
+        const fx = x0 + (o.size.x * (i + 0.5)) / n;
+        const r = Math.min(0.75, o.size.z * 0.55 + 0.15);
+        foliage(trims, fx, o.height + r * 0.8, o.center.z, r, i + Math.round(o.center.x * 3 + o.center.z * 7));
+      }
     }
   }
 
   if (def.hasFloor) {
-    surface(structure, def.footprint, (p) => at(p) + H, -1, ceiling, 1);
+    surface(ceil, def.footprint, (p) => at(p) + H, -1, ceiling.clone().multiplyScalar(def.dark ? 0.3 : 1), 1);
     if (def.rise === 0) surface(floor, def.footprint, () => 0, 1, col('#ffffff'), 0.5);
     else {
       const xs = def.footprint.map((p) => p.x);
@@ -254,9 +321,54 @@ export function buildModuleGeometries(def: ModuleDef, preset: AmbiancePreset): M
     strip(lights, { a: b2, b: a2 }, [ya, yb], -0.07, 0, white, white);
   }
 
+  const g = (b: GeometryBuilder, colors: boolean) => (b.empty ? null : b.build(colors));
   return {
-    structure: structure.empty ? null : structure.build(true),
-    floor: floor.empty ? null : floor.build(false),
-    lights: lights.empty ? null : lights.build(false),
+    walls: g(walls, true),
+    trims: g(trims, true),
+    ceiling: g(ceil, true),
+    floor: g(floor, false),
+    lights: g(lights, false),
   };
+}
+
+/**
+ * Raccord d'ouverture : quand le module voisin a une ouverture plus étroite ou plus
+ * basse, on referme l'écart de ce côté-ci (jambages de part et d'autre, linteau au-dessus).
+ * Coordonnées locales du module ; `pos`/`normal` : l'ouverture ; `y` : sol à l'ouverture.
+ */
+export function buildPortalAdapter(
+  preset: AmbiancePreset,
+  pos: Vec2,
+  normal: Vec2,
+  y: number,
+  own: { width: number; top: number },
+  other: { width: number; top: number },
+): { geometry: THREE.BufferGeometry | null; jambs: Segment[] } {
+  const b = new GeometryBuilder();
+  const jambs: Segment[] = [];
+  const pal = preset.palette;
+  const wall = col(pal.wall), low = col(pal.wallShade).lerp(wall, 0.35), top = wall.clone().lerp(col(pal.ceiling), 0.08);
+  // Tangente le long de l'ouverture ; les faces regardent vers l'intérieur du module (-normal).
+  const t = { x: -normal.z, z: normal.x };
+  const at = (u: number): Vec2 => ({ x: pos.x + t.x * u, z: pos.z + t.z * u });
+  const inward = (s: Segment): Segment => {
+    // Oriente le segment pour que sa normale « intérieure » (d.z, -d.x) soit -normal.
+    const d = sub(s.b, s.a);
+    return d.z * -normal.x - d.x * -normal.z >= 0 ? s : { a: s.b, b: s.a };
+  };
+  const ow = own.width / 2, nw = Math.min(own.width, other.width) / 2;
+  const base: Base = [y, y];
+  if (ow - nw > 0.01) {
+    for (const [u0, u1] of [[-ow, -nw], [nw, ow]] as const) {
+      const seg = inward({ a: at(u0), b: at(u1) });
+      strip(b, seg, base, 0, Math.min(1.4, own.top), low, wall);
+      strip(b, seg, base, Math.min(1.4, own.top), own.top, wall, top);
+      jambs.push(seg);
+    }
+  }
+  if (own.top - other.top > 0.01) {
+    const seg = inward({ a: at(-nw), b: at(nw) });
+    strip(b, seg, base, other.top, own.top, top, top);
+  }
+  return { geometry: b.empty ? null : b.build(true), jambs };
 }

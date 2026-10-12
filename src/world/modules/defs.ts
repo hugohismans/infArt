@@ -17,6 +17,8 @@ export interface ConnectorDef {
   normal: Vec2;
   /** Largeur de l'ouverture. */
   width: number;
+  /** Hauteur de l'ouverture (sinon : hauteur sous plafond des couloirs de l'ambiance). */
+  top?: number;
 }
 
 export interface WallDef {
@@ -30,9 +32,9 @@ export interface WallDef {
   obstacle?: boolean;
 }
 
-/** Obstacle posé au sol, aligné sur les axes du module (cimaise, banc). */
+/** Obstacle posé au sol, aligné sur les axes du module (cimaise, banc, jardinière). */
 export interface ObstacleDef {
-  kind: 'cimaise' | 'bench';
+  kind: 'cimaise' | 'bench' | 'planter';
   center: Vec2;
   /** Dimensions au sol (x, z). */
   size: Vec2;
@@ -52,7 +54,7 @@ export interface ArtSlotDef {
   wallHeight?: number;
 }
 
-export type ModuleKind = 'straight' | 'turn' | 'junction' | 'room' | 'stairs' | 'deadend' | 'cap';
+export type ModuleKind = 'straight' | 'turn' | 'junction' | 'room' | 'stairs' | 'deadend' | 'sas' | 'cap';
 
 export interface ModuleDef {
   id: string;
@@ -65,6 +67,10 @@ export interface ModuleDef {
   hasFloor: boolean;
   /** Hauteur sous plafond, relative à celle de l'ambiance (salles plus hautes). */
   ceilingScale: number;
+  /** Hauteur sous plafond absolue, prioritaire sur l'échelle (sas). */
+  ceilingHeight?: number;
+  /** Pas de bandes lumineuses : pièce sombre (sas). */
+  dark?: boolean;
   /** Dénivelé entre l'entrée et la sortie (escaliers), en m. */
   rise: number;
   /** Hauteur du sol en un point local. */
@@ -240,7 +246,9 @@ function junction(id: string, w: number, exits: Array<'N' | 'E' | 'W'>): ModuleD
  * E / W (au milieu des côtés). Petite salle : un banc ; grande salle : une cimaise
  * centrale accrochée des deux côtés.
  */
-function room(id: string, w: number, width: number, depth: number, exits: Array<'N' | 'E' | 'W'>, furniture: 'bench' | 'cimaise'): ModuleDef {
+type RoomFurniture = 'banc' | 'cimaise' | 'jardinieres' | 'aucun';
+
+function room(id: string, w: number, width: number, depth: number, exits: Array<'N' | 'E' | 'W'>, furniture: RoomFurniture): ModuleDef {
   const hx = width / 2;
   const openings: Opening[] = [{ side: 'S', center: 0, width: w }];
   const connectors: ConnectorDef[] = [entrance(w)];
@@ -255,14 +263,21 @@ function room(id: string, w: number, width: number, depth: number, exits: Array<
   }
   const { walls, lintels } = perimeter(-hx, hx, 0, depth, openings, true);
   const c = v2(0, depth / 2);
-  const obstacles: ObstacleDef[] =
-    furniture === 'bench'
-      ? [{ kind: 'bench', center: c, size: v2(1.8, 0.55), height: 0.46 }]
-      : [{ kind: 'cimaise', center: c, size: v2(Math.min(5.2, width - 6), 0.3), height: 2.9 }];
-  const obstacle = obstacles[0]!;
-  walls.push(...obstacleWalls(obstacle, furniture === 'cimaise'));
-  // Points libres tout autour de l'obstacle, pour que l'auto-marche le contourne.
-  const ox = obstacle.size.x / 2 + 1.1, oz = obstacle.size.z / 2 + 1.1;
+  const obstacles: ObstacleDef[] = [];
+  if (furniture === 'banc') obstacles.push({ kind: 'bench', center: c, size: v2(1.8, 0.55), height: 0.46 });
+  if (furniture === 'cimaise') obstacles.push({ kind: 'cimaise', center: c, size: v2(Math.min(5.2, width - 6), 0.3), height: 2.9 });
+  if (furniture === 'jardinieres') {
+    // Un massif au centre des grandes salles, des pots dans les angles.
+    if (width > 10) obstacles.push({ kind: 'planter', center: c, size: v2(3.2, 1.4), height: 0.55 });
+    const ix = hx - 1.1, iz = 1.1;
+    for (const [x, z] of [[-ix, iz], [ix, iz], [-ix, depth - iz], [ix, depth - iz]] as const) {
+      obstacles.push({ kind: 'planter', center: v2(x, z), size: v2(0.9, 0.9), height: 0.6 });
+    }
+  }
+  for (const o of obstacles) walls.push(...obstacleWalls(o, o.kind === 'cimaise'));
+  // Points libres autour du centre, pour que l'auto-marche contourne l'obstacle central.
+  const central = obstacles.find((o) => o.center.x === c.x && o.center.z === c.z);
+  const ox = (central ? central.size.x / 2 : 0.5) + 1.1, oz = (central ? central.size.z / 2 : 0.5) + 1.1;
   const navPoints = [v2(-ox, c.z), v2(ox, c.z), v2(0, c.z - oz), v2(0, c.z + oz), v2(-ox, c.z - oz), v2(ox, c.z - oz), v2(-ox, c.z + oz), v2(ox, c.z + oz)];
   const nStrips = width > 10 ? 3 : 2;
   const lightStrips: Segment[] = [];
@@ -324,6 +339,32 @@ function deadend(id: string, w: number, length: number): ModuleDef {
   };
 }
 
+/**
+ * Sas : vestibule étroit et sombre entre deux mondes (transition « seuil »).
+ * Ses ouvertures sont des portes : les modules voisins se referment autour
+ * (voir les raccords d'ouvertures).
+ */
+function sas(id: string, length: number): ModuleDef {
+  const dw = 1.7, h = dw / 2, top = 2.5;
+  const walls: WallDef[] = [
+    { seg: { a: v2(-h, 0), b: v2(-h, length) }, hangable: false },
+    { seg: { a: v2(h, length), b: v2(h, 0) }, hangable: false },
+  ];
+  return {
+    ...base(id, 'sas'),
+    ceilingHeight: top,
+    dark: true,
+    footprint: rect(-h, h, 0, length),
+    connectors: [
+      { pos: v2(0, 0), y: 0, normal: v2(0, -1), width: dw, top },
+      { pos: v2(0, length), y: 0, normal: v2(0, 1), width: dw, top },
+    ],
+    walls,
+    lightStrips: [],
+    artSlots: [],
+  };
+}
+
 /** Bouchon : un simple mur qui ferme une ouverture (dernier recours), avec une œuvre au centre. */
 function cap(id: string, w: number): ModuleDef {
   const h = w / 2;
@@ -341,8 +382,8 @@ function cap(id: string, w: number): ModuleDef {
   };
 }
 
-/** Construit le catalogue des modules pour une largeur de couloir donnée. */
-export function makeModuleDefs(corridorWidth: number): Record<string, ModuleDef> {
+/** Construit le catalogue des modules pour une largeur de couloir et un mobilier donnés. */
+export function makeModuleDefs(corridorWidth: number, furniture: { small: RoomFurniture; large: RoomFurniture }): Record<string, ModuleDef> {
   const w = corridorWidth;
   const defs = [
     straight('straight-s', w, 7.2),
@@ -354,12 +395,13 @@ export function makeModuleDefs(corridorWidth: number): Record<string, ModuleDef>
     junction('tee-left', w, ['N', 'E']),
     junction('tee-right', w, ['N', 'W']),
     junction('cross', w, ['N', 'E', 'W']),
-    room('room-s', w, 2 * w, 2 * w, ['N'], 'bench'),
-    room('room-s-side', w, 2 * w, 2 * w, ['E', 'W'], 'bench'),
-    room('room-l', w, 3 * w, 3 * w, ['N', 'E', 'W'], 'cimaise'),
+    room('room-s', w, 2 * w, 2 * w, ['N'], furniture.small),
+    room('room-s-side', w, 2 * w, 2 * w, ['E', 'W'], furniture.small),
+    room('room-l', w, 3 * w, 3 * w, ['N', 'E', 'W'], furniture.large),
     stairs('stairs-up', w, 7.6, 2.4),
     stairs('stairs-down', w, 7.6, -2.4),
     deadend('deadend', w, 5.4),
+    sas('sas', 3.2),
     cap('cap', w),
   ];
   return Object.fromEntries(defs.map((d) => [d.id, d]));

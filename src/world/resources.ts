@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { AmbiancePreset } from '../ambiances/types';
 import { Rng } from './random';
+import { makeCeilingTexture, makeFloorTexture, makeWallTexture } from './textures';
 import { buildModuleGeometries, type ModuleGeometries } from './modules/build';
 import type { ModuleDef } from './modules/defs';
 
@@ -14,7 +15,12 @@ import type { ModuleDef } from './modules/defs';
  */
 
 export interface PresetMaterials {
-  structure: THREE.MeshLambertMaterial;
+  /** Murs (couleurs par sommet, motif éventuel : papier peint). */
+  walls: THREE.MeshLambertMaterial;
+  /** Plinthes, corniches, obstacles (couleurs par sommet). */
+  trims: THREE.MeshLambertMaterial;
+  /** Plafond (dalles, verrière lumineuse…). */
+  ceiling: THREE.MeshLambertMaterial | THREE.MeshBasicMaterial;
   floor: THREE.MeshLambertMaterial;
   lights: THREE.MeshBasicMaterial;
   /** Couleurs de cadres du preset (œuvres factices du mode hors ligne). */
@@ -40,44 +46,13 @@ interface Counted<T> {
   refs: number;
 }
 
-function makeParquetTexture(preset: AmbiancePreset): THREE.CanvasTexture {
-  const size = 256;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-  const rng = new Rng('parquet', preset.id);
-  const base = new THREE.Color(preset.palette.floor);
-  const alt = new THREE.Color(preset.palette.floorAlt);
-  // Lames de parquet en quinconce.
-  const rows = 8;
-  const rowH = size / rows;
-  for (let r = 0; r < rows; r++) {
-    let x = -rng.range(0, size / 2);
-    while (x < size) {
-      const w = rng.range(size * 0.35, size * 0.7);
-      const c = base.clone().lerp(alt, rng.next()).multiplyScalar(rng.range(0.88, 1.08));
-      ctx.fillStyle = `#${c.getHexString()}`;
-      ctx.fillRect(x, r * rowH, w, rowH);
-      // Veinage discret.
-      ctx.globalAlpha = 0.08;
-      ctx.fillStyle = '#000';
-      for (let k = 0; k < 4; k++) ctx.fillRect(x, r * rowH + rng.range(2, rowH - 2), w, 1);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.fillRect(x, r * rowH, 1.5, rowH);
-      x += w;
-    }
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(0, r * rowH, size, 1.5);
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.anisotropy = 4;
-  return tex;
+interface PresetEntry extends Counted<PresetMaterials> {
+  preset: AmbiancePreset;
+  /** Néons : temps restant de la baisse de tension en cours (s). */
+  dip: number;
+  baseLight: THREE.Color;
 }
 
-/** Halo d'un spot : une tache de lumière plus intense en haut, qui s'évase vers le bas. */
 /** Drap à plis verticaux (toile couverte, « œuvre en restauration »). */
 function makeDrapeTexture(): THREE.CanvasTexture {
   const w = 128, h = 128;
@@ -141,7 +116,7 @@ function makeGlowTexture(): THREE.DataTexture {
 }
 
 export class ResourceCache {
-  private presets = new Map<string, Counted<PresetMaterials>>();
+  private presets = new Map<string, PresetEntry>();
   private geometries = new Map<string, Counted<ModuleGeometries>>();
 
   acquireMaterials(preset: AmbiancePreset): PresetMaterials {
@@ -151,9 +126,18 @@ export class ResourceCache {
       const glowTex = makeGlowTexture();
       entry = {
         refs: 0,
+        preset,
+        dip: 0,
+        baseLight: new THREE.Color(pal.lightStrip),
         value: {
-          structure: new THREE.MeshLambertMaterial({ vertexColors: true }),
-          floor: new THREE.MeshLambertMaterial({ map: makeParquetTexture(preset) }),
+          walls: new THREE.MeshLambertMaterial({ vertexColors: true, map: makeWallTexture(preset) }),
+          trims: new THREE.MeshLambertMaterial({ vertexColors: true }),
+          // La verrière laisse passer le jour : elle n'est pas éclairée, elle éclaire.
+          ceiling:
+            preset.surfaces.ceiling === 'verriere'
+              ? new THREE.MeshBasicMaterial({ vertexColors: true, map: makeCeilingTexture(preset) })
+              : new THREE.MeshLambertMaterial({ vertexColors: true, map: makeCeilingTexture(preset) }),
+          floor: new THREE.MeshLambertMaterial({ map: makeFloorTexture(preset) }),
           lights: new THREE.MeshBasicMaterial({ color: pal.lightStrip }),
           frames: pal.frame.map((c) => new THREE.MeshLambertMaterial({ color: c })),
           frameKinds: {
@@ -194,9 +178,11 @@ export class ResourceCache {
     if (--entry.refs > 0) return;
     const m = entry.value;
     m.floor.map?.dispose();
+    m.walls.map?.dispose();
+    m.ceiling.map?.dispose();
     m.glow.map?.dispose();
     m.drape.map?.dispose();
-    for (const mat of [m.structure, m.floor, m.lights, m.glow, m.mat, m.drape, m.cartelBlank, ...m.frames, ...Object.values(m.frameKinds)]) mat.dispose();
+    for (const mat of [m.walls, m.trims, m.ceiling, m.floor, m.lights, m.glow, m.mat, m.drape, m.cartelBlank, ...m.frames, ...Object.values(m.frameKinds)]) mat.dispose();
     m.unitBox.dispose();
     m.unitPlane.dispose();
     this.presets.delete(preset.id);
@@ -218,10 +204,26 @@ export class ResourceCache {
     const entry = this.geometries.get(key);
     if (!entry) return;
     if (--entry.refs > 0) return;
-    entry.value.structure?.dispose();
+    entry.value.walls?.dispose();
+    entry.value.trims?.dispose();
+    entry.value.ceiling?.dispose();
     entry.value.floor?.dispose();
     entry.value.lights?.dispose();
     this.geometries.delete(key);
+  }
+
+  /**
+   * Néons qui grésillent : de brèves baisses de tension, aléatoires, sur les ambiances
+   * dont `lighting.flicker` > 0 (tous les modules de l'ambiance vacillent ensemble).
+   */
+  animate(dt: number): void {
+    for (const e of this.presets.values()) {
+      const f = e.preset.lighting.flicker;
+      if (f <= 0) continue;
+      if (e.dip > 0) e.dip -= dt;
+      else if (Math.random() < f * dt * 60) e.dip = 0.04 + Math.random() * 0.18;
+      e.value.lights.color.copy(e.baseLight).multiplyScalar(e.dip > 0 ? 0.25 + Math.random() * 0.3 : 1);
+    }
   }
 
   /** Statistiques pour le panneau de debug. */

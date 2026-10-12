@@ -75,7 +75,7 @@ export class ArtPiece {
     this.object.position.set(slot.pos.x, slot.y, slot.pos.z);
     this.object.rotation.y = Math.atan2(slot.normal.x, slot.normal.z);
 
-    const ready = ctx?.library.take() ?? null;
+    const ready = ctx?.library.take(preset.art.prefer) ?? null;
     if (ready) this.hang(ready);
     else if (!ctx || ctx.library.offline) this.hangProcedural();
     else {
@@ -158,7 +158,7 @@ export class ArtPiece {
     this.artwork = ready.artwork;
     this.baseTexture = ready.texture;
     const { w, h } = this.physicalSize(ready.artwork, ready.aspect);
-    const style = chooseFrame(ready.artwork, w, h, this.rng);
+    const style = chooseFrame(ready.artwork, w, h, this.rng, this.preset.art.frames);
     this.build(this.fit(w, h, style), ready.texture);
   }
 

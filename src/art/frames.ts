@@ -1,6 +1,7 @@
 import type { Artwork } from '../../shared/artwork';
 import type { FrameMaterialKey } from '../world/resources';
 import type { Rng } from '../world/random';
+import type { FrameBias } from '../ambiances/types';
 
 /**
  * Style d'encadrement, choisi selon le type d'œuvre, l'époque et le format.
@@ -20,9 +21,19 @@ export interface FrameStyle {
 
 const PAPER = new Set(['estampe', 'dessin', 'photographie']);
 
-export function chooseFrame(art: Artwork, w: number, h: number, rng: Rng): FrameStyle {
+export function chooseFrame(art: Artwork, w: number, h: number, rng: Rng, bias: FrameBias = 'classique'): FrameStyle {
   const size = Math.max(w, h);
   const year = art.year;
+
+  if (bias === 'moderne') {
+    // Galerie contemporaine : toile nue ou baguette noire fine, papier sous passe-partout blanc.
+    if (PAPER.has(art.type)) return { border: 0.015, depth: 0.03, mat: Math.min(0.14, 0.06 + size * 0.2), material: rng.chance(0.7) ? 'black' : 'white', lip: false };
+    return rng.chance(0.6) ? { border: 0, depth: 0.04, mat: 0, material: 'white', lip: false } : { border: 0.014, depth: 0.04, mat: 0, material: 'black', lip: false };
+  }
+  if (bias === 'bon-marche') {
+    // Cadres de bazar : baguette fine, parfois un passe-partout jauni.
+    return { border: 0.018, depth: 0.025, mat: PAPER.has(art.type) && rng.chance(0.5) ? 0.04 : 0, material: rng.chance(0.5) ? 'wood' : 'black', lip: false };
+  }
 
   if (PAPER.has(art.type)) {
     // Œuvres sur papier : passe-partout blanc et baguette fine.

@@ -4,6 +4,9 @@ import { ArtPiece, type ArtContext } from '../art/ArtPiece';
 import { CONFIG } from '../config';
 import { applyTransform, inverseTransform, rotate, type Segment, type Transform2, type Vec2 } from './math2d';
 import type { ModuleDef } from './modules/defs';
+import { buildPortalAdapter } from './modules/build';
+import type { ZoneState } from '../director/Director';
+import type { PresetMaterials } from './resources';
 import { Rng } from './random';
 import type { ResourceCache } from './resources';
 
@@ -36,6 +39,9 @@ export class WorldModule {
   /** Étendue verticale occupée [bas, haut] : deux modules peuvent se superposer s'ils ne se recoupent pas. */
   readonly yRange: [number, number];
   private arts: ArtPiece[] = [];
+  private mats: PresetMaterials | null = null;
+  /** Raccords d'ouverture actifs, par connecteur. */
+  private adapters = new Map<number, { mesh: THREE.Mesh | null; jambs: Segment[]; portal: Segment }>();
   private disposed = false;
   /** Instant de création (ms), pour temporiser les nouvelles tentatives sur les impasses. */
   readonly createdAt = performance.now();
@@ -52,6 +58,8 @@ export class WorldModule {
     /** Hauteur du sol à l'entrée du module (étages). */
     readonly baseY: number,
     readonly preset: AmbiancePreset,
+    /** Zone du Directeur à laquelle appartient le module. */
+    readonly zone: ZoneState,
     readonly seed: string,
     private readonly cache: ResourceCache,
   ) {
@@ -59,7 +67,7 @@ export class WorldModule {
     this.footprint = def.footprint.map((p) => applyTransform(t, p));
     this.walls = def.walls.map((w) => ({ a: applyTransform(t, w.seg.a), b: applyTransform(t, w.seg.b) }));
     this.navPoints = def.navPoints.map((p) => applyTransform(t, p));
-    const H = preset.geometry.ceilingHeight * def.ceilingScale;
+    const H = def.ceilingHeight ?? preset.geometry.ceilingHeight * def.ceilingScale;
     this.yRange = [baseY + Math.min(0, def.rise), baseY + Math.max(0, def.rise) + H];
     this.connectors = def.connectors.map((c) => {
       const pos = applyTransform(t, c.pos);
@@ -91,7 +99,10 @@ export class WorldModule {
   build(artCtx: ArtContext | null): void {
     const mats = this.cache.acquireMaterials(this.preset);
     const geos = this.cache.acquireGeometries(this.def, this.preset);
-    if (geos.structure) this.group.add(new THREE.Mesh(geos.structure, mats.structure));
+    this.mats = mats;
+    if (geos.walls) this.group.add(new THREE.Mesh(geos.walls, mats.walls));
+    if (geos.trims) this.group.add(new THREE.Mesh(geos.trims, mats.trims));
+    if (geos.ceiling) this.group.add(new THREE.Mesh(geos.ceiling, mats.ceiling));
     if (geos.floor) this.group.add(new THREE.Mesh(geos.floor, mats.floor));
     if (geos.lights) this.group.add(new THREE.Mesh(geos.lights, mats.lights));
 
@@ -158,15 +169,71 @@ export class WorldModule {
       mv(c.portal.a);
       mv(c.portal.b);
     }
+    // Portails d'origine mémorisés par les raccords (les jambages sont déjà dans `walls`).
+    for (const ad of this.adapters.values()) {
+      mv(ad.portal.a);
+      mv(ad.portal.b);
+    }
     this.group.position.set(this.transform.x, this.baseY, this.transform.z);
     this.group.updateMatrix();
     this.group.updateMatrixWorld(true);
   }
 
   /** Libère explicitement tout ce que le module possède, puis rend les ressources partagées. */
+  /** Dimensions de l'ouverture `index` (largeur, hauteur au-dessus du sol). */
+  opening(index: number): { width: number; top: number } {
+    const c = this.def.connectors[index]!;
+    return { width: c.width, top: c.top ?? this.preset.geometry.ceilingHeight };
+  }
+
+  /**
+   * Raccord avec un voisin dont l'ouverture diffère (autre ambiance, sas) : on referme
+   * l'écart de notre côté (jambages, linteau) et on ajoute les jambages aux collisions.
+   */
+  applyAdapter(index: number, other: { width: number; top: number }): void {
+    this.clearAdapter(index);
+    const own = this.opening(index);
+    const c = this.def.connectors[index]!;
+    const conn = this.connectors[index]!;
+    const originalPortal = { a: { ...conn.portal.a }, b: { ...conn.portal.b } };
+    if (other.width >= own.width - 0.01 && other.top >= own.top - 0.01) return;
+    const { geometry, jambs } = buildPortalAdapter(this.preset, c.pos, c.normal, c.y, own, other);
+    let mesh: THREE.Mesh | null = null;
+    if (geometry && this.mats) {
+      mesh = new THREE.Mesh(geometry, this.mats.walls);
+      mesh.matrixAutoUpdate = false;
+      this.group.add(mesh);
+      this.group.updateMatrixWorld(true);
+    }
+    const worldJambs = jambs.map((s) => ({ a: applyTransform(this.transform, s.a), b: applyTransform(this.transform, s.b) }));
+    this.walls.push(...worldJambs);
+    // Le portail de visibilité garde sa pleine largeur : le rétrécir rendait le module
+    // voisin « invisible » alors que l'ouverture vide, elle, était vue (boucle création /
+    // destruction). Surestimer la visibilité est sans danger.
+    this.adapters.set(index, { mesh, jambs: worldJambs, portal: originalPortal });
+  }
+
+  /** Retire le raccord d'une ouverture (le voisin a été détruit). */
+  clearAdapter(index: number): void {
+    const a = this.adapters.get(index);
+    if (!a) return;
+    if (a.mesh) {
+      a.mesh.removeFromParent();
+      a.mesh.geometry.dispose();
+    }
+    for (const j of a.jambs) {
+      const i = this.walls.indexOf(j);
+      if (i >= 0) this.walls.splice(i, 1);
+    }
+    const conn = this.connectors[index];
+    if (conn) conn.portal = a.portal;
+    this.adapters.delete(index);
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    for (const i of [...this.adapters.keys()]) this.clearAdapter(i);
     for (const art of this.arts) art.dispose();
     this.arts = [];
     this.group.removeFromParent();
@@ -176,6 +243,7 @@ export class WorldModule {
     // Détache le module du graphe.
     for (const c of this.connectors) {
       if (c.neighbor) {
+        c.neighbor.module.clearAdapter(c.neighbor.connector);
         const other = c.neighbor.module.connectors[c.neighbor.connector];
         if (other) {
           other.neighbor = null;

@@ -4,7 +4,29 @@ Un musée infini, explorable à la première personne sur PC et sur mobile. Le b
 
 **Version en ligne** : https://hugohismans.github.io/infArt/
 
-## État : phase 3, embranchements
+## État : phase 4, ambiances et Directeur
+
+### Ambiances
+Chaque ambiance est un preset de données (`src/ambiances/presets/`) : dimensions, couleurs, motifs (murs, plafond, sol), brouillard, lumière, mobilier, style de cadres, types d'œuvres préférés, poids des modules, rareté, tension et affinités. Ajouter une ambiance = écrire un preset et l'inscrire dans `src/ambiances/index.ts`.
+
+- **Musée des beaux-arts** (départ) : parquet, murs bordeaux, cadres dorés, halos.
+- **Galerie contemporaine** (white cube) : béton ciré, blanc, lumière uniforme, toiles nues, grandes salles.
+- **Back rooms** (liminale, sans nom affiché) : papier peint jaune, moquette tachée, faux plafond, néons qui grésillent, couloirs trop longs, presque aucune œuvre.
+- **Jardin d'hiver** (serre) : verrière, carrelage en terre cuite, jardinières.
+
+### Le Directeur (`src/director/Director.ts`)
+- **Zones** : le musée est découpé en zones de 3 à 15 modules. Chaque module hérite de la zone de son parent, si bien que deux branches peuvent diverger.
+- **Choix de l'ambiance suivante** : il est pondéré par la rareté, les affinités, l'historique (pas de répétition immédiate) et une courbe de tension qui monte et redescend.
+- **Départ** : toujours dans un musée classique, assez long pour que la dérive soit sentie.
+- **Transitions** :
+  - **progressive** : couleurs, lumière, brouillard, hauteur et largeur sont interpolés sur 2 à 4 modules ;
+  - **seuil** : un sas étroit et sombre, avec des portes ;
+  - **rupture** : fondu au noir ou faux glitch, rare.
+- **Raccords** : aux jonctions entre ambiances de tailles différentes, des jambages et des linteaux referment automatiquement l'écart.
+- **Nom de l'aile** : il s'affiche brièvement à l'arrivée (pas dans les zones liminales).
+- **Réglages** : `CONFIG.director`.
+
+## Phase 3, embranchements
 
 - **Intersections** : en T (gauche et droite, tout droit et gauche, tout droit et droite) et carrefour en croix. Chaque direction mène à un chemin différent, généré à la demande.
 - **Salles**, plus hautes de plafond, avec un linteau au-dessus des portes :
@@ -132,7 +154,7 @@ Le déploiement sur GitHub Pages se fait automatiquement à chaque push sur `mai
 1. ~~Prototype de couloir infini~~
 2. ~~Vraies œuvres : Worker Cloudflare, adaptateurs de musées, cartels, fiche détaillée~~
 3. ~~Embranchements : T, carrefours, salles, escaliers, impasses~~
-4. Ambiances et Directeur
+4. ~~Ambiances et Directeur~~
 5. Plus de sources : affiches, jaquettes, pochettes, livres
 6. Décors procéduraux et son
 7. Toutes les ambiances et étrangetés

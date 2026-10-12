@@ -83,9 +83,17 @@ export class ArtLibrary {
     this.pump();
   }
 
-  /** Prend une œuvre prête, s'il y en a. Le demandeur devient responsable de sa texture. */
-  take(): ReadyArt | null {
-    const art = this.ready.shift() ?? null;
+  /**
+   * Prend une œuvre prête, s'il y en a, de préférence d'un des types `prefer`
+   * (affinités de l'ambiance). Le demandeur devient responsable de sa texture.
+   */
+  take(prefer?: readonly string[]): ReadyArt | null {
+    let index = 0;
+    if (prefer && prefer.length > 0 && Math.random() < 0.75) {
+      const i = this.ready.findIndex((r) => prefer.includes(r.artwork.type));
+      if (i >= 0) index = i;
+    }
+    const art = this.ready.splice(index, 1)[0] ?? null;
     this.pump();
     return art;
   }
