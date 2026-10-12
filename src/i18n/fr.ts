@@ -36,6 +36,7 @@ export const fr = {
   'debug.ambiance': 'Ambiance',
   'debug.art': 'Œuvres',
   'home.preparing': 'Préparation des œuvres…',
+  'home.loading': 'Accrochage des premières œuvres…',
   'home.ready': '{n} œuvres prêtes',
   'menu.filter': 'Filtrer les contenus sensibles',
   'hud.view': 'Cliquer pour voir l’œuvre',

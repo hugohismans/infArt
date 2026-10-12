@@ -124,6 +124,9 @@ export const CONFIG = {
     /** Distance (m) d'affichage du texte des cartels, et de libération. */
     cartelDistance: 7,
     cartelRelease: 10,
+    /** Écran de chargement : œuvres prêtes avant d'entrer, et attente maximale (ms). */
+    startReady: 20,
+    startTimeoutMs: 12000,
     /** Réserve d'œuvres préchargées (images prêtes) visée. */
     bufferTarget: 10,
     /** Nombre d'œuvres demandées par lot à l'API. */

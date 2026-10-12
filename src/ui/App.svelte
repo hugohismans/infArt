@@ -33,6 +33,8 @@
   const mixParam = parseWeights(new URLSearchParams(window.location.search).get('mix'));
   if (Object.keys(mixParam).length > 0) library.mix = mixParam;
   library.filterSensitive = settings.filterSensitive;
+  // Dès l'accueil, on prépare de quoi accrocher les premières salles.
+  library.startTarget = CONFIG.art.startReady;
   library.pump();
   const artCtx: ArtContext = {
     library,
@@ -71,7 +73,33 @@
   let container: HTMLDivElement;
   let overlay: HTMLDivElement;
 
-  function enter(chosenSeed: string) {
+  /**
+   * Écran de chargement : on attend qu'assez d'œuvres soient prêtes pour que les
+   * premières salles soient accrochées dès l'entrée (et pas des toiles drapées).
+   */
+  let loading = $state<{ ready: number; target: number } | null>(null);
+  function waitForArt(): Promise<void> {
+    const target = CONFIG.art.startReady;
+    const t0 = performance.now();
+    return new Promise((resolve) => {
+      const tick = () => {
+        const s = library.stats();
+        loading = { ready: Math.min(s.ready, target), target };
+        if (s.ready >= target || s.offline || performance.now() - t0 > CONFIG.art.startTimeoutMs) {
+          loading = null;
+          resolve();
+          return;
+        }
+        window.setTimeout(tick, 120);
+      };
+      tick();
+    });
+  }
+
+  let entering = false;
+  async function enter(chosenSeed: string) {
+    if (entering) return;
+    entering = true;
     seed = chosenSeed.trim() || pendingSeed;
     if (seed !== pendingSeed) {
       pendingSeed = seed;
@@ -82,9 +110,14 @@
     url.searchParams.set('seed', seed);
     window.history.replaceState(null, '', url);
 
-    screen = 'visit';
+    // Son et plein écran : à demander pendant le geste du visiteur, avant toute attente.
     audio.setMuted(!sound);
     audio.unlock();
+    if (isTouchDevice()) document.documentElement.requestFullscreen?.().catch(() => undefined);
+    await waitForArt();
+    library.startTarget = 0;
+
+    screen = 'visit';
     const e = new Engine(container, overlay, {
       seed,
       // Essais : &ambiance=foret démarre dans une ambiance donnée.
@@ -117,10 +150,7 @@
     engine = e;
     (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, audio, stats: () => e.stats(), openSheet };
 
-    if (isTouchDevice()) {
-      // Plein écran sur mobile (Android) pour l'immersion ; ignoré si refusé.
-      document.documentElement.requestFullscreen?.().catch(() => undefined);
-    } else {
+    if (!isTouchDevice()) {
       e.requestPointerLock();
       showLookHint = true;
     }
@@ -214,6 +244,12 @@
 
 {#if screen === 'home'}
   <Home initialSeed={seed} onEnter={enter} {library} />
+  {#if loading}
+    <div class="loading" role="status" aria-live="polite">
+      <p>{t('home.loading')}</p>
+      <div class="bar"><div class="fill" style="width: {(100 * loading.ready) / loading.target}%"></div></div>
+    </div>
+  {/if}
 {:else}
   <div class="hud">
     <button class="hud-btn" aria-label={t('hud.menu')} onclick={openMenu}>
@@ -265,6 +301,32 @@
   .stage {
     position: fixed;
     inset: 0;
+  }
+  .loading {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    gap: 18px;
+    justify-items: center;
+    background: var(--bg);
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--ink-dim);
+    z-index: 20;
+  }
+  .loading p {
+    margin: 0;
+  }
+  .bar {
+    width: min(260px, 70vw);
+    height: 2px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .fill {
+    height: 100%;
+    background: rgba(201, 161, 74, 0.9);
+    transition: width 0.25s ease-out;
   }
   .overlay {
     position: fixed;

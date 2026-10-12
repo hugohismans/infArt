@@ -83,6 +83,8 @@ export class ArtLibrary {
   private recentThemes: string[] = [];
   /** Filtre de contenu sensible (réglage). */
   filterSensitive = true;
+  /** Réserve visée avant l'entrée dans la visite (écran de chargement), 0 ensuite. */
+  startTarget = 0;
   /** Mode mélange : part de chaque type (paramètre d'URL `mix` pour les essais). */
   mix: TypeWeights = CONFIG.art.mix;
 
@@ -169,7 +171,7 @@ export class ArtLibrary {
   /** À appeler régulièrement : relance les téléchargements si besoin. */
   pump(): void {
     if (this.disposed) return;
-    const target = CONFIG.art.bufferTarget + this.waiters.length;
+    const target = Math.max(CONFIG.art.bufferTarget, this.startTarget) + this.waiters.length;
     // Images : on charge tant que la réserve n'est pas pleine.
     while (this.queued.length > 0 && this.ready.length + this.loading < target) {
       this.loadNext();

@@ -8,6 +8,8 @@ import { randomPageStart, type SourceAdapter } from './types';
  */
 const API = 'https://api.harvardartmuseums.org/object';
 const PAGE = 40;
+/** L'API ne pagine pas au-delà de 10 000 résultats (une page vide, sans erreur). */
+const MAX_RESULTS = 10000;
 const FIELDS = 'id,title,people,dated,datebegin,medium,dimensions,culture,period,classification,primaryimageurl,images,url,creditline,imagepermissionlevel,description';
 
 const CLASSIFICATIONS: Partial<Record<ArtType, string>> = {
@@ -64,7 +66,7 @@ export const harvard: SourceAdapter = {
     const base = `${API}?apikey=${keys.HARVARD_KEY}&classification=${encodeURIComponent(cls)}&hasimage=1&q=imagepermissionlevel:0` + (theme?.q ? `&title=${encodeURIComponent(theme.q)}` : '');
     const head = (await fetchJson(`${base}&size=1&fields=id`, { ttl: 86400 })) as HarvardResponse;
     if (!head.info?.totalrecords) return [];
-    const start = randomPageStart(rng, head.info.totalrecords, PAGE);
+    const start = randomPageStart(rng, head.info.totalrecords, PAGE, MAX_RESULTS - PAGE);
     const page = (await fetchJson(`${base}&size=${PAGE}&page=${start / PAGE + 1}&fields=${FIELDS}`, { ttl: 86400 * 7 })) as HarvardResponse;
     return rng
       .shuffle(page.records ?? [])

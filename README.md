@@ -79,6 +79,7 @@ Entièrement synthétisé avec la Web Audio API : aucun fichier, aucune licence.
   - couvertures de livres : le livre debout sur une tablette, dos et tranche visibles.
 - **Mode mélange** (`CONFIG.art.mix`) : environ deux tiers de beaux-arts, le reste en affiches, jaquettes, pochettes et livres. Un type sans source disponible (clé absente) est simplement ignoré. Pour essayer : `&mix=pochette-disque:1,couverture-livre:1`.
 - **Ailes thématiques** pop : cinéma, jeux vidéo et musique par décennie, affiches, bibliothèque. Elles ne sont proposées que si une source peut les remplir.
+- **Écran de chargement** : au clic sur « Entrer », la visite attend d'avoir 20 œuvres prêtes (au plus 12 s, `CONFIG.art.startReady`) : les premières salles sont accrochées dès l'arrivée. La réserve se remplit déjà pendant l'accueil.
 - **Lots** : une source trop lente (plus de 7 s) est ignorée pour le lot en cours. Quand des emplacements attendent, deux lots sont demandés en parallèle.
 
 ## Phase 4, ambiances et Directeur
