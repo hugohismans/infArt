@@ -32,7 +32,7 @@ interface HarvardObject {
   period?: string;
   classification?: string;
   primaryimageurl?: string;
-  images?: Array<{ iiifbaseuri?: string; width?: number; height?: number }>;
+  images?: Array<{ iiifbaseuri?: string; idsid?: number; baseimageurl?: string; width?: number; height?: number }>;
   url?: string;
   creditline?: string;
   imagepermissionlevel?: number;
@@ -42,6 +42,13 @@ interface HarvardObject {
 interface HarvardResponse {
   info: { totalrecords: number };
   records: HarvardObject[];
+}
+
+/** Base IIIF d'une image : `iiifbaseuri` n'est plus toujours fourni, on la reconstruit depuis `idsid`. */
+function iiifOf(img: NonNullable<HarvardObject['images']>[number] | undefined): string | undefined {
+  if (img?.iiifbaseuri) return img.iiifbaseuri;
+  if (img?.idsid) return `https://ids.lib.harvard.edu/ids/iiif/${img.idsid}`;
+  return undefined;
 }
 
 /** « 81.3 x 65.1 cm (32 x 25 5/8 in.) » → largeur × hauteur (Harvard donne h × l). */
@@ -73,7 +80,7 @@ export const harvard: SourceAdapter = {
       .shuffle(records)
       .map((o): Artwork | null => {
         const title = clean(o.title);
-        const iiif = o.images?.[0]?.iiifbaseuri;
+        const iiif = iiifOf(o.images?.[0]);
         if (!title || !iiif || o.imagepermissionlevel !== 0) return null;
         const artist = clean(o.people?.find((p) => /artist/i.test(p.role ?? ''))?.name ?? o.people?.[0]?.name);
         const year = parseYear(o.datebegin, o.dated);
@@ -108,7 +115,7 @@ export const harvard: SourceAdapter = {
     if (!found.length) {
       // Diagnostic : quel critère écarte les objets ? (sans la clé)
       const r0 = records[0] as unknown as Record<string, unknown> | undefined;
-      const stats = `sans titre ${records.filter((o) => !clean(o.title)).length}, sans iiif ${records.filter((o) => !o.images?.[0]?.iiifbaseuri).length}, droits≠0 ${records.filter((o) => o.imagepermissionlevel !== 0).length}`;
+      const stats = `sans titre ${records.filter((o) => !clean(o.title)).length}, sans iiif ${records.filter((o) => !iiifOf(o.images?.[0])).length}, droits≠0 ${records.filter((o) => o.imagepermissionlevel !== 0).length}`;
       throw new Error(`page ${start / PAGE + 1} : ${records.length} objets, aucun exploitable (${stats} ; champs ${r0 ? Object.keys(r0).join(',') : '-'} ; images[0] ${JSON.stringify(records[0]?.images?.[0] ?? null).slice(0, 160)})`);
     }
     return found;
