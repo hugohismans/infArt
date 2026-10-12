@@ -25,6 +25,7 @@
   import { AudioEngine } from '../audio/AudioEngine';
   import { Director, type Oddity } from '../director/Director';
   import { parseWeights, type Artwork } from '../../shared/artwork';
+  import { Narrator } from '../narrator/Narrator.svelte';
 
   const params = readUrlParams();
   const settings = loadSettings();
@@ -58,6 +59,9 @@
 
   // Le son ne démarre qu'au clic sur « Entrer » (contrainte des navigateurs).
   const audio = new AudioEngine();
+  // La voix off (solo) ; à la première visite, l'aile qu'elle promet se prépare dès l'accueil.
+  const narrator = new Narrator(library, audio);
+  const firstTheme = narrator.firstTheme();
 
   let screen = $state<'home' | 'visit'>('home');
   let sound = $state(settings.sound);
@@ -96,7 +100,9 @@
       const tick = () => {
         const s = library.stats();
         loading = { ready: Math.min(s.ready, target), target };
-        if (s.ready >= target || s.offline || performance.now() - t0 > CONFIG.art.startTimeoutMs) {
+        // (L'aile promise par la voix off doit pouvoir s'accrocher dès qu'on y entre.)
+        const themeOk = !firstTheme || library.themeReadyCount(firstTheme.id) >= 3;
+        if ((s.ready >= target && themeOk) || s.offline || performance.now() - t0 > CONFIG.art.startTimeoutMs) {
           loading = null;
           resolve();
           return;
@@ -127,6 +133,7 @@
     const [{ Session }, { Companion }, { Voice }] = await Promise.all([import('../net/Session'), import('../net/Companion'), import('../net/Voice')]);
     const e = engine;
     const s = new Session(lobby.F, lobby.database, p.sid, lobby.uid, p.friend.uid, p.role, e);
+    narrator.setDuo(true);
     session = s;
     companion = new Companion(e, s, p.friend.name, p.friend.uid);
     duoState = 'joining';
@@ -158,6 +165,7 @@
 
   function stopDuo(name: string | null) {
     if (engine) engine.onFrame = null;
+    narrator.setDuo(false);
     companion?.dispose();
     companion = null;
     voice?.dispose();
@@ -215,10 +223,12 @@
     // Essais : &ambiance=foret démarre dans une ambiance donnée (sans rotonde) ; &rotonde=0 la retire.
     const query = new URLSearchParams(window.location.search);
     const forced = AMBIANCES[query.get('ambiance') ?? ''];
+    const hub = !forced && query.get('rotonde') !== '0';
     const e = new Engine(container, overlay, {
       seed,
       ambiance: forced ?? DEFAULT_AMBIANCE,
-      startHub: !forced && query.get('rotonde') !== '0',
+      startHub: hub,
+      firstTheme: hub ? firstTheme : null,
       quality,
       autoWalk,
       timeScale: params.timeScale,
@@ -231,7 +241,10 @@
     e.onArtworkOpen = (art) => openSheet(art);
     e.onAimChange = (art) => (aimed = art);
     // S'arrêter devant une œuvre compte comme un intérêt (une fois par œuvre).
-    e.onDwell = (art) => library.noteInterest(art, CONFIG.interest.strength.regard);
+    e.onDwell = (art) => {
+      library.noteInterest(art, CONFIG.interest.strength.regard);
+      narrator.dwell(art);
+    };
     e.onThemeTitle = (name) => {
       if (!name) {
         themeTitle = null;
@@ -251,6 +264,8 @@
     e.start();
     engine = e;
     progress.visit();
+    narrator.setSound(sound);
+    narrator.start(e, hub);
     observeVisit(e);
     (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, audio, stats: () => e.stats(), openSheet, lobby, duo: () => session, voice: () => voice };
 
@@ -283,6 +298,7 @@
   const toast = $derived(progress.toasts[0] ?? null);
   $effect(() => {
     if (!toast) return;
+    narrator.achievement(toast.id);
     const id = window.setTimeout(() => progress.dismissToast(), 4200);
     return () => clearTimeout(id);
   });
@@ -385,6 +401,7 @@
   $effect(() => {
     library.filterSensitive = filterSensitive;
     audio.setMuted(!sound);
+    narrator.setSound(sound);
     saveSettings({ reduceMotion, filterSensitive, sound, quality, gyro, largeText });
   });
 
@@ -408,6 +425,7 @@
   });
 
   onDestroy(() => {
+    narrator.stop();
     session?.end(true);
     clearInterval(observeTimer);
     engine?.dispose();
@@ -462,6 +480,9 @@
     {#if aimed}<div class="aim-label">{t('hud.view')}</div>{/if}
   {/if}
 
+  {#if narrator.current && !sheetArtwork}
+    {#key narrator.current.id}<p class="narration" role="status" aria-live="polite"><span>{narrator.current.text}</span></p>{/key}
+  {/if}
   {#if themeTitle && !menuOpen && !sheetArtwork}
     {#key titleKey}<div class="theme-title" role="status" aria-live="polite" style="animation-duration: {CONFIG.director.titleDuration}s">{themeTitle}</div>{/key}
   {/if}
@@ -481,7 +502,10 @@
   <CollectionPanel {client} onOpen={(art) => (sheetArtwork = art)} onClose={closeCollection} />
 {/if}
 {#if sheetArtwork}
-  {#key sheetArtwork.id}<ArtworkSheet artwork={sheetArtwork} {client} onClose={closeSheet} onFavorite={(art) => library.noteInterest(art, CONFIG.interest.strength.favori)} />{/key}
+  {#key sheetArtwork.id}<ArtworkSheet artwork={sheetArtwork} {client} onClose={closeSheet} onFavorite={(art) => {
+        library.noteInterest(art, CONFIG.interest.strength.favori);
+        narrator.favorite();
+      }} />{/key}
 {/if}
 {#if screen === 'visit' && lobby.invitations[0] && !lobby.pairing}
   {@const inv = lobby.invitations[0]}
@@ -657,6 +681,35 @@
   }
   .hud-btn.mic.talking {
     box-shadow: 0 0 0 3px rgba(95, 212, 196, 0.35);
+  }
+  /* Voix off : sous-titre en bas d'écran, comme au cinéma. */
+  .narration {
+    position: fixed;
+    left: 50%;
+    bottom: calc(6% + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: min(46rem, calc(100% - 32px));
+    margin: 0;
+    text-align: center;
+    pointer-events: none;
+    animation: narration-in 0.5s ease-out;
+    z-index: 5;
+  }
+  .narration span {
+    display: inline;
+    padding: 0.2em 0.5em;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(0.95rem, 2.6vw, 1.25rem);
+    line-height: 1.7;
+    color: #fffaf0;
+    background: rgba(8, 8, 10, 0.62);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  @keyframes narration-in {
+    from { opacity: 0; transform: translate(-50%, 6px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
   }
   .theme-title {
     position: fixed;

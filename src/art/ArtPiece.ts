@@ -162,7 +162,9 @@ export class ArtPiece {
     else if (!ctx || ctx.library.offline) this.hangProcedural();
     else {
       this.hangPlaceholder();
-      this.cancelWait = ctx.library.request((r) => this.arrive(r));
+      const cb = (r: ReadyArt) => this.arrive(r);
+      // Aile thématique encore en chargement : on attend une œuvre du thème.
+      this.cancelWait = (opts.themeId ? ctx.library.requestTheme(opts.themeId, cb) : null) ?? ctx.library.request(cb);
     }
   }
 

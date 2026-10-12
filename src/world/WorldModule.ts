@@ -10,6 +10,7 @@ import type { PresetMaterials } from './resources';
 import { Rng } from './random';
 import type { ResourceCache } from './resources';
 import { buildDecor } from '../decor';
+import { buildSign, signSlot, signSpot, slotHitsSign, type SignSpot } from './signs';
 import type { ArtSlotDef } from './modules/defs';
 import type { Artwork } from '../../shared/artwork';
 
@@ -103,6 +104,9 @@ export class WorldModule {
   private steamTime = 0;
   /** Rotonde de départ : zone imposée à chacune de ses ouvertures (une ambiance par porte). */
   exitZones: ZoneState[] | null = null;
+  /** Panneaux d'orientation (à fixer avant `build`) : l'ouverture et le thème qui l'attend. */
+  signs: Array<{ connector: number; title: string; themeId: string }> = [];
+  private signParts: Array<{ dispose(): void }> = [];
   /** Étrangeté « porte murée » : l'entrée sera murée derrière le visiteur. */
   sealEntrance = false;
   /**
@@ -231,6 +235,16 @@ export class WorldModule {
     const rng = new Rng(this.seed, 'art');
     const density = CONFIG.art.density * this.preset.art.density;
     const hung: ArtSlotDef[] = [];
+    // Panneaux d'orientation : posés d'abord, les œuvres et le décor leur laissent la place.
+    const spots: SignSpot[] = [];
+    for (const sign of this.signs) {
+      const spot = signSpot(this.def, this.preset, sign.connector);
+      if (!spot) continue;
+      spots.push(spot);
+      const built = buildSign(spot, sign.title, this.preset);
+      this.group.add(built.object);
+      this.signParts.push(built);
+    }
     const odd = this.zone.oddity;
     // Salle vide : les œuvres sont parties, il reste les clous et les traces des cadres.
     const emptied = odd === 'salle-vide' && this.def.kind === 'room';
@@ -271,7 +285,7 @@ export class WorldModule {
       this.wallPieces.push(art);
       this.group.add(art.object);
     };
-    for (const slot of emptied ? [] : this.def.artSlots) {
+    for (const slot of emptied ? [] : this.def.artSlots.filter((sl) => !spots.some((sp) => slotHitsSign(sl, sp)))) {
       // Une impasse (ou un bouchon) expose toujours son œuvre unique.
       const always = this.def.kind === 'cap' || this.def.kind === 'deadend';
       if (!always && !rng.chance(density)) continue;
@@ -329,9 +343,10 @@ export class WorldModule {
     if (triple && tripleLeft === tripleTotal) triple.texture.dispose();
 
     // Décors (géométries propres au module : chaque module tire les siens).
-    const decor = buildDecor(this.def, this.preset, new Rng(this.seed, 'decor'), hung, {
+    const decor = buildDecor(this.def, this.preset, new Rng(this.seed, 'decor'), [...hung, ...spots.filter((sp) => sp.arrow !== 0).map(signSlot)], {
       emptied,
       forgotten: odd === 'veste-cafe',
+      signed: this.signs.map((sg) => sg.connector),
     });
     if (decor.steam) {
       this.steam = decor.steam;
@@ -439,6 +454,11 @@ export class WorldModule {
 
   get artPieces(): readonly ArtPiece[] {
     return this.arts;
+  }
+
+  /** Copie d'un couloir déjà traversé (étrangeté « couloir qui revient sur lui-même »). */
+  get isLoopCopy(): boolean {
+    return this.loopFrom !== null;
   }
 
   get artCount(): number {
@@ -575,6 +595,8 @@ export class WorldModule {
     this.arts = [];
     for (const g of this.ownedGeometries) g.dispose();
     this.ownedGeometries = [];
+    for (const p of this.signParts) p.dispose();
+    this.signParts = [];
     this.drips = [];
     this.steam = null;
     this.steamPuffs = [];

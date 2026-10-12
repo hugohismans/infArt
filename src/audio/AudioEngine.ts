@@ -77,8 +77,20 @@ export class AudioEngine {
 
   setMuted(muted: boolean): void {
     this.muted = muted;
+    this.applyVolume();
+  }
+
+  /** La voix off parle : l'ambiance baisse un peu. */
+  duck(on: boolean): void {
+    this.ducked = on;
+    this.applyVolume();
+  }
+  private ducked = false;
+
+  private applyVolume(): void {
     if (!this.ctx) return;
-    this.master.gain.setTargetAtTime(muted ? 0 : CONFIG.audio.volume, this.ctx.currentTime, 0.15);
+    const v = this.muted ? 0 : CONFIG.audio.volume * (this.ducked ? 0.4 : 1);
+    this.master.gain.setTargetAtTime(v, this.ctx.currentTime, this.ducked ? 0.25 : 0.6);
   }
 
   /**

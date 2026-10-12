@@ -5,6 +5,8 @@ import { angleOf, applyTransform, convexOverlap, pointInConvex, pointSegmentDist
 import { makeModuleDefs, type ModuleDef } from './modules/defs';
 import { Rng } from './random';
 import { isOpenAir, ResourceCache } from './resources';
+import { signSpot } from './signs';
+import type { ArtTheme } from '../../shared/themes';
 import { computeVisibility, modulesContaining, type VisibilityResult } from './visibility';
 import { WorldModule, type LoopSource, type RemoteArt } from './WorldModule';
 import type { ArtContext } from '../art/ArtPiece';
@@ -103,6 +105,11 @@ export class World {
   private popInLog: string[] = [];
 
   private lodTimer = 0;
+  /** Thème à flécher aux prochains carrefours qui s'y prêtent (deuxième chance de la voix off). */
+  forcedSign: ArtTheme | null = null;
+  /** Panneaux d'orientation aux carrefours (désactivés pour les essais). */
+  signsEnabled = true;
+  private sinceSign = 0;
 
   constructor(
     readonly seed: string,
@@ -146,12 +153,20 @@ export class World {
    * Elle n'existe qu'au départ : une fois loin et hors de vue, elle est détruite comme
    * le reste, et le chemin du retour mène ailleurs.
    */
-  init(hub = false): { position: Vec2; yaw: number } {
+  init(hub = false, firstTheme: ArtTheme | null = null): { position: Vec2; yaw: number } {
     const zone = this.director.initial();
     if (hub) {
       const def = this.defsFor(this.startPreset)['rotonde']!;
-      const rotonde = this.createModule(def, { x: 0, z: 0, angle: 0 }, 0, zone, this.startPreset);
-      rotonde.exitZones = this.director.hubExits(def.connectors.length);
+      const rotonde = this.createModule(def, { x: 0, z: 0, angle: 0 }, 0, zone, this.startPreset, null, (m) => {
+        m.exitZones = this.director.hubExits(def.connectors.length);
+        // Première visite : une des portes porte un thème choisi pour le visiteur (voix off).
+        if (firstTheme) {
+          const exits = def.connectors.map((_, i) => i).filter((i) => i > 0 && signSpot(def, this.startPreset, i));
+          const exit = new Rng(this.seed, 'premier-theme').pick(exits);
+          m.exitZones[exit] = { ...m.exitZones[exit]!, wing: this.director.makeWing(firstTheme, 5) };
+          m.signs = [{ connector: exit, title: firstTheme.title, themeId: firstTheme.id }];
+        }
+      });
       this.current = rotonde;
       // Un peu en deçà du centre, face à la porte du fond : les portes latérales sont dans le champ.
       const c = def.navPoints[0]!;
@@ -542,7 +557,7 @@ export class World {
       weights[id] = 0;
       const obstacles = this.overlapping(def, preset, transform, baseY, parent);
       if (obstacles.length === 0) {
-        place(this.createModule(def, transform, baseY, zone, preset));
+        place(this.createModule(def, transform, baseY, zone, preset, null, (m) => this.planSigns(m)));
         return;
       }
       if (!fallback && obstacles.every((m) => this.canEvict(m, parent))) fallback = { def, obstacles };
@@ -551,7 +566,7 @@ export class World {
       for (const m of fallback.obstacles) this.destroyModule(m);
       this.counters.evictions += fallback.obstacles.length;
       if (!parent.alive) return;
-      place(this.createModule(fallback.def, transform, baseY, zone, preset));
+      place(this.createModule(fallback.def, transform, baseY, zone, preset, null, (m) => this.planSigns(m)));
       return;
     }
     // Rien ne rentre sans toucher à ce que le visiteur voit : bouchon (toujours placé),
@@ -660,11 +675,40 @@ export class World {
     for (const m of this.modules) m.reframe(t, dy);
   }
 
-  private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number, zone: ZoneState, preset: AmbiancePreset, loop: LoopSource | null = null): WorldModule {
+  /**
+   * Carrefour (trois ouvertures ou plus) : de temps en temps, une sortie est fléchée vers
+   * un thème prêt, qui l'attend derrière (aile thématique). Les autres sorties gardent
+   * leur tirage habituel, décidé dès maintenant.
+   */
+  private planSigns(m: WorldModule): void {
+    this.sinceSign++;
+    if (!this.signsEnabled || this.net || m.def.connectors.length < 3 || m.preset.inverted || m.zone.wing) return;
+    if (m.zone.zone.ambiance.art.density < CONFIG.director.wingMinDensity) return;
+    const exits = m.def.connectors.map((_, i) => i).filter((i) => i > 0 && signSpot(m.def, m.preset, i));
+    if (exits.length === 0) return;
+    const rng = new Rng(m.seed, 'panneau');
+    // Un thème imposé est fléché à chaque carrefour jusqu'à ce que le visiteur en croise un
+    // (c'est la voix off qui le retire) : on ne sait pas quelle branche il prendra.
+    let theme = this.forcedSign;
+    if (!theme) {
+      if (this.sinceSign < CONFIG.signs.gap || !rng.chance(CONFIG.signs.chance)) return;
+      theme = this.director.claimTheme?.() ?? null;
+      if (!theme) return;
+    }
+    this.sinceSign = 0;
+    const exit = rng.pick(exits);
+    m.exitZones = m.def.connectors.map((_, i) => (i === 0 ? m.zone : this.director.next(m.zone, `${m.id}:${i}`, i >= 2)));
+    const [a, b] = CONFIG.signs.wingLength;
+    m.exitZones[exit] = { ...m.exitZones[exit]!, wing: this.director.makeWing(theme, rng.int(a, b)) };
+    m.signs = [{ connector: exit, title: theme.title, themeId: theme.id }];
+  }
+
+  private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number, zone: ZoneState, preset: AmbiancePreset, loop: LoopSource | null = null, prepare?: (m: WorldModule) => void): WorldModule {
     const id = this.nextId++;
     // Une copie de couloir reprend la graine de l'original : même tirage, même décor.
     const m = new WorldModule(id, def, { ...transform }, baseY, preset, zone, loop ? loop.seed : `${this.seed}:${id}`, this.cache, loop);
     m.uid = `${this.uidPrefix}${id}`;
+    prepare?.(m);
     m.build(this.artCtx);
     this.root.add(m.group);
     this.modules.add(m);

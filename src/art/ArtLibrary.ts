@@ -51,6 +51,10 @@ interface ThemePool {
   lastTake: number;
   /** Né d'un intérêt du visiteur (et non tiré au hasard). */
   interest: boolean;
+  /** Épinglée (thème promis par un panneau) : jamais libérée pour inactivité. */
+  pinned: boolean;
+  /** Emplacements d'une aile qui attendent une œuvre de ce thème. */
+  waiters: Waiter[];
 }
 
 /** Œuvre en volume : posée sur un socle. */
@@ -188,9 +192,84 @@ export class ArtLibrary {
     p.active = true;
     p.lastTake = performance.now();
     this.activePools.push(p);
-    while (this.activePools.length > 2) this.dropPool(this.activePools.shift()!);
+    this.trimPools();
     this.pump();
     return p.theme;
+  }
+
+  /** Au plus deux ailes ouvertes à la fois, sans compter les thèmes épinglés. */
+  private trimPools(): void {
+    for (;;) {
+      const free = this.activePools.filter((p) => !p.pinned);
+      if (free.length <= 2) return;
+      this.dropPool(free[0]!);
+    }
+  }
+
+  /**
+   * Prépare et ouvre tout de suite un thème précis (promis par un panneau, ou par la voix
+   * off) ; il reste épinglé jusqu'à `unpinTheme`.
+   */
+  openTheme(theme: ArtTheme): void {
+    let p = this.activePools.find((x) => x.theme.id === theme.id);
+    if (!p && this.upcoming?.theme.id === theme.id) {
+      p = this.upcoming;
+      this.upcoming = null;
+      this.activePools.push(p);
+    }
+    if (!p) {
+      p = { theme, queued: [], ready: [], loading: 0, batch: 0, fetching: false, exhausted: false, active: true, dropped: false, lastTake: 0, interest: false, pinned: true, waiters: [] };
+      this.activePools.push(p);
+      this.recentThemes.push(theme.id);
+    }
+    p.active = true;
+    p.pinned = true;
+    p.lastTake = performance.now();
+    this.trimPools();
+    this.pump();
+  }
+
+  unpinTheme(id: string): void {
+    const p = this.activePools.find((x) => x.theme.id === id);
+    if (!p) return;
+    p.pinned = false;
+    p.lastTake = performance.now();
+  }
+
+  /** Œuvres prêtes d'un thème ouvert (pour patienter avant d'entrer). */
+  themeReadyCount(id: string): number {
+    return this.activePools.find((x) => x.theme.id === id)?.ready.length ?? 0;
+  }
+
+  /** Le visiteur n'en veut pas : ce thème ne revient plus (ni aile, ni intérêt). */
+  banTheme(id: string): void {
+    this.banned.add(id);
+    this.interests.delete(id);
+    const p = this.activePools.find((x) => x.theme.id === id) ?? (this.upcoming?.theme.id === id ? this.upcoming : null);
+    if (p) {
+      p.pinned = false;
+      if (p === this.upcoming) this.upcoming = null;
+      this.dropPool(p);
+    }
+  }
+  private readonly banned = new Set<string>();
+
+  /**
+   * Un emplacement d'aile attend une œuvre du thème, encore en chargement : il patiente
+   * dans la file du thème (null si le thème n'a plus rien à offrir).
+   */
+  requestTheme(themeId: string, cb: Waiter): (() => void) | null {
+    const p = this.activePools.find((x) => x.theme.id === themeId);
+    if (!p || (p.exhausted && p.queued.length === 0 && p.loading === 0)) return null;
+    p.waiters.push(cb);
+    p.lastTake = performance.now();
+    this.pump();
+    return () => {
+      const i = p.waiters.indexOf(cb);
+      if (i >= 0) p.waiters.splice(i, 1);
+      const j = this.waiters.indexOf(cb);
+      if (j >= 0) this.waiters.splice(j, 1);
+    };
   }
 
   /**
@@ -225,6 +304,7 @@ export class ArtLibrary {
 
   /** Thème servi par les sources disponibles (pas d'aile « cinéma » sans affiches de films). */
   private themeAvailable(t: ArtTheme): boolean {
+    if (this.banned.has(t.id)) return false;
     return !t.types || t.types.some((type) => this.client.availableTypes.has(type));
   }
 
@@ -277,7 +357,7 @@ export class ArtLibrary {
     const now = performance.now();
     // Une aile délaissée depuis 40 s ne réclamera plus rien : on libère ses textures.
     for (const p of [...this.activePools]) {
-      if (now - p.lastTake > 40000) this.dropPool(p);
+      if (!p.pinned && p.waiters.length === 0 && now - p.lastTake > 40000) this.dropPool(p);
     }
     if (this.upcoming && this.upcoming.exhausted && this.upcoming.loading === 0 && this.upcoming.queued.length === 0 && this.upcoming.ready.length < CONFIG.art.themeMinReady) {
       // Trop peu d'œuvres pour ce thème : on en essaie un autre.
@@ -286,9 +366,15 @@ export class ArtLibrary {
     }
     if (!this.upcoming && this.ready.length >= CONFIG.art.bufferTarget / 2) this.upcoming = this.newPool();
     for (const p of this.upcoming ? [this.upcoming, ...this.activePools] : this.activePools) {
-      while (p.queued.length > 0 && p.ready.length + p.loading < CONFIG.art.themeBufferTarget) this.loadNext(p);
-      if (!p.fetching && !p.exhausted && p.queued.length === 0 && p.ready.length + p.loading < CONFIG.art.themeBufferTarget) {
+      const target = CONFIG.art.themeBufferTarget + p.waiters.length;
+      while (p.queued.length > 0 && p.ready.length + p.loading < target) this.loadNext(p);
+      if (!p.fetching && !p.exhausted && p.queued.length === 0 && p.ready.length + p.loading < target) {
         void this.fetchThemeBatch(p);
+      }
+      // Plus rien à charger pour ce thème : les emplacements qui l'attendaient prennent autre chose.
+      if (p.exhausted && p.queued.length === 0 && p.loading === 0 && p.waiters.length > 0) {
+        this.waiters.push(...p.waiters);
+        p.waiters = [];
       }
     }
   }
@@ -300,11 +386,14 @@ export class ArtLibrary {
     const theme = wanted ?? choices[Math.floor(Math.random() * choices.length)] ?? THEMES[0]!;
     this.recentThemes.push(theme.id);
     if (this.recentThemes.length > Math.min(8, THEMES.length - 1)) this.recentThemes.shift();
-    return { theme, queued: [], ready: [], loading: 0, batch: 0, fetching: false, exhausted: false, active: false, dropped: false, lastTake: 0, interest: !!wanted };
+    return { theme, queued: [], ready: [], loading: 0, batch: 0, fetching: false, exhausted: false, active: false, dropped: false, lastTake: 0, interest: !!wanted, pinned: false, waiters: [] };
   }
 
   private dropPool(p: ThemePool): void {
     p.dropped = true;
+    // Ce qui attendait une œuvre du thème se rabat sur la réserve générale.
+    this.waiters.push(...p.waiters);
+    p.waiters = [];
     for (const r of p.ready) r.texture.dispose();
     p.ready = [];
     p.queued = [];
@@ -439,7 +528,9 @@ export class ArtLibrary {
         this.health(art.source).ok++;
         const ready: ReadyArt = { artwork: art, texture: img.texture, aspect };
         if (pool) {
-          pool.ready.push(ready);
+          const w = !onPedestal(ready) ? pool.waiters.shift() : undefined;
+          if (w) w(ready);
+          else pool.ready.push(ready);
           return;
         }
         if (onPedestal(ready)) {

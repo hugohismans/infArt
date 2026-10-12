@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { ArtTheme } from '../../shared/themes';
 import type { AmbiancePreset } from '../ambiances/types';
 import { CONFIG } from '../config';
 import { pointSegmentDistance, type Segment } from '../world/math2d';
@@ -28,6 +29,8 @@ export interface EngineOptions {
   ambiance: AmbiancePreset;
   /** Départ dans une rotonde aux portes ouvrant sur plusieurs ambiances. */
   startHub?: boolean;
+  /** Première visite : thème promis par la voix off, fléché sur une porte de la rotonde. */
+  firstTheme?: ArtTheme | null;
   /** Qualité de rendu (auto par défaut). */
   quality?: QualitySetting;
   /** Accélère la simulation (tests automatisés uniquement). */
@@ -188,7 +191,7 @@ export class Engine {
     this.scene.add(this.ground.mesh);
     // La lampe suit la caméra ; sa cible est placée devant à chaque image.
     this.scene.add(this.flashlight, this.flashlight.target);
-    const start = this.world.init(options.startHub ?? false);
+    const start = this.world.init(options.startHub ?? false, options.firstTheme ?? null);
     this.player.position = start.position;
     this.player.yaw = start.yaw;
     // Pré-génère les environs avant la première image.
@@ -241,11 +244,20 @@ export class Engine {
 
   /** Œuvre sous un point de l'écran (coordonnées normalisées -1..1), si assez proche et non masquée. */
   pick(ndcX: number, ndcY: number): Artwork | null {
+    return this.pickPiece(ndcX, ndcY)?.artwork ?? null;
+  }
+
+  /** Emplacement d'œuvre sous un point de l'écran (même sans image : toile drapée). */
+  pickPiece(ndcX: number, ndcY: number): ArtPiece | null {
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     this.raycaster.far = CONFIG.art.pickDistance;
     const hits = this.raycaster.intersectObjects(this.world.pickables(this.pickList), false);
-    const piece = hits[0]?.object.userData.artPiece as ArtPiece | undefined;
-    return piece?.artwork ?? null;
+    return (hits[0]?.object.userData.artPiece as ArtPiece | undefined) ?? null;
+  }
+
+  /** En pause (menu, fiche, collection). */
+  get isPaused(): boolean {
+    return this.paused;
   }
 
   /**

@@ -34,6 +34,8 @@ export interface DecorOddities {
   emptied?: boolean;
   /** Une veste oubliée sur un banc ou une chaise, un gobelet de café qui fume encore. */
   forgotten?: boolean;
+  /** Ouvertures surmontées d'un panneau d'orientation (pas de panneau « sortie » par-dessus). */
+  signed?: readonly number[];
 }
 
 interface Spot {
@@ -230,8 +232,8 @@ export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hun
 
   // Panneaux « sortie » au-dessus des ouvertures, côté intérieur.
   if (d.exitSigns > 0) {
-    for (const c of def.connectors) {
-      if (!rng.chance(d.exitSigns)) continue;
+    for (const [i, c] of def.connectors.entries()) {
+      if (!rng.chance(d.exitSigns) || odd.signed?.includes(i)) continue;
       const top = c.top ?? preset.geometry.ceilingHeight;
       const y = Math.min(top - 0.25, ceiling - 0.35);
       if (y < 2.25) continue;

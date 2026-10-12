@@ -190,6 +190,12 @@ export class Director {
     return { id: this.idBase + this.wingCount++, theme, left: rng.int(d.wingLength[0], d.wingLength[1]) };
   }
 
+  /** Aile imposée (panneau d'orientation, voix off) : `theme` sur `length` modules. */
+  makeWing(theme: ArtTheme, length: number): Wing {
+    this.sinceWing = 0;
+    return { id: this.idBase + this.wingCount++, theme, left: length };
+  }
+
   /** Ambiance d'après son identifiant, y compris une étape de transition (« a>b@0.25 »). */
   presetByKey(key: string): AmbiancePreset | null {
     const direct = this.ambiances[key];

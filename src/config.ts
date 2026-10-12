@@ -255,6 +255,32 @@ export const CONFIG = {
     wingBoost: 3,
   },
 
+  /** Panneaux d'orientation aux carrefours (« LA MER → ») : un thème prêt derrière une sortie. */
+  signs: {
+    /** Largeur (m) et hauteur du centre (m) d'un panneau peint au mur. */
+    width: 3.4,
+    height: 2.1,
+    /** Modules entre deux carrefours fléchés, chance à chaque carrefour au-delà. */
+    gap: 6,
+    chance: 0.6,
+    /** Longueur de l'aile derrière un panneau (modules). */
+    wingLength: [4, 6] as [number, number],
+  },
+
+  /** Voix off (le Conservateur) : écarts minimaux entre deux répliques (s), seuils des événements. */
+  narrator: {
+    eventGap: 180,
+    firstVisitGap: 40,
+    idleRotonde: [25, 60] as [number, number],
+    idle: 120,
+    hiddenTab: 60,
+    rushRooms: 4,
+    backtrackRooms: 3,
+    pushLimit: 3,
+    /** Une réplique attendue (pause, fiche ouverte) au-delà de ce délai est abandonnée. */
+    staleAfter: 12,
+  },
+
   director: {
     /** Durée de la zone de départ (musée classique), en modules. */
     firstZoneLength: [9, 13] as [number, number],
