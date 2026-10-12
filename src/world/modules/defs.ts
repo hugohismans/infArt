@@ -368,8 +368,10 @@ function sas(id: string, length: number): ModuleDef {
 /** Bouchon : un simple mur qui ferme une ouverture (dernier recours), avec une œuvre au centre. */
 function cap(id: string, w: number): ModuleDef {
   const h = w / 2;
-  // Le mur est collé à l'ouverture (5 mm) pour ne laisser aucune fente visible aux coins.
-  const depth = 0.005;
+  // Le mur est 1 cm en deçà de l'ouverture, débordant un peu sur les côtés : aucune fente
+  // aux coins, et il masque le module qui occupe la place derrière (sans quoi le dos de
+  // ses cadres, accrochés contre l'ouverture, apparaîtrait devant le bouchon).
+  const depth = -0.01;
   const walls: WallDef[] = [{ seg: { a: v2(-h - 0.05, depth), b: v2(h + 0.05, depth) }, hangable: true }];
   return {
     ...base(id, 'cap'),

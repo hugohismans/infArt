@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { AmbiancePreset } from '../ambiances/types';
 import { CONFIG } from '../config';
-import { angleOf, applyTransform, convexOverlap, pointInConvex, pointSegmentDistance, segmentsIntersect, shrinkConvex, type Segment, type Vec2 } from './math2d';
+import { angleOf, applyTransform, convexOverlap, pointInConvex, pointSegmentDistance, segmentsIntersect, type Segment, type Vec2 } from './math2d';
 import { makeModuleDefs, type ModuleDef } from './modules/defs';
 import { Rng } from './random';
 import { ResourceCache } from './resources';
@@ -430,7 +430,11 @@ export class World {
    * Deux modules superposés sans se recouper verticalement (étages) ne se gênent pas.
    */
   private overlapping(def: ModuleDef, preset: AmbiancePreset, transform: { x: number; z: number; angle: number }, baseY: number, parent: WorldModule): WorldModule[] {
-    const poly = shrinkConvex(def.footprint.map((p) => applyTransform(transform, p)), 0.05);
+    const poly = def.footprint.map((p) => applyTransform(transform, p));
+    // Aucune interpénétration, sinon le dos d'un cadre accroché de l'autre côté
+    // dépasse à travers le mur. Les voisins du parent peuvent toucher le nouveau
+    // module (bords, coins) ; les autres doivent rester à distance.
+    const near = new Set(parent.connectors.map((c) => c.neighbor?.module));
     const H = def.ceilingHeight ?? preset.geometry.ceilingHeight * def.ceilingScale;
     const y0 = baseY + Math.min(0, def.rise), y1 = baseY + Math.max(0, def.rise) + H;
     const out: WorldModule[] = [];
@@ -438,7 +442,7 @@ export class World {
       if (m === parent) continue;
       // Marge verticale : l'épaisseur du plancher entre deux étages.
       if (y1 <= m.yRange[0] + 0.3 || y0 >= m.yRange[1] - 0.3) continue;
-      if (convexOverlap(poly, shrinkConvex(m.footprint, 0.05))) out.push(m);
+      if (convexOverlap(poly, m.footprint, near.has(m) ? -0.003 : CONFIG.world.moduleClearance)) out.push(m);
     }
     return out;
   }

@@ -65,12 +65,15 @@ export function closestPointOnSegment(p: Vec2, a: Vec2, b: Vec2): Vec2 {
 }
 
 /** Teste si deux polygones convexes se chevauchent (axes séparateurs). */
-export function convexOverlap(a: readonly Vec2[], b: readonly Vec2[]): boolean {
+export function convexOverlap(a: readonly Vec2[], b: readonly Vec2[], clearance = 0): boolean {
+  // Théorème de l'axe séparateur. Avec `clearance`, deux polygones plus proches que
+  // cette distance comptent comme se chevauchant ; négative, un léger contact est toléré.
   for (const poly of [a, b]) {
     for (let i = 0; i < poly.length; i++) {
       const p1 = poly[i]!;
       const p2 = poly[(i + 1) % poly.length]!;
       const axis = { x: -(p2.z - p1.z), z: p2.x - p1.x };
+      const gap = clearance * Math.hypot(axis.x, axis.z);
       let minA = Infinity, maxA = -Infinity, minB = Infinity, maxB = -Infinity;
       for (const p of a) {
         const d = dot(p, axis);
@@ -80,7 +83,7 @@ export function convexOverlap(a: readonly Vec2[], b: readonly Vec2[]): boolean {
         const d = dot(p, axis);
         minB = Math.min(minB, d); maxB = Math.max(maxB, d);
       }
-      if (maxA <= minB || maxB <= minA) return false;
+      if (maxA + gap <= minB || maxB + gap <= minA) return false;
     }
   }
   return true;

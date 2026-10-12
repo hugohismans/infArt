@@ -72,6 +72,8 @@ export const CONFIG = {
     visibilitySampleCount: 8,
     /** Marge ajoutée au brouillard pour la distance de visibilité potentielle. */
     visibilityMargin: 12,
+    /** Écart minimal (m) entre deux modules non voisins : rien ne doit traverser les murs. */
+    moduleClearance: 0.02,
     /** Une apparition est jugée perceptible quand le brouillard masque moins de cette fraction. */
     popInFogThreshold: 0.85,
     /** Recentrage du monde quand le joueur s'éloigne trop de l'origine (précision flottante). */
