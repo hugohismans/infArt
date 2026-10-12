@@ -1,6 +1,21 @@
 import { CONFIG } from '../../config';
 import type { InputState } from './InputState';
 
+/** Avale le prochain clic (dans les 600 ms) avant qu'il n'atteigne l'interface. */
+function swallowNextClick(): void {
+  const stop = (ev: Event) => {
+    ev.stopPropagation();
+    ev.preventDefault();
+    done();
+  };
+  const done = () => {
+    window.removeEventListener('click', stop, true);
+    window.clearTimeout(timer);
+  };
+  const timer = window.setTimeout(done, 600);
+  window.addEventListener('click', stop, true);
+}
+
 /**
  * Tactile : joystick virtuel dynamique sur la moitié gauche de l'écran
  * (il apparaît là où le doigt se pose), glisser sur la moitié droite pour regarder.
@@ -65,6 +80,9 @@ export class TouchInput {
     this.tapStart.delete(e.pointerId);
     // Durée mesurée avec l'horodatage des événements : insensible aux frames lentes.
     if (tap && !tap.moved && e.type === 'pointerup' && e.timeStamp - tap.t < 350 && this.enabled) {
+      // Le navigateur enverra ensuite un « click » au même endroit : il tomberait sur ce que
+      // le tap vient d'ouvrir (le bouton « Ajouter à ma collection » de la fiche). On l'avale.
+      swallowNextClick();
       this.onTap?.(e.clientX, e.clientY);
     }
     if (e.pointerId === this.joyId) {
