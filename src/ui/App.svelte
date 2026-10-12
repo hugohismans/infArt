@@ -8,6 +8,8 @@
   import PauseMenu from './PauseMenu.svelte';
   import DebugPanel from './DebugPanel.svelte';
   import ArtworkSheet from './ArtworkSheet.svelte';
+  import CollectionPanel from './CollectionPanel.svelte';
+  import { progress } from '../progress/achievements.svelte';
   import { readUrlParams } from './params';
   import { loadSettings, saveSettings } from './settings';
   import { CONFIG } from '../config';
@@ -24,7 +26,7 @@
   const mobile = isTouchDevice();
 
   // Les œuvres commencent à se précharger dès l'écran d'accueil.
-  let pendingSeed = params.seed ?? randomSeed();
+  const pendingSeed = params.seed ?? randomSeed();
   const apiUrl = new URLSearchParams(window.location.search).get('api') ?? import.meta.env.VITE_API_URL ?? null;
   const client = new ArtClient(pendingSeed, apiUrl);
   const loader = new ImageLoader();
@@ -60,6 +62,7 @@
   let reduceMotion = $state(settings.reduceMotion);
   let filterSensitive = $state(settings.filterSensitive);
   let sheetArtwork = $state<Artwork | null>(null);
+  let collectionOpen = $state(false);
   let aimed = $state<Artwork | null>(null);
   let locked = $state(false);
   let themeTitle = $state<string | null>(null);
@@ -97,14 +100,12 @@
   }
 
   let entering = false;
-  async function enter(chosenSeed: string) {
+  async function enter() {
     if (entering) return;
     entering = true;
-    seed = chosenSeed.trim() || pendingSeed;
-    if (seed !== pendingSeed) {
-      pendingSeed = seed;
-      library.reset(seed);
-    }
+    collectionOpen = false;
+    sheetArtwork = null;
+    seed = pendingSeed;
     // La graine apparaît dans l'URL : la visite est reproductible et partageable.
     const url = new URL(window.location.href);
     url.searchParams.set('seed', seed);
@@ -151,6 +152,8 @@
     };
     e.start();
     engine = e;
+    progress.visit();
+    observeVisit(e);
     (window as unknown as { __galerie: unknown }).__galerie = { engine: e, library, audio, stats: () => e.stats(), openSheet };
 
     if (!isTouchDevice()) {
@@ -159,21 +162,64 @@
     }
   }
 
+  /** Relevé régulier pour les succès : ambiance, aile à thème, étrangeté, distance. */
+  let observeTimer = 0;
+  function observeVisit(e: Engine) {
+    let walked = e.walked;
+    observeTimer = window.setInterval(() => {
+      const m = e.world.currentModule;
+      if (!m) return;
+      const d = e.walked - walked;
+      walked = e.walked;
+      progress.observe({
+        // Les ambiances intermédiaires d'une transition ne comptent pas.
+        ...(AMBIANCES[m.preset.id] ? { ambiance: m.preset.id } : {}),
+        ...(m.zone.wing ? { theme: m.zone.wing.theme.id } : {}),
+        ...(m.zone.oddity ? { oddity: m.zone.oddity } : {}),
+        walked: d,
+      });
+    }, 1000);
+  }
+
+  // Annonce des succès, un par un.
+  const toast = $derived(progress.toasts[0] ?? null);
+  $effect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => progress.dismissToast(), 4200);
+    return () => clearTimeout(id);
+  });
+
+  /** Fiche ouverte depuis la galerie (le visé). */
   function openSheet(art: Artwork) {
     if (!engine) return;
     sheetArtwork = art;
     engine.setPaused(true);
+    progress.openedSheet();
   }
 
   function closeSheet() {
-    if (!engine) return;
     sheetArtwork = null;
+    // Ouverte depuis la collection : on y revient.
+    if (!engine || collectionOpen) return;
+    engine.setPaused(false);
+    engine.requestPointerLock();
+  }
+
+  function openCollection() {
+    collectionOpen = true;
+    menuOpen = false;
+    engine?.setPaused(true);
+  }
+
+  function closeCollection() {
+    collectionOpen = false;
+    if (!engine) return;
     engine.setPaused(false);
     engine.requestPointerLock();
   }
 
   function openMenu() {
-    if (!engine || menuOpen || sheetArtwork) return;
+    if (!engine || menuOpen || sheetArtwork || collectionOpen) return;
     menuOpen = true;
     engine.setPaused(true);
   }
@@ -192,12 +238,12 @@
   }
 
   function onKey(e: KeyboardEvent) {
+    if (e.code === 'Escape' && sheetArtwork) return closeSheet();
+    if (e.code === 'Escape' && collectionOpen) return closeCollection();
     if (screen !== 'visit') return;
     if (e.code === 'F3' || (e.code === 'Backquote' && !e.repeat)) {
       e.preventDefault();
       debugVisible = !debugVisible;
-    } else if (e.code === 'Escape' && sheetArtwork) {
-      closeSheet();
     } else if (e.code === 'Escape') {
       // Avec le pointer lock, c'est sa perte qui ouvre le menu (voir onMenuRequest).
       if (document.pointerLockElement) return;
@@ -227,7 +273,7 @@
     showLookHint = false;
   }
 
-  if (params.autoStart) queueMicrotask(() => enter(seed));
+  if (params.autoStart) queueMicrotask(() => enter());
 
   $effect(() => {
     document.addEventListener('pointerlockchange', onLockChange);
@@ -235,6 +281,7 @@
   });
 
   onDestroy(() => {
+    clearInterval(observeTimer);
     engine?.dispose();
     library.dispose();
   });
@@ -246,7 +293,7 @@
 <div class="overlay" bind:this={overlay}></div>
 
 {#if screen === 'home'}
-  <Home initialSeed={seed} onEnter={enter} {library} />
+  <Home onEnter={enter} onCollection={openCollection} {library} />
   {#if loading}
     <div class="loading" role="status" aria-live="polite">
       <p>{t('home.loading')}</p>
@@ -259,6 +306,9 @@
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
         <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
       </svg>
+    </button>
+    <button class="hud-btn" aria-label={t('hud.collection')} title={t('hud.collection')} onclick={openCollection}>
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
     </button>
     <button class="hud-btn" aria-label={sound ? t('hud.soundOff') : t('hud.soundOn')} aria-pressed={!sound} onclick={() => (sound = !sound)}>
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -287,12 +337,8 @@
 
   {#if rupture}<div class="rupture {rupture}" aria-hidden="true"></div>{/if}
 
-  {#if sheetArtwork}
-    <ArtworkSheet artwork={sheetArtwork} {client} onClose={closeSheet} />
-  {/if}
-
   {#if menuOpen}
-    <PauseMenu {seed} bind:autoWalk bind:reduceMotion bind:debugVisible bind:filterSensitive onResume={resume} onNewVisit={newVisit} />
+    <PauseMenu {seed} bind:autoWalk bind:reduceMotion bind:debugVisible bind:filterSensitive onResume={resume} onNewVisit={newVisit} onCollection={openCollection} />
   {/if}
 
   {#if debugVisible && engine}
@@ -300,7 +346,61 @@
   {/if}
 {/if}
 
+{#if collectionOpen}
+  <CollectionPanel {client} onOpen={(art) => (sheetArtwork = art)} onClose={closeCollection} />
+{/if}
+{#if sheetArtwork}
+  {#key sheetArtwork.id}<ArtworkSheet artwork={sheetArtwork} {client} onClose={closeSheet} />{/key}
+{/if}
+{#if toast}
+  {#key toast.id}
+    <div class="toast" role="status" aria-live="polite">
+      <span class="star" aria-hidden="true">★</span>
+      <div><p class="toast-kicker">{t('toast.achievement')}</p><p class="toast-title">{toast.title}</p></div>
+    </div>
+  {/key}
+{/if}
+
 <style>
+  .toast {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 18px 10px 14px;
+    background: var(--panel);
+    border: 1px solid rgba(201, 161, 74, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    pointer-events: none;
+    animation: toast 4.2s ease-in-out forwards;
+  }
+  @keyframes toast {
+    0% { opacity: 0; transform: translate(-50%, -12px); }
+    10%, 85% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, -6px); }
+  }
+  .toast .star {
+    color: var(--accent);
+    font-size: 1.5rem;
+  }
+  .toast p {
+    margin: 0;
+  }
+  .toast-kicker {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .toast-title {
+    font-family: var(--serif);
+    font-size: 1.05rem;
+  }
   .stage {
     position: fixed;
     inset: 0;

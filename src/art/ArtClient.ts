@@ -100,6 +100,12 @@ export class ArtClient {
     return raw;
   }
 
+  /** Vignette (collection) : petite image, chargée directement par une balise <img>. */
+  thumbUrl(art: Artwork, width = 360): string {
+    const adapter = ADAPTERS_BY_ID[art.source];
+    return adapter?.imageForWidth ? adapter.imageForWidth(art, width) : art.imageUrl;
+  }
+
   proxied(url: string): string {
     return `${this.apiUrl}/image?url=${encodeURIComponent(url)}`;
   }

@@ -5,24 +5,22 @@
   import type { ArtLibrary } from '../art/ArtLibrary';
 
   interface Props {
-    initialSeed: string;
-    onEnter: (seed: string) => void;
+    onEnter: () => void;
+    onCollection: () => void;
     library: ArtLibrary;
   }
-  let { initialSeed, onEnter, library }: Props = $props();
+  let { onEnter, onCollection, library }: Props = $props();
   let readyCount = $state(0);
 
   onMount(() => {
     const id = setInterval(() => (readyCount = library.stats().ready), 300);
     return () => clearInterval(id);
   });
-  // svelte-ignore state_referenced_locally
-  let seed = $state(initialSeed);
   const touch = isTouchDevice();
 
   function submit(e: SubmitEvent) {
     e.preventDefault();
-    onEnter(seed);
+    onEnter();
   }
 </script>
 
@@ -31,10 +29,7 @@
     <h1>{t('app.title')}</h1>
     <p class="subtitle">{t('app.subtitle')}</p>
     <button class="enter" type="submit">{t('home.enter')}</button>
-    <label class="seed">
-      <span>{t('home.seed')}</span>
-      <input type="text" bind:value={seed} placeholder={t('home.seedHint')} autocomplete="off" spellcheck="false" />
-    </label>
+    <button class="link" type="button" onclick={onCollection}>{t('home.collection')}</button>
     <p class="status">{readyCount > 0 ? t('home.ready', { n: readyCount }) : t('home.preparing')}</p>
     <p class="controls">{touch ? t('home.controlsMobile') : t('home.controlsDesktop')}</p>
   </form>
@@ -91,24 +86,21 @@
     background: var(--accent);
     color: var(--bg);
   }
-  .seed {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 0.8rem;
+  .link {
+    background: none;
+    border: none;
+    padding: 4px;
     color: var(--ink-dim);
-    width: 100%;
-    max-width: 280px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1rem;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-color: rgba(201, 161, 74, 0.5);
   }
-  .seed input {
-    font: inherit;
-    font-size: 0.95rem;
-    text-align: center;
-    padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+  .link:hover {
     color: var(--ink);
-    border-radius: 4px;
   }
   .status {
     font-size: 0.75rem;

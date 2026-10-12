@@ -348,6 +348,11 @@ export class Engine {
     if (art) this.onArtworkOpen?.(art);
   }
 
+  /** Distance parcourue depuis l'entrée (m). */
+  get walked(): number {
+    return this.distanceWalked;
+  }
+
   get autoWalkActive(): boolean {
     return this.autoWalkEnabled;
   }

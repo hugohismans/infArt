@@ -10,6 +10,7 @@
     filterSensitive: boolean;
     onResume: () => void;
     onNewVisit: () => void;
+    onCollection: () => void;
   }
   let {
     seed,
@@ -19,6 +20,7 @@
     filterSensitive = $bindable(),
     onResume,
     onNewVisit,
+    onCollection,
   }: Props = $props();
 
   let copied = $state(false);
@@ -42,6 +44,7 @@
   <div class="menu" role="dialog" aria-modal="true" aria-label={t('menu.title')}>
     <h2>{t('menu.title')}</h2>
     <button class="primary" onclick={onResume}>{t('menu.resume')}</button>
+    <button class="secondary" onclick={onCollection}>{t('menu.collection')}</button>
 
     <label class="toggle">
       <input type="checkbox" bind:checked={autoWalk} />

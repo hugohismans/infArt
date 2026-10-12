@@ -5,6 +5,8 @@
   import type { ArtClient } from '../art/ArtClient';
   import { t } from '../i18n';
   import type { MessageKey } from '../i18n/fr';
+  import { collection } from '../progress/collection.svelte';
+  import { progress } from '../progress/achievements.svelte';
 
   interface Props {
     artwork: Artwork;
@@ -22,6 +24,12 @@
   let viewport: HTMLDivElement;
 
   const source = $derived(ADAPTERS_BY_ID[artwork.source]);
+  const saved = $derived(collection.has(artwork.id));
+
+  function toggleFav() {
+    collection.toggle(artwork);
+    progress.collectionChanged();
+  }
   const typeLabel = $derived(t(`type.${artwork.type}` as MessageKey));
   const dims = $derived(
     artwork.dimensions ? `${fmt(artwork.dimensions.h)} × ${fmt(artwork.dimensions.w)}${artwork.dimensions.d ? ` × ${fmt(artwork.dimensions.d)}` : ''} cm` : null,
@@ -183,6 +191,11 @@
     <h2>{artwork.title}</h2>
     <p class="creator">{artwork.creator ?? t('sheet.unknownArtist')}{#if artwork.date}<span class="date">, {artwork.date}</span>{/if}</p>
 
+    <button class="fav" class:saved onclick={toggleFav} aria-pressed={saved}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
+      {saved ? t('sheet.inCollection') : t('sheet.addFav')}
+    </button>
+
     <dl>
       {#if artwork.medium}<dt>{t('sheet.medium')}</dt><dd>{artwork.medium}</dd>{/if}
       {#if dims}<dt>{t('sheet.dimensions')}</dt><dd>{dims}</dd>{/if}
@@ -306,6 +319,23 @@
   }
   .date {
     color: var(--ink-dim);
+  }
+  .fav {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 20px;
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    background: transparent;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .fav.saved {
+    border-color: var(--accent);
+    color: var(--accent);
   }
   dl {
     display: grid;

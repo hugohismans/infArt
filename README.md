@@ -43,6 +43,13 @@ Le Directeur les saupoudre rarement, un peu plus quand la tension monte (`CONFIG
 
 Pour en essayer une : `?oddity=porte-muree`.
 
+## Collection et succès
+
+- **Ma collection** : depuis la fiche d'une œuvre, le bouton ♡ la garde dans une collection personnelle, consultable à tout moment (bouton ♡ en haut à gauche, menu pause, ou lien sur l'accueil), filtrable par type ; chaque vignette rouvre la fiche.
+- **Succès** : une vingtaine (collectionner un disque, traverser 15 ambiances, visiter 10 salles à thème, croiser des étrangetés — secrets —, marcher 10 km…), annoncés en haut de l'écran, avec leur progression et quelques statistiques cumulées.
+- Tout est gardé dans le navigateur (`localStorage` : `galerie-infinie:collection`, `:stats`, `:achievements`), sans serveur. Code : `src/progress/`.
+- L'accueil ne propose plus de choisir la graine (elle reste dans l'URL et le lien de partage du menu).
+
 ## Phase 6, décors et son
 
 ### Décors procéduraux (`src/decor/`)
