@@ -78,12 +78,14 @@ export const vam: SourceAdapter = {
   imageCors: true,
   types: Object.keys(OBJECT_TYPES) as ArtType[],
   weight: 1,
+  byCreator: true,
 
   async fetchBatch({ fetchJson, rng, count, type, theme }) {
     const spec = OBJECT_TYPES[type];
     if (!spec) return [];
     let filter: string;
-    if (theme?.q) filter = `q_object_title=${encodeURIComponent(theme.q)}`;
+    if (theme?.creator) filter = `q_actor=${encodeURIComponent(theme.creator)}`;
+    else if (theme?.q) filter = `q_object_title=${encodeURIComponent(theme.q)}`;
     else {
       const from = 10 * Math.floor(rng.range(spec.years[0], spec.years[1] - 20) / 10);
       filter = `year_made_from=${from}&year_made_to=${from + 25}`;

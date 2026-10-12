@@ -50,6 +50,15 @@ Pour en essayer une : `?oddity=porte-muree`.
 - Tout est gardé dans le navigateur (`localStorage` : `galerie-infinie:collection`, `:stats`, `:achievements`), sans serveur. Code : `src/progress/`.
 - L'accueil ne propose plus de choisir la graine (elle reste dans l'URL et le lien de partage du menu).
 
+## Ailes qui suivent les goûts du visiteur
+
+Quand le visiteur s'intéresse à une œuvre, les ailes à thème qui suivent ont de bonnes chances d'y être apparentées :
+
+- **Interactions** : s'arrêter devant (œuvre au centre de l'écran, presque immobile, 3,5 s), ouvrir sa fiche, la mettre en favori — de plus en plus fort (`CONFIG.interest`).
+- **Thèmes apparentés** (`themesFor` dans `shared/themes.ts`) : *Autour de Vincent van Gogh* (musées qui savent chercher par artiste), *Discographie : Daft Punk*, *Les livres de Victor Hugo*, *Dans la lignée de « L'Amour ouf »* (recommandations TMDB) ou d'un jeu (jeux similaires IGDB), la décennie (*Le cinéma des années 2020*), et les sujets fixes que l'œuvre illustre (les chats, les portraits…).
+- Ces thèmes sont **dynamiques** : leur identifiant les décrit (`artiste~peinture~Claude Monet`, `lignee~tmdb~1084736~…`, `decennie~affiche-film~1990`) et le Worker les reconstruit (`resolveTheme`).
+- Le prochain thème préparé vient alors des intérêts (d'autant plus sûrement qu'ils sont forts ; ils s'estompent en quelques minutes), un intérêt marqué remplace le thème quelconque en préparation, et l'aile arrive plus tôt quand il est prêt. Si trop peu d'œuvres existent (artiste rare), on passe à autre chose.
+
 ## Phase 6, décors et son
 
 ### Décors procéduraux (`src/decor/`)

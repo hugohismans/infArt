@@ -48,7 +48,19 @@ export const igdb: SourceAdapter = {
     const fields = 'fields name,slug,first_release_date,summary,cover.image_id,cover.width,cover.height,genres.name,themes.name,platforms.abbreviation,involved_companies.developer,involved_companies.company.name;';
     let where: string;
     let offset = 0;
-    if (theme?.q) {
+    if (theme?.like) {
+      // Dans la lignée d'un jeu : les jeux que IGDB juge similaires.
+      const id = Number(theme.like.id);
+      if (!Number.isInteger(id)) return [];
+      const ref = (await fetchJson(API, {
+        body: `fields similar_games; where id = ${id};`,
+        ttl: 86400 * 30,
+        headers: { 'Client-ID': keys.TWITCH_CLIENT_ID!, Authorization: `Bearer ${access}`, 'Content-Type': 'text/plain' },
+      })) as Array<{ similar_games?: number[] }>;
+      const similar = (ref[0]?.similar_games ?? []).filter((n) => Number.isInteger(n)).slice(0, 40);
+      if (similar.length === 0) return [];
+      where = `where cover != null & id = (${similar.join(',')});`;
+    } else if (theme?.q) {
       where = `where cover != null & name ~ *"${theme.q.replace(/"/g, '')}"* & total_rating_count > 5;`;
     } else {
       // Une période au hasard (de 1980 à aujourd'hui) ou celle du thème, parmi les jeux les plus notés.

@@ -90,6 +90,10 @@ export class Engine {
   private readonly pickList: THREE.Object3D[] = [];
   private aimTimer = 0;
   private aimed: Artwork | null = null;
+  /** Arrêt devant une œuvre : celle au centre de l'écran, et depuis combien de temps (s). */
+  private dwellArt: Artwork | null = null;
+  private dwellTime = 0;
+  private readonly dwelled = new Set<string>();
   private pumpTimer = 0;
   private readonly background: THREE.Color;
   private readonly fog: THREE.Fog;
@@ -122,6 +126,8 @@ export class Engine {
   onArtworkOpen: ((artwork: Artwork) => void) | null = null;
   /** L'œuvre visée au centre de l'écran change (PC, souris capturée). */
   onAimChange: ((artwork: Artwork | null) => void) | null = null;
+  /** Le visiteur s'est arrêté devant une œuvre (au centre de l'écran, presque immobile). */
+  onDwell: ((artwork: Artwork) => void) | null = null;
   /** Titre d'une aile thématique (chaîne vide : on l'efface). */
   onThemeTitle: ((title: string) => void) | null = null;
   /** Transition « rupture » : fondu au noir ou faux glitch. */
@@ -538,10 +544,22 @@ export class Engine {
     this.aimTimer -= dt;
     if (this.aimTimer <= 0) {
       this.aimTimer = 0.15;
-      const aimed = this.mouse.locked ? this.pick(0, 0) : null;
+      const center = this.pick(0, 0);
+      const aimed = this.mouse.locked ? center : null;
       if (aimed !== this.aimed) {
         this.aimed = aimed;
         this.onAimChange?.(aimed);
+      }
+      // Arrêt devant une œuvre (PC et mobile) : même œuvre au centre, visiteur presque immobile.
+      const still = this.player.speed < 0.4;
+      if (center && center === this.dwellArt && still) this.dwellTime += 0.15;
+      else {
+        this.dwellArt = still ? center : null;
+        this.dwellTime = 0;
+      }
+      if (this.dwellArt && this.dwellTime >= CONFIG.interest.dwellSeconds && !this.dwelled.has(this.dwellArt.id)) {
+        this.dwelled.add(this.dwellArt.id);
+        this.onDwell?.(this.dwellArt);
       }
     }
   }

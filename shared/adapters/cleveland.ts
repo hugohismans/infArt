@@ -94,11 +94,13 @@ export const cleveland: SourceAdapter = {
   imageCors: false,
   types: Object.keys(TYPE_NAMES) as ArtType[],
   weight: 1,
+  byCreator: true,
 
   async fetchBatch({ fetchJson, rng, count, type, theme }) {
     const name = TYPE_NAMES[type];
     if (!name) return [];
-    const title = theme?.q ? `title=${encodeURIComponent(theme.q)}&` : '';
+    // Artiste : recherche plein texte (elle couvre les créateurs), vérifiée ensuite par matchesTheme.
+    const title = theme?.creator ? `q=${encodeURIComponent(theme.creator)}&` : theme?.q ? `title=${encodeURIComponent(theme.q)}&` : '';
     const head = (await fetchJson(url(name, `${title}limit=1`), { ttl: 86400 })) as ClevelandResponse;
     if (!head.info.total) return [];
     const skip = randomPageStart(rng, head.info.total, PAGE);

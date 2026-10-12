@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import type { Artwork, TypeWeights } from '../../shared/artwork';
 import { isSensitive } from '../../shared/filter';
-import { THEMES, type ArtTheme } from '../../shared/themes';
+import { THEMES, themesFor, type ArtTheme } from '../../shared/themes';
 import { CONFIG } from '../config';
 import type { ArtClient } from './ArtClient';
 import type { ImageLoader } from './ImageLoader';
@@ -49,6 +49,15 @@ interface ThemePool {
   active: boolean;
   dropped: boolean;
   lastTake: number;
+  /** Né d'un intérêt du visiteur (et non tiré au hasard). */
+  interest: boolean;
+}
+
+interface Interest {
+  theme: ArtTheme;
+  score: number;
+  /** Date (ms) du score. */
+  at: number;
 }
 
 /**
@@ -81,6 +90,10 @@ export class ArtLibrary {
   /** Thèmes ouverts récemment (une aile peut encore réclamer des œuvres). */
   private activePools: ThemePool[] = [];
   private recentThemes: string[] = [];
+  /** Thèmes apparentés aux œuvres qui ont retenu le visiteur. */
+  private interests = new Map<string, Interest>();
+  /** Le thème en préparation vient d'être écarté pour un intérêt : le suivant en vient forcément. */
+  private forceInterest = false;
   /** Filtre de contenu sensible (réglage). */
   filterSensitive = true;
   /** Réserve visée avant l'entrée dans la visite (écran de chargement), 0 ensuite. */
@@ -158,6 +171,57 @@ export class ArtLibrary {
     return p.theme;
   }
 
+  /**
+   * Le visiteur s'est intéressé à une œuvre (regard prolongé, fiche, favori, selon `strength`) :
+   * les thèmes qui lui sont apparentés deviennent plus probables pour les prochaines ailes.
+   */
+  noteInterest(art: Artwork, strength: number): void {
+    const now = performance.now();
+    for (const { theme, weight } of themesFor(art)) {
+      if (!this.themeAvailable(theme) || this.recentThemes.includes(theme.id)) continue;
+      const cur = this.interests.get(theme.id);
+      this.interests.set(theme.id, { theme, score: (cur ? this.decayed(cur, now) : 0) + strength * weight, at: now });
+    }
+    // Un intérêt marqué prend la place du thème quelconque qui se préparait (pas encore annoncé).
+    const top = Math.max(0, ...[...this.interests.values()].map((i) => this.decayed(i, now)));
+    if (this.upcoming && !this.upcoming.interest && !this.upcoming.active && top >= CONFIG.interest.preempt) {
+      this.dropPool(this.upcoming);
+      this.upcoming = null;
+      this.forceInterest = true;
+    }
+    this.pump();
+  }
+
+  /** Un thème né des intérêts du visiteur est prêt à ouvrir une aile. */
+  get interestReady(): boolean {
+    return !!this.upcoming?.interest && this.upcoming.ready.length >= CONFIG.art.themeMinReady;
+  }
+
+  private decayed(i: Interest, now: number): number {
+    return i.score * 0.5 ** ((now - i.at) / 1000 / CONFIG.interest.halfLife);
+  }
+
+  /** Thème servi par les sources disponibles (pas d'aile « cinéma » sans affiches de films). */
+  private themeAvailable(t: ArtTheme): boolean {
+    return !t.types || t.types.some((type) => this.client.availableTypes.has(type));
+  }
+
+  /** Tire (et consomme) un thème parmi les intérêts, d'autant plus probablement qu'ils sont forts. */
+  private pickInterest(): ArtTheme | null {
+    const now = performance.now();
+    const scored = [...this.interests.values()].map((i) => ({ i, s: this.decayed(i, now) })).filter((x) => x.s > 0.2);
+    for (const [id, i] of this.interests) if (this.decayed(i, now) <= 0.2) this.interests.delete(id);
+    const total = scored.reduce((n, x) => n + x.s, 0);
+    const c = CONFIG.interest;
+    const force = this.forceInterest;
+    this.forceInterest = false;
+    if (total <= 0 || (!force && Math.random() > Math.min(c.maxChance, (c.maxChance * total) / c.saturation))) return null;
+    let r = Math.random() * total;
+    const pick = scored.find((x) => (r -= x.s) <= 0) ?? scored[scored.length - 1]!;
+    this.interests.delete(pick.i.theme.id);
+    return pick.i.theme;
+  }
+
   /** S'inscrit pour la prochaine œuvre prête. Renvoie une fonction d'annulation. */
   request(cb: Waiter): () => void {
     this.waiters.push(cb);
@@ -208,13 +272,13 @@ export class ArtLibrary {
   }
 
   private newPool(): ThemePool {
-    // Pas d'aile « cinéma » sans source d'affiches de films (clé absente, mode direct…).
-    const available = (t: ArtTheme) => !t.types || t.types.some((type) => this.client.availableTypes.has(type));
-    const choices = THEMES.filter((t) => !this.recentThemes.includes(t.id) && available(t));
-    const theme = choices[Math.floor(Math.random() * choices.length)] ?? THEMES[0]!;
+    // D'abord les intérêts du visiteur ; sinon un thème fixe au hasard.
+    const wanted = this.pickInterest();
+    const choices = THEMES.filter((t) => !this.recentThemes.includes(t.id) && this.themeAvailable(t));
+    const theme = wanted ?? choices[Math.floor(Math.random() * choices.length)] ?? THEMES[0]!;
     this.recentThemes.push(theme.id);
     if (this.recentThemes.length > Math.min(8, THEMES.length - 1)) this.recentThemes.shift();
-    return { theme, queued: [], ready: [], loading: 0, batch: 0, fetching: false, exhausted: false, active: false, dropped: false, lastTake: 0 };
+    return { theme, queued: [], ready: [], loading: 0, batch: 0, fetching: false, exhausted: false, active: false, dropped: false, lastTake: 0, interest: !!wanted };
   }
 
   private dropPool(p: ThemePool): void {

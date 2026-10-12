@@ -77,7 +77,10 @@ export class World {
   ) {
     this.director = new Director(seed, ambiances, startPreset);
     // Une aile thématique ne s'ouvre que si ses œuvres sont déjà chargées.
-    if (artCtx) this.director.claimTheme = () => artCtx.library.claimTheme();
+    if (artCtx) {
+      this.director.claimTheme = () => artCtx.library.claimTheme();
+      this.director.wingBoost = () => (artCtx.library.interestReady ? CONFIG.interest.wingBoost : 1);
+    }
   }
 
   /** Ambiance du module où se trouve le visiteur. */

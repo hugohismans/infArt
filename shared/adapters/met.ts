@@ -93,6 +93,7 @@ export const met: SourceAdapter = {
   imageCors: false,
   types: Object.keys(DEPARTMENTS) as ArtType[],
   weight: 1,
+  byCreator: true,
 
   async fetchBatch({ fetchJson, rng, count, type, theme }) {
     const deps = DEPARTMENTS[type];
@@ -103,13 +104,13 @@ export const met: SourceAdapter = {
     const [minYear, maxYear] = type === 'photographie' ? [1840, 1930] : [1400, 1900];
     const from = 10 * Math.floor(rng.range(minYear, maxYear - 30) / 10);
     const window = type === 'photographie' ? 20 : 50;
-    const q = theme?.q ? `${encodeURIComponent(theme.q)}&title=true` : '*';
+    const q = theme?.creator ? `${encodeURIComponent(theme.creator)}&artistOrCulture=true` : theme?.q ? `${encodeURIComponent(theme.q)}&title=true` : '*';
     const search = (offset: number, limit: number, dated: boolean) =>
       `${BASE}/v1.1/search?departmentId=${dep}&hasImages=true&isPublicDomain=true&q=${q}` +
       (dated ? `&dateBegin=${from}&dateEnd=${from + window}` : '') +
       `&offset=${offset}&limit=${limit}`;
     // Thème : peu de résultats, inutile de fenêtrer par dates.
-    let dated = !theme?.q;
+    let dated = !theme?.q && !theme?.creator;
     let head = (await fetchJson(search(0, 1, dated), { ttl: 86400 })) as MetSearch;
     if (!head.total && dated) {
       // Fenêtre vide : on se rabat sur le département entier.

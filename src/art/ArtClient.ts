@@ -53,7 +53,7 @@ export class ArtClient {
       try {
         const url =
           `${this.apiUrl}/artworks?count=${count}&seed=${encodeURIComponent(this.seed)}&batch=${batch}` +
-          (theme ? `&theme=${theme.id}` : '') +
+          (theme ? `&theme=${encodeURIComponent(theme.id)}` : '') +
           (weights ? `&weights=${formatWeights(weights)}` : '');
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

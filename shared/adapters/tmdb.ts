@@ -41,7 +41,10 @@ export const tmdb: SourceAdapter = {
     if (type !== 'affiche-film' || !keys?.TMDB_TOKEN) return [];
     const headers = { Authorization: `Bearer ${keys.TMDB_TOKEN}` };
     let url: string;
-    if (theme?.q) {
+    if (theme?.like) {
+      // Dans la lignée d'un film : les recommandations de TMDB.
+      url = `${API}/movie/${encodeURIComponent(theme.like.id)}/recommendations?language=fr-FR&page=1`;
+    } else if (theme?.q) {
       url = `${API}/search/movie?query=${encodeURIComponent(theme.q)}&include_adult=false&language=fr-FR&page=1`;
     } else {
       // Une décennie au hasard (ou celle du thème), parmi les films les plus votés : des affiches connues.

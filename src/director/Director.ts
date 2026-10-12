@@ -79,6 +79,8 @@ export class Director {
   private sinceOddity = 0;
   /** Fournit un thème prêt (œuvres chargées), ou null. Renseigné par le monde. */
   claimTheme: (() => ArtTheme | null) | null = null;
+  /** Multiplicateur de fréquence des ailes (un thème apparenté aux goûts du visiteur est prêt). */
+  wingBoost: (() => number) | null = null;
   /** Dernières ambiances choisies (pour éviter les répétitions). */
   private history: string[] = [];
   private readonly blends = new Map<string, AmbiancePreset>();
@@ -175,7 +177,8 @@ export class Director {
     const pw = parent.wing;
     if (pw) return pw.left > 1 ? { ...pw, left: pw.left - 1 } : undefined;
     if (state.zone.transition === 'depart' && state.step < 4) return undefined;
-    if (this.sinceWing < d.wingGap || !rng.chance(d.wingChance)) return undefined;
+    const boost = this.wingBoost?.() ?? 1;
+    if (this.sinceWing < d.wingGap / boost || !rng.chance(Math.min(1, d.wingChance * boost))) return undefined;
     const theme = this.claimTheme?.();
     if (!theme) return undefined;
     this.sinceWing = 0;

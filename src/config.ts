@@ -225,6 +225,27 @@ export const CONFIG = {
     dripInterval: [1.4, 3.2] as [number, number],
   },
 
+  /**
+   * Intérêts du visiteur : une œuvre qui l'a retenu rend plus probables, un peu plus loin,
+   * des ailes à thème apparenté (même artiste, dans la lignée d'un film, même décennie…).
+   */
+  interest: {
+    /** Regard prolongé (s) sur une œuvre pour qu'il compte. */
+    dwellSeconds: 3.5,
+    /** Force de chaque interaction. */
+    strength: { regard: 1, fiche: 2.5, favori: 5 },
+    /** Demi-vie (s) d'un intérêt : il s'estompe si rien ne le ravive. */
+    halfLife: 300,
+    /** Score total à partir duquel le prochain thème vient presque sûrement des intérêts. */
+    saturation: 3,
+    /** Probabilité maximale de choisir le prochain thème parmi les intérêts. */
+    maxChance: 0.9,
+    /** Score qui fait abandonner le thème quelconque en préparation, au profit d'un intérêt. */
+    preempt: 4,
+    /** Quand un thème apparenté est prêt, les ailes arrivent d'autant plus vite. */
+    wingBoost: 3,
+  },
+
   director: {
     /** Durée de la zone de départ (musée classique), en modules. */
     firstZoneLength: [9, 13] as [number, number],

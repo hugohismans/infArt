@@ -12,8 +12,10 @@
     artwork: Artwork;
     client: ArtClient;
     onClose: () => void;
+    /** L'œuvre vient d'entrer dans la collection. */
+    onFavorite?: (art: Artwork) => void;
   }
-  let { artwork, client, onClose }: Props = $props();
+  let { artwork, client, onClose, onFavorite }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   let src = $state(client.detailImageUrl(artwork, false));
@@ -27,7 +29,7 @@
   const saved = $derived(collection.has(artwork.id));
 
   function toggleFav() {
-    collection.toggle(artwork);
+    if (collection.toggle(artwork)) onFavorite?.(artwork);
     progress.collectionChanged();
   }
   const typeLabel = $derived(t(`type.${artwork.type}` as MessageKey));

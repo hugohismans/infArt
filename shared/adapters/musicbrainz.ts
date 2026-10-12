@@ -40,12 +40,15 @@ export const musicbrainz: SourceAdapter = {
   imageCors: true,
   types: ['pochette-disque'],
   weight: 1,
+  byCreator: true,
 
   async fetchBatch({ fetchJson, rng, count, type, theme }) {
     if (type !== 'pochette-disque') return [];
     let q: string;
     let offset = 0;
-    if (theme?.q) {
+    if (theme?.creator) {
+      q = `artist:"${theme.creator.replace(/"/g, '')}" AND primarytype:album`;
+    } else if (theme?.q) {
       q = `releasegroup:"${theme.q}" AND primarytype:album`;
     } else {
       const genre = rng.pick(GENRES);

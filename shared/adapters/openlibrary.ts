@@ -41,12 +41,17 @@ export const openlibrary: SourceAdapter = {
   imageCors: true,
   types: ['couverture-livre'],
   weight: 1,
+  byCreator: true,
 
   async fetchBatch({ fetchJson, rng, count, type, theme }) {
     if (type !== 'couverture-livre') return [];
     // Les plus réédités d'abord : des couvertures soignées et des livres connus.
-    const q = theme?.q ? `title=${encodeURIComponent(theme.q)}` : `subject=${encodeURIComponent(rng.pick(SUBJECTS))}`;
-    const offset = theme?.q ? 0 : PAGE * rng.int(0, 7);
+    const q = theme?.creator
+      ? `author=${encodeURIComponent(theme.creator)}`
+      : theme?.q
+        ? `title=${encodeURIComponent(theme.q)}`
+        : `subject=${encodeURIComponent(rng.pick(SUBJECTS))}`;
+    const offset = theme?.q || theme?.creator ? 0 : PAGE * rng.int(0, 7);
     const res = (await fetchJson(`${API}?${q}&sort=editions&limit=${PAGE}&offset=${offset}&fields=${FIELDS}`, { ttl: 86400 * 14 })) as OlResponse;
     return rng
       .shuffle(res.docs)

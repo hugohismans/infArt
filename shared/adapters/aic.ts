@@ -59,10 +59,10 @@ interface AicResponse {
   data: AicItem[];
 }
 
-function query(typeIds: number[], fromId: number, extra: Record<string, unknown>, title?: string): string {
+function query(typeIds: number[], fromId: number, extra: Record<string, unknown>, title?: string, field = 'title'): string {
   const must: unknown[] = [{ term: { is_public_domain: true } }, { exists: { field: 'image_id' } }, { terms: { artwork_type_id: typeIds } }];
-  // Thème : recherche dans les titres, classée par pertinence ; sinon fenêtre d'identifiants.
-  if (title) must.push({ match: { title } });
+  // Thème : recherche dans les titres (ou l'artiste), classée par pertinence ; sinon fenêtre d'identifiants.
+  if (title) must.push({ match: { [field]: title } });
   else must.push({ range: { id: { gte: fromId } } });
   const params = {
     query: { bool: { must } },
@@ -110,15 +110,18 @@ export const aic: SourceAdapter = {
   imageCors: true,
   types: Object.keys(TYPE_IDS) as ArtType[],
   weight: 1,
+  byCreator: true,
 
   async fetchBatch({ fetchJson, rng, count, type, theme }) {
     const ids = TYPE_IDS[type];
     if (!ids) return [];
-    if (theme?.q) {
-      const head = (await fetchJson(query(ids, 0, { fields: ['id'], limit: 1 }, theme.q), { ttl: 86400, headers: HEADERS })) as AicResponse;
+    const text = theme?.creator ?? theme?.q;
+    if (text) {
+      const field = theme?.creator ? 'artist_title' : 'title';
+      const head = (await fetchJson(query(ids, 0, { fields: ['id'], limit: 1 }, text, field), { ttl: 86400, headers: HEADERS })) as AicResponse;
       if (!head.pagination.total) return [];
       const from = randomPageStart(rng, head.pagination.total, PAGE, 1000 - PAGE);
-      const page = (await fetchJson(query(ids, 0, { fields: FIELDS, size: PAGE, from }, theme.q), { ttl: 86400 * 7, headers: HEADERS })) as AicResponse;
+      const page = (await fetchJson(query(ids, 0, { fields: FIELDS, size: PAGE, from }, text, field), { ttl: 86400 * 7, headers: HEADERS })) as AicResponse;
       return rng.shuffle(page.data).map((it) => normalize(it, type)).filter((a): a is Artwork => a !== null).slice(0, count);
     }
     // Début de fenêtre aligné sur des paliers, pour que les pages soient réutilisées par le cache.

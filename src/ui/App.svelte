@@ -136,6 +136,8 @@
     e.onAutoWalkChange = (v) => (autoWalk = v);
     e.onArtworkOpen = (art) => openSheet(art);
     e.onAimChange = (art) => (aimed = art);
+    // S'arrêter devant une œuvre compte comme un intérêt (une fois par œuvre).
+    e.onDwell = (art) => library.noteInterest(art, CONFIG.interest.strength.regard);
     e.onThemeTitle = (name) => {
       if (!name) {
         themeTitle = null;
@@ -195,7 +197,10 @@
     sheetArtwork = art;
     engine.setPaused(true);
     progress.openedSheet();
+    library.noteInterest(art, CONFIG.interest.strength.fiche);
   }
+
+
 
   function closeSheet() {
     sheetArtwork = null;
@@ -350,7 +355,7 @@
   <CollectionPanel {client} onOpen={(art) => (sheetArtwork = art)} onClose={closeCollection} />
 {/if}
 {#if sheetArtwork}
-  {#key sheetArtwork.id}<ArtworkSheet artwork={sheetArtwork} {client} onClose={closeSheet} />{/key}
+  {#key sheetArtwork.id}<ArtworkSheet artwork={sheetArtwork} {client} onClose={closeSheet} onFavorite={(art) => library.noteInterest(art, CONFIG.interest.strength.favori)} />{/key}
 {/if}
 {#if toast}
   {#key toast.id}

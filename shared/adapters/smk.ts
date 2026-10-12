@@ -97,12 +97,13 @@ export const smk: SourceAdapter = {
   imageCors: true,
   types: Object.keys(OBJECT_NAMES) as ArtType[],
   weight: 1,
+  byCreator: true,
 
   async fetchBatch({ fetchJson, rng, count, type, theme }) {
     const names = OBJECT_NAMES[type];
     if (!names) return [];
     const name = rng.pick(names);
-    const keys = theme?.q || '*';
+    const keys = theme?.creator || theme?.q || '*';
     const head = (await fetchJson(url(name, 0, 0, keys), { ttl: 86400 })) as SmkResponse;
     if (!head.found) return [];
     const page = (await fetchJson(url(name, randomPageStart(rng, head.found, PAGE), PAGE, keys), { ttl: 86400 * 7 })) as SmkResponse;

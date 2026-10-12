@@ -48,6 +48,8 @@ export interface SourceAdapter {
   types: ArtType[];
   /** Poids relatif dans le mélange. */
   weight: number;
+  /** Sait chercher les œuvres d'un artiste (thèmes « autour de… »). */
+  byCreator?: boolean;
   /** Source mise de côté (raison) : hors du mélange par défaut, interrogeable avec `sources=`. */
   paused?: string;
   /** Tire `count` œuvres d'un type donné, de façon déterminée par `rng`. */

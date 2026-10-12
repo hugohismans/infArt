@@ -44,7 +44,8 @@ export async function gatherArtworks(opts: GatherOptions): Promise<GatherResult>
   const types = opts.types && opts.types.length > 0 ? opts.types : theme?.types;
   const base = opts.weights && Object.keys(opts.weights).length > 0 ? opts.weights : DEFAULT_TYPE_WEIGHTS;
   const allowed = types && types.length > 0 ? types : (Object.keys(base) as ArtType[]);
-  const adapters = opts.adapters.filter((a) => hasKeys(a, opts.keys));
+  // Thème d'artiste ou « dans la lignée de » : seules les sources capables de le servir.
+  const adapters = opts.adapters.filter((a) => hasKeys(a, opts.keys) && (!theme?.like || theme.like.source === a.id) && (!theme?.creator || a.byCreator));
   const weights: Partial<Record<ArtType, number>> = {};
   for (const t of allowed) {
     if (adapters.some((a) => a.types.includes(t))) weights[t] = base[t] ?? 0.1;
@@ -52,7 +53,8 @@ export async function gatherArtworks(opts: GatherOptions): Promise<GatherResult>
   if (Object.keys(weights).length === 0) return { artworks: [], errors: ['aucune source pour ces types'] };
 
   // Un thème est plus rare : on interroge davantage de sources à la fois.
-  const nReq = opts.requests ?? 4;
+  // Un artiste n'est pas dans tous les musées : on en interroge davantage (sous le quota de sous-requêtes du Worker).
+  const nReq = opts.requests ?? (theme?.creator ? 6 : 4);
   const per = Math.ceil(opts.count / nReq) + 2;
   const jobs: Array<{ adapter: SourceAdapter; type: ArtType }> = [];
   for (let i = 0; i < nReq; i++) {

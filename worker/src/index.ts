@@ -16,7 +16,7 @@
 import { ADAPTERS, ADAPTERS_BY_ID, hasKeys, type FetchJson, type Keys } from '../../shared/adapters';
 import { parseWeights, SUPPORTED_TYPES, type ArtType } from '../../shared/artwork';
 import { gatherArtworks } from '../../shared/select';
-import { THEMES_BY_ID } from '../../shared/themes';
+import { resolveTheme } from '../../shared/themes';
 
 /** Secrets (wrangler secret put …) : chaque source qui en a besoin reste inactive sans eux. */
 export type Env = Keys;
@@ -142,7 +142,8 @@ async function handleArtworks(url: URL, env: Env, ctx: ExecutionContext): Promis
   const types = parseList(url.searchParams.get('types')).filter((t): t is ArtType => (SUPPORTED_TYPES as string[]).includes(t));
   const weights = parseWeights(url.searchParams.get('weights'));
   const sourceIds = parseList(url.searchParams.get('sources'));
-  const theme = THEMES_BY_ID[url.searchParams.get('theme') ?? ''];
+  // Thème fixe ou dynamique (artiste, « dans la lignée de », décennie) : l'identifiant le décrit.
+  const theme = resolveTheme(url.searchParams.get('theme') ?? '');
   const adapters = (sourceIds.length > 0 ? sourceIds.map((id) => ADAPTERS_BY_ID[id]).filter((a) => !!a) : ADAPTERS.filter((a) => !a.paused)).filter((a) => hasKeys(a, env));
 
   // Le résultat est déterministe pour une URL donnée : on met la réponse entière en cache.
