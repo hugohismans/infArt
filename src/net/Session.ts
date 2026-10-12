@@ -481,6 +481,8 @@ export class Session implements WorldNet {
     void this.F.remove(this.ref(`players/${this.me}`));
     void this.F.remove(this.ref(`holds/${this.me}`));
     if (notify) void this.F.set(this.ref('ended'), true);
+    // L'hôte efface la session (atlas, liens, œuvres) une fois que l'autre a été prévenu.
+    if (this.role === 'host') window.setTimeout(() => void this.F.remove(this.F.ref(this.db, this.base)).catch(() => undefined), 4000);
     // Les œuvres attendues ne viendront plus : chacun pioche dans sa réserve.
     for (const m of this.world.modules) if (m.remote) for (const p of m.wallPieces) if (!p.artwork) p.fallbackToLibrary();
   }
