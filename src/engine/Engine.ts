@@ -9,12 +9,14 @@ import { InputState } from './input/InputState';
 import { KeyboardInput } from './input/KeyboardInput';
 import { MouseInput } from './input/MouseInput';
 import { TouchInput } from './input/TouchInput';
+import { GyroInput } from './input/GyroInput';
 import { Player } from './Player';
 import { Rng } from '../world/random';
 import type { Artwork } from '../../shared/artwork';
 import type { ArtContext, ArtPiece } from '../art/ArtPiece';
 import type { LibraryStats } from '../art/ArtLibrary';
 import type { AudioEngine } from '../audio/AudioEngine';
+import { QualityGovernor, type QualitySetting } from './Quality';
 import { ParticleSystem } from '../decor/dust';
 import { Sky } from './Sky';
 import { Ground } from './Ground';
@@ -26,6 +28,8 @@ export interface EngineOptions {
   ambiance: AmbiancePreset;
   /** Départ dans une rotonde aux portes ouvrant sur plusieurs ambiances. */
   startHub?: boolean;
+  /** Qualité de rendu (auto par défaut). */
+  quality?: QualitySetting;
   /** Accélère la simulation (tests automatisés uniquement). */
   timeScale?: number;
   autoWalk?: boolean;
@@ -37,6 +41,8 @@ export interface EngineOptions {
 
 export interface EngineStats {
   fps: number;
+  /** Qualité : réglage, niveau, résolution de rendu. */
+  quality: string;
   frameMs: number;
   geometries: number;
   textures: number;
@@ -68,6 +74,8 @@ export class Engine {
   private readonly keyboard: KeyboardInput;
   private readonly mouse: MouseInput;
   private readonly touch: TouchInput;
+  /** Regard au gyroscope (option, mobile). */
+  private readonly gyro: GyroInput;
   private readonly autoWalk: AutoWalk;
   private readonly walls: Segment[] = [];
   private readonly timeScale: number;
@@ -106,6 +114,8 @@ export class Engine {
   private readonly projView = new THREE.Matrix4();
   private readonly sphere = new THREE.Sphere();
   private readonly particles: ParticleSystem;
+  /** Qualité adaptative (résolution, particules). */
+  readonly quality: QualityGovernor;
   private readonly sky = new Sky();
   private readonly ground: Ground;
   /** Lampe torche (ambiances plongées dans le noir) : toujours présente, éteinte par défaut. */
@@ -146,7 +156,7 @@ export class Engine {
       powerPreference: 'high-performance',
       stencil: false,
     });
-    this.renderer.setPixelRatio(Math.min(dpr, CONFIG.quality.maxPixelRatio[mobile ? 'mobile' : 'desktop']));
+    this.renderer.setPixelRatio(Math.min(dpr, CONFIG.quality.levels.haut.pixelRatio));
     this.renderer.domElement.className = 'game-canvas';
     container.appendChild(this.renderer.domElement);
 
@@ -167,6 +177,10 @@ export class Engine {
     this.world.onDrip = (x, y, z) => options.audio?.drip(x, y, z);
     this.particles = new ParticleSystem(CONFIG.decor.dustCount[mobile ? 'mobile' : 'desktop']);
     for (const f of this.particles.fields) this.scene.add(f.points);
+    this.quality = new QualityGovernor(options.quality ?? 'auto', mobile, (ratio, particles) => {
+      this.renderer.setPixelRatio(ratio);
+      this.particles.setDensity(particles);
+    });
     this.scene.add(this.sky.group);
     this.ground = new Ground(this.world.cache);
     this.scene.add(this.ground.mesh);
@@ -184,6 +198,7 @@ export class Engine {
     this.mouse.onUnlock = () => this.onMenuRequest?.();
     this.mouse.onLockedClick = () => this.openAt(0, 0);
     this.touch = new TouchInput(this.renderer.domElement, this.input, overlay);
+    this.gyro = new GyroInput(this.input);
     this.touch.onTap = (x, y) => {
       const r = this.renderer.domElement.getBoundingClientRect();
       this.openAt(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
@@ -210,6 +225,7 @@ export class Engine {
     this.keyboard.enabled = !paused;
     this.mouse.enabled = !paused;
     this.touch.enabled = !paused;
+    this.gyro.paused = paused;
     this.keyboard.reset();
     this.touch.reset();
     if (paused) this.mouse.unlock();
@@ -368,6 +384,11 @@ export class Engine {
     this.autoWalk.reset();
   }
 
+  /** Regarder en bougeant le téléphone (l'autorisation est demandée par l'interface). */
+  setGyro(enabled: boolean): void {
+    this.gyro.setEnabled(enabled);
+  }
+
   setReduceMotion(enabled: boolean): void {
     this.player.reduceMotion = enabled;
   }
@@ -378,6 +399,7 @@ export class Engine {
     const p = this.player.position;
     return {
       fps: this.fps,
+      quality: `${this.quality.setting}${this.quality.setting === 'auto' ? ` (${this.quality.level})` : ''} · ×${this.quality.pixelRatio.toFixed(2)}`,
       frameMs: this.frameMs,
       geometries: info.memory.geometries,
       textures: info.memory.textures,
@@ -409,6 +431,7 @@ export class Engine {
     this.keyboard.dispose();
     this.mouse.dispose();
     this.touch.dispose();
+    this.gyro.dispose();
     this.world.dispose();
     this.particles.dispose();
     this.sky.dispose();
@@ -469,6 +492,8 @@ export class Engine {
       const total = realDt * this.timeScale;
       const steps = Math.max(1, Math.ceil(total / 0.05));
       for (let i = 0; i < steps; i++) this.tick(total / steps);
+      // Mode auto : la résolution suit les fps (pas pendant une pause, où tout est fluide).
+      if (!document.hidden) this.quality.update(realDt);
     }
     this.renderer.render(this.scene, this.camera);
     this.frameMs += (performance.now() - t0 - this.frameMs) * 0.1;

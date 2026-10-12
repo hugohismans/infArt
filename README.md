@@ -43,6 +43,13 @@ Le Directeur les saupoudre rarement, un peu plus quand la tension monte (`CONFIG
 
 Pour en essayer une : `?oddity=porte-muree`.
 
+## Phase 8, finitions (vague 1)
+
+- **Qualité adaptative** : niveaux bas / moyen / haut (résolution de rendu, densité des particules), détectés selon l'appareil ; en mode *Automatique* (par défaut), la résolution baisse par paliers quand les fps passent sous la cible (30 sur mobile, 55 sur PC) et remonte quand il y a de la marge. Réglable dans le menu ; `CONFIG.quality`.
+- **Accessibilité** : focus clavier visible et placé dans le menu, la fiche et la collection ; **E** ou **Entrée** ouvre l'œuvre visée, **C** la collection ; titres d'ailes annoncés aux lecteurs d'écran ; option *Texte plus grand* ; *Réduire les mouvements* supprime aussi les flashs des ruptures.
+- **Gyroscope** (mobile, option) : regarder en bougeant le téléphone, en plus du doigt ; l'autorisation des capteurs est demandée au moment de l'activer (iOS).
+- Le carnet (collection) et la graine partageable (URL, lien du menu) étaient déjà là.
+
 ## Collection et succès
 
 - **Ma collection** : depuis la fiche d'une œuvre, le bouton ♡ la garde dans une collection personnelle, consultable à tout moment (bouton ♡ en haut à gauche, menu pause, ou lien sur l'accueil), filtrable par type ; chaque vignette rouvre la fiche.
@@ -282,4 +289,4 @@ Le déploiement sur GitHub Pages se fait automatiquement à chaque push sur `mai
 5. ~~Plus de sources : affiches, jaquettes, pochettes, livres~~
 6. ~~Décors procéduraux et son~~
 7. ~~Toutes les ambiances et étrangetés~~
-8. Finitions
+8. Finitions (vague 1 : qualité adaptative, accessibilité, gyroscope ; vague 2 : sculptures)

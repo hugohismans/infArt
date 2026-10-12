@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { Artwork, ArtType } from '../../shared/artwork';
   import { THEMES } from '../../shared/themes';
   import { AMBIANCES } from '../ambiances';
@@ -16,6 +17,8 @@
   let { client, onOpen, onClose }: Props = $props();
 
   let tab = $state<'art' | 'achievements'>('art');
+  let closeButton: HTMLButtonElement;
+  onMount(() => closeButton.focus({ preventScroll: true }));
   let filter = $state<ArtType | null>(null);
 
   const types = $derived([...new Set(collection.items.map((s) => s.art.type))]);
@@ -46,7 +49,7 @@
   <div class="panel" role="dialog" aria-modal="true" aria-label={t('collection.title')}>
     <header>
       <h2>{t('collection.title')}</h2>
-      <button class="close" onclick={onClose} aria-label={t('collection.close')}>
+      <button class="close" bind:this={closeButton} onclick={onClose} aria-label={t('collection.close')}>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
       </button>
       <div class="tabs" role="tablist">

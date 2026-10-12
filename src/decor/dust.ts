@@ -40,6 +40,8 @@ export class ParticleField {
   private readonly box = new THREE.Vector3(14, 5, 14);
   private time = 0;
   private intensity = 0;
+  /** Grains réellement animés et dessinés (qualité). */
+  private active: number;
 
   constructor(
     readonly kind: Particles,
@@ -56,6 +58,7 @@ export class ParticleField {
       this.offsets[i * 3 + 2] = Math.random() * this.box.z;
       this.phases[i] = Math.random() * Math.PI * 2;
     }
+    this.active = count;
     this.base = new THREE.Color(style.color);
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
     geo.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
@@ -84,7 +87,7 @@ export class ParticleField {
     const arr = pos.array as Float32Array;
     const { x: bx, y: by, z: bz } = this.box;
     const t = this.time;
-    for (let i = 0; i < this.phases.length; i++) {
+    for (let i = 0; i < this.active; i++) {
       const ph = this.phases[i]!;
       const ox = this.offsets[i * 3]! + Math.sin(t * 0.13 + ph) * style.sway + t * 0.03;
       const oy = this.offsets[i * 3 + 1]! + Math.sin(t * 0.21 + ph * 1.7) * style.sway * 0.6 - t * (style.fall + 0.02 * Math.sin(ph));
@@ -100,6 +103,12 @@ export class ParticleField {
     }
     pos.needsUpdate = true;
     if (style.blink || i0(this.colors)) (this.points.geometry.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+  }
+
+  /** Part des grains affichés (0..1), selon la qualité. */
+  setDensity(f: number): void {
+    this.active = Math.max(1, Math.round(this.phases.length * Math.min(1, f)));
+    this.points.geometry.setDrawRange(0, this.active);
   }
 
   dispose(): void {
@@ -122,6 +131,10 @@ export class ParticleSystem {
 
   constructor(count: number) {
     this.fields = (Object.keys(STYLES) as Particles[]).map((k) => new ParticleField(k, k === 'poussiere' ? count : Math.round(count * 0.7)));
+  }
+
+  setDensity(f: number): void {
+    for (const field of this.fields) field.setDensity(f);
   }
 
   update(dt: number, camera: THREE.Vector3, floorY: number, kind: Particles, amount: number): void {

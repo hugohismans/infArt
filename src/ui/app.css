@@ -56,3 +56,12 @@ html, body, #app {
 }
 
 button { font: inherit; color: inherit; }
+
+/* Focus clavier toujours visible. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+select, input {
+  color: inherit;
+}

@@ -288,8 +288,22 @@ export const CONFIG = {
   },
 
   quality: {
-    /** Résolution de rendu max (multiple des pixels CSS). Plus haut = plus net, plus coûteux. */
-    maxPixelRatio: { desktop: 2, mobile: 2 },
+    /**
+     * Niveaux de qualité : résolution de rendu max (multiple des pixels CSS) et part des
+     * particules affichées. « auto » part du niveau détecté puis ajuste la résolution aux fps.
+     */
+    levels: {
+      bas: { pixelRatio: 1, particles: 0.35 },
+      moyen: { pixelRatio: 1.5, particles: 0.7 },
+      haut: { pixelRatio: 2, particles: 1 },
+    },
+    /** Fps visés par le mode auto (en deçà, la résolution baisse ; bien au-delà, elle remonte). */
+    targetFps: { desktop: 55, mobile: 30 },
+    /** Durée (s) d'une mesure de fps du mode auto. */
+    window: 2.5,
+    /** Résolution minimale et pas d'ajustement du mode auto. */
+    minPixelRatio: 0.75,
+    pixelRatioStep: 0.25,
   },
 
   debug: {

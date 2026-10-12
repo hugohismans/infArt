@@ -24,6 +24,7 @@
   let tx = $state(0);
   let ty = $state(0);
   let viewport: HTMLDivElement;
+  let closeButton: HTMLButtonElement;
 
   const source = $derived(ADAPTERS_BY_ID[artwork.source]);
   const saved = $derived(collection.has(artwork.id));
@@ -40,6 +41,8 @@
   function fmt(n: number): string {
     return n.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
   }
+
+  onMount(() => closeButton.focus({ preventScroll: true }));
 
   onMount(() => {
     // Haute définition en arrière-plan ; on garde le zoom courant quand elle arrive.
@@ -186,7 +189,7 @@
 
   <aside class="info">
     <div class="handle" onpointerdown={onHandleDown} onpointerup={onHandleUp} role="presentation"><span></span></div>
-    <button class="close" onclick={onClose} aria-label={t('sheet.close')}>
+    <button class="close" bind:this={closeButton} onclick={onClose} aria-label={t('sheet.close')}>
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
     </button>
     <p class="type">{typeLabel}</p>

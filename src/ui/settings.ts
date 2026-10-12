@@ -1,9 +1,17 @@
+import type { QualitySetting } from '../engine/Quality';
+
 /** Réglages persistants du visiteur (localStorage, qui peut être indisponible). */
 export interface Settings {
   reduceMotion: boolean;
   filterSensitive: boolean;
   /** Son activé (le bouton du coin de l'écran). */
   sound: boolean;
+  /** Qualité de rendu (auto : détectée puis ajustée aux fps). */
+  quality: QualitySetting;
+  /** Regarder en bougeant le téléphone. */
+  gyro: boolean;
+  /** Interface en plus grands caractères. */
+  largeText: boolean;
 }
 
 const KEY = 'galerie-infinie:settings';
@@ -13,6 +21,9 @@ export function loadSettings(): Settings {
     reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     filterSensitive: true,
     sound: true,
+    quality: 'auto',
+    gyro: false,
+    largeText: false,
   };
   try {
     const raw = localStorage.getItem(KEY);

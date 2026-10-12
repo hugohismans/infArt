@@ -1,6 +1,11 @@
 <script lang="ts">
   import { t } from '../i18n';
+  import { onMount } from 'svelte';
   import { shareUrl } from './params';
+  import { GyroInput } from '../engine/input/GyroInput';
+  import { isTouchDevice } from '../engine/Engine';
+  import type { QualitySetting } from '../engine/Quality';
+  import type { MessageKey } from '../i18n/fr';
 
   interface Props {
     seed: string;
@@ -8,6 +13,9 @@
     reduceMotion: boolean;
     debugVisible: boolean;
     filterSensitive: boolean;
+    quality: QualitySetting;
+    gyro: boolean;
+    largeText: boolean;
     onResume: () => void;
     onNewVisit: () => void;
     onCollection: () => void;
@@ -18,12 +26,34 @@
     reduceMotion = $bindable(),
     debugVisible = $bindable(),
     filterSensitive = $bindable(),
+    quality = $bindable(),
+    gyro = $bindable(),
+    largeText = $bindable(),
     onResume,
     onNewVisit,
     onCollection,
   }: Props = $props();
 
   let copied = $state(false);
+  let gyroDenied = $state(false);
+  let resumeButton: HTMLButtonElement;
+  const touch = isTouchDevice();
+  const qualities: QualitySetting[] = ['auto', 'bas', 'moyen', 'haut'];
+
+  // Le focus va dans le menu (clavier, lecteurs d'écran).
+  onMount(() => resumeButton.focus());
+
+  /** iOS : l'autorisation des capteurs se demande pendant le geste (ce clic). */
+  async function toggleGyro(e: Event) {
+    const want = (e.currentTarget as HTMLInputElement).checked;
+    if (want && !(await GyroInput.requestPermission())) {
+      gyroDenied = true;
+      gyro = false;
+      return;
+    }
+    gyroDenied = false;
+    gyro = want;
+  }
 
   async function share() {
     try {
@@ -43,7 +73,7 @@
 <div class="backdrop" onclick={backdrop} role="presentation">
   <div class="menu" role="dialog" aria-modal="true" aria-label={t('menu.title')}>
     <h2>{t('menu.title')}</h2>
-    <button class="primary" onclick={onResume}>{t('menu.resume')}</button>
+    <button class="primary" bind:this={resumeButton} onclick={onResume}>{t('menu.resume')}</button>
     <button class="secondary" onclick={onCollection}>{t('menu.collection')}</button>
 
     <label class="toggle">
@@ -59,6 +89,22 @@
       <span>{t('menu.filter')}</span>
     </label>
     <label class="toggle">
+      <input type="checkbox" bind:checked={largeText} />
+      <span>{t('menu.largeText')}</span>
+    </label>
+    {#if touch && GyroInput.supported}
+      <label class="toggle">
+        <input type="checkbox" checked={gyro} onchange={toggleGyro} />
+        <span>{t('menu.gyro')}{#if gyroDenied}<em class="note"> · {t('menu.gyroDenied')}</em>{/if}</span>
+      </label>
+    {/if}
+    <label class="select">
+      <span>{t('menu.quality')}</span>
+      <select bind:value={quality}>
+        {#each qualities as q (q)}<option value={q}>{t(`menu.quality.${q}` as MessageKey)}</option>{/each}
+      </select>
+    </label>
+    <label class="toggle">
       <input type="checkbox" bind:checked={debugVisible} />
       <span>{t('menu.debug')}</span>
     </label>
@@ -69,6 +115,7 @@
     </div>
 
     <button class="secondary" onclick={onNewVisit}>{t('menu.newVisit')}</button>
+    {#if !touch}<p class="keys">{t('menu.keys')}</p>{/if}
   </div>
 </div>
 
@@ -131,6 +178,34 @@
     accent-color: var(--accent);
     width: 18px;
     height: 18px;
+  }
+  .select {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.92rem;
+  }
+  .select select {
+    font: inherit;
+    padding: 5px 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ink);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .note {
+    color: var(--ink-dim);
+    font-size: 0.8rem;
+  }
+  .keys {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--ink-dim);
+    text-align: center;
+  }
+  .menu {
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
   }
   .seed {
     display: flex;

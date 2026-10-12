@@ -61,6 +61,9 @@
   let autoWalk = $state(params.autoWalk);
   let reduceMotion = $state(settings.reduceMotion);
   let filterSensitive = $state(settings.filterSensitive);
+  let quality = $state(settings.quality);
+  let gyro = $state(settings.gyro);
+  let largeText = $state(settings.largeText);
   let sheetArtwork = $state<Artwork | null>(null);
   let collectionOpen = $state(false);
   let aimed = $state<Artwork | null>(null);
@@ -126,6 +129,7 @@
       seed,
       ambiance: forced ?? DEFAULT_AMBIANCE,
       startHub: !forced && query.get('rotonde') !== '0',
+      quality,
       autoWalk,
       timeScale: params.timeScale,
       art: artCtx,
@@ -149,6 +153,8 @@
       titleTimer = window.setTimeout(() => (themeTitle = null), CONFIG.director.titleDuration * 1000);
     };
     e.onRupture = (style) => {
+      // Flash et parasites : jamais avec « réduire les mouvements » (sensibilité visuelle).
+      if (reduceMotion) return;
       rupture = style;
       window.setTimeout(() => (rupture = null), style === 'noir' ? 1400 : 700);
     };
@@ -249,6 +255,12 @@
     if (e.code === 'F3' || (e.code === 'Backquote' && !e.repeat)) {
       e.preventDefault();
       debugVisible = !debugVisible;
+    } else if ((e.code === 'KeyE' || e.code === 'Enter') && aimed && !menuOpen && !sheetArtwork && !collectionOpen) {
+      // Clavier : ouvrir l'œuvre visée sans cliquer.
+      e.preventDefault();
+      openSheet(aimed);
+    } else if (e.code === 'KeyC' && !menuOpen && !sheetArtwork && !collectionOpen) {
+      openCollection();
     } else if (e.code === 'Escape') {
       // Avec le pointer lock, c'est sa perte qui ouvre le menu (voir onMenuRequest).
       if (document.pointerLockElement) return;
@@ -265,9 +277,18 @@
     engine?.setReduceMotion(reduceMotion);
   });
   $effect(() => {
+    engine?.quality.set(quality);
+  });
+  $effect(() => {
+    engine?.setGyro(gyro);
+  });
+  $effect(() => {
+    document.documentElement.style.fontSize = largeText ? '19px' : '';
+  });
+  $effect(() => {
     library.filterSensitive = filterSensitive;
     audio.setMuted(!sound);
-    saveSettings({ reduceMotion, filterSensitive, sound });
+    saveSettings({ reduceMotion, filterSensitive, sound, quality, gyro, largeText });
   });
 
   function onLockChange() {
@@ -337,13 +358,13 @@
   {/if}
 
   {#if themeTitle && !menuOpen && !sheetArtwork}
-    {#key titleKey}<div class="theme-title" style="animation-duration: {CONFIG.director.titleDuration}s">{themeTitle}</div>{/key}
+    {#key titleKey}<div class="theme-title" role="status" aria-live="polite" style="animation-duration: {CONFIG.director.titleDuration}s">{themeTitle}</div>{/key}
   {/if}
 
   {#if rupture}<div class="rupture {rupture}" aria-hidden="true"></div>{/if}
 
   {#if menuOpen}
-    <PauseMenu {seed} bind:autoWalk bind:reduceMotion bind:debugVisible bind:filterSensitive onResume={resume} onNewVisit={newVisit} onCollection={openCollection} />
+    <PauseMenu {seed} bind:autoWalk bind:reduceMotion bind:debugVisible bind:filterSensitive bind:quality bind:gyro bind:largeText onResume={resume} onNewVisit={newVisit} onCollection={openCollection} />
   {/if}
 
   {#if debugVisible && engine}

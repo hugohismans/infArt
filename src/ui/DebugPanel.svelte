@@ -16,7 +16,7 @@
 
 {#if s}
   <div class="debug" aria-hidden="true">
-    <div><b>{t('debug.fps')}</b> {s.fps.toFixed(0)} <span class="dim">({s.frameMs.toFixed(1)} ms)</span></div>
+    <div><b>{t('debug.fps')}</b> {s.fps.toFixed(0)} <span class="dim">({s.frameMs.toFixed(1)} ms) · qualité {s.quality}</span></div>
     <div><b>{t('debug.modules')}</b> {s.world.modules} <span class="dim">· {t('debug.visible')} {s.world.visible}</span></div>
     <div><b>{t('debug.created')}</b> {s.world.created} <span class="dim">· {t('debug.destroyed')} {s.world.destroyed}</span>{#if s.world.popIns > 0} <span class="warn">· pop-in {s.world.popIns}</span>{/if}</div>
     <div><b>{t('debug.geometries')}</b> {s.geometries} <span class="dim">· {t('debug.textures')} {s.textures}</span></div>
