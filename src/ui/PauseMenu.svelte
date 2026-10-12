@@ -71,6 +71,7 @@
 
 <style>
   .backdrop {
+    z-index: 10;
     position: fixed;
     inset: 0;
     display: grid;

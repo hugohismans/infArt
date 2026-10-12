@@ -24,6 +24,8 @@ export interface LibraryStats {
   filtered: number;
   offline: boolean;
   disabledSources: string[];
+  /** Images chargées / en échec, par source (« aic 12/1 »). */
+  perSource: string;
 }
 
 type Waiter = (art: ReadyArt) => void;
@@ -124,6 +126,7 @@ export class ArtLibrary {
       filtered: this.filteredCount,
       offline: this.offline,
       disabledSources: [...this.disabledSources],
+      perSource: [...this.sourceHealth].map(([id, h]) => `${id} ${h.ok}/${h.fail}`).join(' · '),
     };
   }
 
