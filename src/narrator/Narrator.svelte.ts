@@ -33,6 +33,12 @@ interface Memory {
 
 const FRESH: Memory = { heard: [], sea: 'propose', firstVisit: null, lastVisit: null, returns: 0, ignoredSigns: 0 };
 
+/** Une réplique en cours de lecture. */
+interface Clip {
+  ended: boolean;
+  stop(): void;
+}
+
 interface Pending {
   id: LineId;
   at: number;
@@ -54,7 +60,7 @@ export class Narrator {
   private timer = 0;
   private active = false;
   private queue: Pending[] = [];
-  private playing: { id: LineId; until: number; audio: HTMLAudioElement | null } | null = null;
+  private playing: { id: LineId; until: number; audio: Clip | null } | null = null;
   private available: Set<string> | null = null;
   private sound = true;
   private lastEvent = -Infinity;
@@ -142,7 +148,7 @@ export class Narrator {
       // La réplique en cours continue en sous-titre seul.
       const p = this.playing;
       if (p?.audio) {
-        p.audio.pause();
+        p.audio.stop();
         p.audio = null;
         p.until = performance.now() / 1000 + estimatedDuration(LINES[p.id]) / 2;
         this.audio.duck(false);
@@ -299,13 +305,12 @@ export class Narrator {
 
   private visibility(): void {
     if (document.hidden) {
+      // (Le son du jeu est suspendu avec l'onglet : la voix reprend où elle en était.)
       this.hiddenAt = performance.now();
-      this.playing?.audio?.pause();
       return;
     }
     if (this.hiddenAt && performance.now() - this.hiddenAt > CONFIG.narrator.hiddenTab * 1000) this.say('E03', 1.5);
     this.hiddenAt = 0;
-    if (this.playing?.audio && this.sound) void this.playing.audio.play().catch(() => undefined);
   }
 
   private sayReturn(now: number): void {
@@ -352,7 +357,7 @@ export class Narrator {
   private cutIntro(): void {
     this.queue = this.queue.filter((p) => p.id[0] !== 'A');
     if (this.playing && this.playing.id[0] === 'A') {
-      this.playing.audio?.pause();
+      this.playing.audio?.stop();
       this.finish();
     }
   }
@@ -375,22 +380,64 @@ export class Narrator {
     const text = LINES[id];
     this.current = { id, text };
     const estimate = estimatedDuration(text);
-    let audio: HTMLAudioElement | null = null;
-    if (this.sound && lineFamily(id) !== 'texte' && this.available?.has(id)) {
-      audio = new Audio(`${import.meta.env.BASE_URL}voix/${id}.mp3`);
-      // Fichier illisible : la réplique reste en sous-titre, le temps de la lire.
-      const fallback = () => {
-        const p = this.playing;
-        if (p?.id !== id || !p.audio) return;
-        p.audio = null;
-        p.until = performance.now() / 1000 + estimate;
-        this.audio.duck(false);
-      };
-      audio.addEventListener('error', fallback);
-      void audio.play().catch(fallback);
-      this.audio.duck(true);
-    }
+    const ctx = this.audio.externalInputs()?.ctx;
+    const audio = this.sound && ctx && lineFamily(id) !== 'texte' && this.available?.has(id) ? this.startClip(ctx, id, estimate) : null;
     this.playing = { id, until: now + estimate, audio };
+  }
+
+  /**
+   * Joue le fichier de la réplique dans le contexte audio du jeu (débloqué au clic sur
+   * « Entrer », y compris sur iPhone, où un simple <audio> lancé plus tard resterait muet).
+   * Fichier introuvable ou illisible : la réplique reste en sous-titre, le temps de la lire.
+   */
+  private startClip(ctx: AudioContext, id: LineId, estimate: number): Clip {
+    let source: AudioBufferSourceNode | null = null;
+    const clip: Clip = {
+      ended: false,
+      stop: () => {
+        clip.ended = true;
+        source?.stop();
+      },
+    };
+    const fallback = () => {
+      const p = this.playing;
+      if (p?.audio !== clip) return;
+      p.audio = null;
+      p.until = performance.now() / 1000 + estimate;
+      this.audio.duck(false);
+    };
+    const timeout = window.setTimeout(fallback, 5000);
+    this.buffer(ctx, id).then(
+      (buf) => {
+        window.clearTimeout(timeout);
+        if (clip.ended || this.playing?.audio !== clip) return;
+        source = ctx.createBufferSource();
+        source.buffer = buf;
+        source.connect(ctx.destination);
+        source.onended = () => (clip.ended = true);
+        source.start();
+      },
+      () => {
+        window.clearTimeout(timeout);
+        fallback();
+      },
+    );
+    this.audio.duck(true);
+    return clip;
+  }
+
+  private readonly buffers = new Map<string, Promise<AudioBuffer>>();
+  private buffer(ctx: AudioContext, id: LineId): Promise<AudioBuffer> {
+    let b = this.buffers.get(id);
+    if (!b) {
+      b = fetch(`${import.meta.env.BASE_URL}voix/${id}.mp3`)
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+        .then((data) => ctx.decodeAudioData(data));
+      // (Chaque réplique n'est jouée qu'une fois : pas besoin de garder le son décodé.)
+      b.catch(() => undefined).finally(() => this.buffers.delete(id));
+      this.buffers.set(id, b);
+    }
+    return b;
   }
 
   private finish(): void {
@@ -401,7 +448,7 @@ export class Narrator {
 
   private silence(): void {
     this.queue = [];
-    if (this.playing?.audio) this.playing.audio.pause();
+    this.playing?.audio?.stop();
     if (this.playing) this.finish();
   }
 
