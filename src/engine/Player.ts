@@ -12,6 +12,8 @@ const DEG = Math.PI / 180;
  */
 export class Player {
   position: Vec2 = { x: 0, z: 0 };
+  /** Hauteur du sol sous les pieds (escaliers, étages), lissée. */
+  floorY = 0;
   yaw = 0;
   pitch = 0;
   private velocity: Vec2 = { x: 0, z: 0 };
@@ -52,9 +54,16 @@ export class Player {
     }
     const target = { x: mx * speed, z: mz * speed };
     // Lissage exponentiel de la vitesse (démarrage et arrêt doux).
+    if (!(dt > 0)) return;
     const k = 1 - Math.exp(-dt / CONFIG.player.acceleration);
     this.velocity.x += (target.x - this.velocity.x) * k;
     this.velocity.z += (target.z - this.velocity.z) * k;
+    // Garde-fou : jamais plus vite que la course.
+    const v = Math.hypot(this.velocity.x, this.velocity.z);
+    if (v > CONFIG.player.runSpeed) {
+      this.velocity.x *= CONFIG.player.runSpeed / v;
+      this.velocity.z *= CONFIG.player.runSpeed / v;
+    }
 
     const before = this.position;
     this.position = moveWithCollisions(before, { x: this.velocity.x * dt, z: this.velocity.z * dt }, CONFIG.player.radius, walls);

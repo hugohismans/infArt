@@ -55,9 +55,9 @@ export const CONFIG = {
 
   world: {
     /** Nombre de modules générés en avance (distance dans le graphe). */
-    generationRadius: 3,
+    generationRadius: 2,
     /** Au-delà de cette distance (graphe), un module invisible est détruit. Doit être ≥ generationRadius. */
-    destroyRadius: 3,
+    destroyRadius: 2,
     /** Temps max par frame consacré à la génération / destruction (ms). */
     frameBudgetMs: 3,
     /** Nombre de vérifications consécutives « invisible » avant destruction. */
@@ -71,18 +71,28 @@ export const CONFIG = {
     visibilitySampleRings: [1.6, 3.4] as readonly number[],
     visibilitySampleCount: 8,
     /** Marge ajoutée au brouillard pour la distance de visibilité potentielle. */
-    visibilityMargin: 8,
+    visibilityMargin: 12,
     /** Une apparition est jugée perceptible quand le brouillard masque moins de cette fraction. */
     popInFogThreshold: 0.85,
     /** Recentrage du monde quand le joueur s'éloigne trop de l'origine (précision flottante). */
     floatingOriginThreshold: 256,
-    /** Poids de tirage des modules (phase 1). */
+    /** Poids de tirage des modules (la future « ambiance » pourra les moduler). */
     moduleWeights: {
       'straight-s': 3,
-      'straight-m': 4,
-      'straight-l': 2,
-      'turn-left': 3,
-      'turn-right': 3,
+      'straight-m': 3.5,
+      'straight-l': 1.5,
+      'turn-left': 2.5,
+      'turn-right': 2.5,
+      tee: 0.9,
+      'tee-left': 0.7,
+      'tee-right': 0.7,
+      cross: 0.45,
+      'room-s': 1.1,
+      'room-s-side': 0.6,
+      'room-l': 0.7,
+      'stairs-up': 0.45,
+      'stairs-down': 0.45,
+      deadend: 0.35,
     } as Record<string, number>,
   },
 

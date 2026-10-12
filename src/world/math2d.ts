@@ -159,3 +159,14 @@ export function segmentsIntersect(p1: Vec2, p2: Vec2, q1: Vec2, q2: Vec2): boole
   const d4 = cross(sub(p2, p1), sub(q2, p1));
   return d1 * d2 < 0 && d3 * d4 < 0;
 }
+
+/** Distance minimale entre deux segments. */
+export function segmentDistance(p1: Vec2, p2: Vec2, q1: Vec2, q2: Vec2): number {
+  if (segmentsIntersect(p1, p2, q1, q2)) return 0;
+  return Math.min(
+    pointSegmentDistance(p1, q1, q2),
+    pointSegmentDistance(p2, q1, q2),
+    pointSegmentDistance(q1, p1, p2),
+    pointSegmentDistance(q2, p1, p2),
+  );
+}

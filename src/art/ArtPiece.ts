@@ -72,7 +72,7 @@ export class ArtPiece {
     /** Le module est-il potentiellement visible ? (sinon on peut tout reconstruire) */
     private readonly isVisible: () => boolean,
   ) {
-    this.object.position.set(slot.pos.x, 0, slot.pos.z);
+    this.object.position.set(slot.pos.x, slot.y, slot.pos.z);
     this.object.rotation.y = Math.atan2(slot.normal.x, slot.normal.z);
 
     const ready = ctx?.library.take() ?? null;
@@ -305,7 +305,8 @@ export class ArtPiece {
     }
     this.object.add(this.makeCanvas(texture, w, h, centerY, L.frontZ + 0.006));
 
-    if (this.preset.lighting.artGlow > 0) {
+    // Pas de halo sur une cimaise : il déborderait au-dessus de la cloison.
+    if (this.preset.lighting.artGlow > 0 && this.wallHeight > 3.2) {
       // Halo additif sur le mur : simule un spot sans lumière dynamique.
       const glow = new THREE.Mesh(m.unitPlane, m.glow);
       const gw = totalW * 1.5 + 0.6;

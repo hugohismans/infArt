@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { AmbiancePreset } from '../ambiances/types';
 import { ArtPiece, type ArtContext } from '../art/ArtPiece';
 import { CONFIG } from '../config';
-import { applyTransform, rotate, type Segment, type Transform2, type Vec2 } from './math2d';
+import { applyTransform, inverseTransform, rotate, type Segment, type Transform2, type Vec2 } from './math2d';
 import type { ModuleDef } from './modules/defs';
 import { Rng } from './random';
 import type { ResourceCache } from './resources';
@@ -10,6 +10,8 @@ import type { ResourceCache } from './resources';
 export interface Connector {
   /** Centre de l'ouverture (monde). */
   pos: Vec2;
+  /** Hauteur du sol à l'ouverture (monde). */
+  y: number;
   /** Normale sortante (monde). */
   normal: Vec2;
   /** Segment de l'ouverture (monde), utilisé pour la visibilité. */
@@ -29,7 +31,10 @@ export class WorldModule {
   readonly footprint: Vec2[];
   readonly connectors: Connector[];
   readonly walls: Segment[];
-  readonly waypoints: Vec2[];
+  /** Points libres pour l'itinéraire de l'auto-marche (monde). */
+  readonly navPoints: Vec2[];
+  /** Étendue verticale occupée [bas, haut] : deux modules peuvent se superposer s'ils ne se recoupent pas. */
+  readonly yRange: [number, number];
   private arts: ArtPiece[] = [];
   private disposed = false;
   /** Instant de création (ms), pour temporiser les nouvelles tentatives sur les impasses. */
@@ -44,6 +49,8 @@ export class WorldModule {
     readonly id: number,
     readonly def: ModuleDef,
     readonly transform: Transform2,
+    /** Hauteur du sol à l'entrée du module (étages). */
+    readonly baseY: number,
     readonly preset: AmbiancePreset,
     readonly seed: string,
     private readonly cache: ResourceCache,
@@ -51,7 +58,9 @@ export class WorldModule {
     const t = transform;
     this.footprint = def.footprint.map((p) => applyTransform(t, p));
     this.walls = def.walls.map((w) => ({ a: applyTransform(t, w.seg.a), b: applyTransform(t, w.seg.b) }));
-    this.waypoints = def.waypoints.map((p) => applyTransform(t, p));
+    this.navPoints = def.navPoints.map((p) => applyTransform(t, p));
+    const H = preset.geometry.ceilingHeight * def.ceilingScale;
+    this.yRange = [baseY + Math.min(0, def.rise), baseY + Math.max(0, def.rise) + H];
     this.connectors = def.connectors.map((c) => {
       const pos = applyTransform(t, c.pos);
       const normal = rotate(c.normal, t.angle);
@@ -59,6 +68,7 @@ export class WorldModule {
       const hw = c.width / 2;
       return {
         pos,
+        y: baseY + c.y,
         normal,
         portal: {
           a: { x: pos.x - tangent.x * hw, z: pos.z - tangent.z * hw },
@@ -69,10 +79,15 @@ export class WorldModule {
     });
   }
 
-  /** Crée les meshes (partagés) et les œuvres (propres au module). */
   /** Potentiellement visible lors de la dernière vérification (mis à jour par World). */
   visible = true;
 
+  /** Hauteur du sol (monde) en un point du plan. */
+  floorAt(p: Vec2): number {
+    return this.baseY + this.def.floorAt(inverseTransform(this.transform, p));
+  }
+
+  /** Crée les meshes (partagés) et les œuvres (propres au module). */
   build(artCtx: ArtContext | null): void {
     const mats = this.cache.acquireMaterials(this.preset);
     const geos = this.cache.acquireGeometries(this.def, this.preset);
@@ -83,14 +98,16 @@ export class WorldModule {
     const rng = new Rng(this.seed, 'art');
     const density = CONFIG.art.density * this.preset.art.density;
     for (const slot of this.def.artSlots) {
-      // Une impasse expose toujours son œuvre.
-      if (this.def.kind !== 'cap' && !rng.chance(density)) continue;
-      const art = new ArtPiece(slot, rng, this.preset, mats, this.preset.geometry.ceilingHeight, artCtx, () => this.visible);
+      // Une impasse (ou un bouchon) expose toujours son œuvre unique.
+      const always = this.def.kind === 'cap' || this.def.kind === 'deadend';
+      if (!always && !rng.chance(density)) continue;
+      const wallHeight = slot.wallHeight ?? this.preset.geometry.ceilingHeight * this.def.ceilingScale;
+      const art = new ArtPiece(slot, rng, this.preset, mats, wallHeight, artCtx, () => this.visible);
       this.arts.push(art);
       this.group.add(art.object);
     }
 
-    this.group.position.set(this.transform.x, 0, this.transform.z);
+    this.group.position.set(this.transform.x, this.baseY, this.transform.z);
     this.group.rotation.y = this.transform.angle;
     this.group.updateMatrixWorld(true);
     // Le module ne bouge jamais (sauf recentrage) : inutile de recalculer ses matrices à chaque frame.
@@ -107,8 +124,11 @@ export class WorldModule {
    * (+1 gauche, -1 droite, 0 tout droit).
    */
   turnSign(from: number, to: number): number {
-    if (this.def.turn === 0 || from === to) return 0;
-    return to === 1 ? this.def.turn : -this.def.turn;
+    const a = this.def.connectors[from], b = this.def.connectors[to];
+    if (!a || !b || from === to) return 0;
+    // Direction d'arrivée = opposée de la normale sortante de l'entrée.
+    const c = -a.normal.x * b.normal.z + a.normal.z * b.normal.x;
+    return c < -0.5 ? 1 : c > 0.5 ? -1 : 0;
   }
 
   get artPieces(): readonly ArtPiece[] {
@@ -128,7 +148,7 @@ export class WorldModule {
     this.transform.x += dx;
     this.transform.z += dz;
     this.footprint.forEach(mv);
-    this.waypoints.forEach(mv);
+    this.navPoints.forEach(mv);
     for (const w of this.walls) {
       mv(w.a);
       mv(w.b);
@@ -138,7 +158,7 @@ export class WorldModule {
       mv(c.portal.a);
       mv(c.portal.b);
     }
-    this.group.position.set(this.transform.x, 0, this.transform.z);
+    this.group.position.set(this.transform.x, this.baseY, this.transform.z);
     this.group.updateMatrix();
     this.group.updateMatrixWorld(true);
   }

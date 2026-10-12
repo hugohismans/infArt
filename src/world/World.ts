@@ -68,7 +68,7 @@ export class World {
 
   /** Crée le premier module ; renvoie la position et l'orientation de départ du joueur. */
   init(): { position: Vec2; yaw: number } {
-    const first = this.createModule(this.defs['straight-l']!, { x: 0, z: 0, angle: 0 });
+    const first = this.createModule(this.defs['straight-l']!, { x: 0, z: 0, angle: 0 }, 0);
     // Le joueur commence au milieu du premier couloir, face à +Z.
     const mid = applyTransform(first.transform, { x: 0, z: 9.9 });
     this.current = first;
@@ -79,19 +79,19 @@ export class World {
    * Mise à jour du streaming. Renvoie un décalage si l'origine a été recentrée
    * (le joueur doit alors être déplacé du même décalage).
    */
-  update(player: Vec2): Vec2 | null {
+  update(player: Vec2, playerY = 0): Vec2 | null {
     const start = performance.now();
     const cfg = CONFIG.world;
 
     // 1. Module courant et distances dans le graphe.
-    const roots = modulesContaining(player, this.modules);
+    const roots = modulesContaining(player, this.modules, playerY);
     if (roots.length > 0) this.current = roots[0]!;
     this.computeGraphDistances(roots.length > 0 ? roots : this.current ? [this.current] : []);
 
     // 2. Visibilité à 360° depuis le joueur et des points autour de lui.
     const eyes = this.visibilitySamples(player);
     const maxDistance = this.preset.fog.far + cfg.visibilityMargin;
-    const vis = computeVisibility(eyes, this.modules, maxDistance);
+    const vis = computeVisibility(eyes, this.modules, maxDistance, playerY);
     this.lastVisibility = vis;
     for (const m of this.modules) m.visible = vis.modules.has(m);
 
@@ -194,10 +194,23 @@ export class World {
   }
 
   /** Murs à prendre en compte pour les collisions autour du joueur. */
-  collisionWalls(player: Vec2, out: Segment[] = []): Segment[] {
+  /** Hauteur du sol sous le visiteur (étages, escaliers) ; `y` : hauteur actuelle. */
+  floorAt(p: Vec2, y: number): number {
+    const roots = modulesContaining(p, this.modules, y);
+    if (roots.length === 0) return y;
+    // Plusieurs modules (à une ouverture) : le sol le plus proche de la hauteur actuelle.
+    let best = roots[0]!.floorAt(p);
+    for (const m of roots) {
+      const f = m.floorAt(p);
+      if (Math.abs(f - y) < Math.abs(best - y)) best = f;
+    }
+    return best;
+  }
+
+  collisionWalls(player: Vec2, y: number, out: Segment[] = []): Segment[] {
     out.length = 0;
     const near = new Set<WorldModule>();
-    const roots = modulesContaining(player, this.modules);
+    const roots = modulesContaining(player, this.modules, y);
     if (roots.length === 0 && this.current) roots.push(this.current);
     for (const r of roots) {
       near.add(r);
@@ -296,13 +309,22 @@ export class World {
    * (le parent, puis son prédécesseur).
    */
   private recentTurns(parent: WorldModule, connector: number): [number, number] {
-    if (parent.connectors.length !== 2) return [0, 0];
-    const from = 1 - connector;
+    if (parent.connectors.length < 2) return [0, 0];
+    // On suppose que la chaîne arrive par l'entrée (0), ou par la sortie 1 si l'on repart à rebours.
+    const from = connector === 0 ? 1 : 0;
     const t1 = parent.turnSign(from, connector);
     const prev = parent.connectors[from]?.neighbor;
-    if (!prev || prev.module.connectors.length !== 2) return [t1, 0];
-    const t2 = prev.module.turnSign(1 - prev.connector, prev.connector);
+    if (!prev || prev.module.connectors.length < 2) return [t1, 0];
+    const t2 = prev.module.turnSign(prev.connector === 0 ? 1 : 0, prev.connector);
     return [t1, t2];
+  }
+
+  /** Sens du virage d'un type de module à deux ouvertures (0 pour les autres). */
+  private defTurn(def: ModuleDef): number {
+    if (def.connectors.length !== 2) return 0;
+    const a = def.connectors[0]!.normal, b = def.connectors[1]!.normal;
+    const c = -a.x * b.z + a.z * b.x;
+    return c < -0.5 ? 1 : c > 0.5 ? -1 : 0;
   }
 
   /**
@@ -318,12 +340,14 @@ export class World {
     const c = parent.connectors[connector]!;
     if (c.neighbor) return;
     const transform = { x: c.pos.x, z: c.pos.z, angle: angleOf(c.normal) };
+    const baseY = c.y;
     const rng = new Rng(this.seed, 'pick', this.nextId);
 
     const weights: Record<string, number> = { ...CONFIG.world.moduleWeights };
     const [t1, t2] = this.recentTurns(parent, connector);
     for (const id of Object.keys(weights)) {
-      const turn = this.defs[id]?.turn ?? 0;
+      const def = this.defs[id];
+      const turn = def ? this.defTurn(def) : 0;
       // Deux virages de suite dans le même sens = demi-tour sur 9 m : le couloir se mord la queue.
       if (turn !== 0 && turn === t1) weights[id] = 0;
       else if (turn !== 0 && turn === t2) weights[id]! *= 0.35;
@@ -336,9 +360,9 @@ export class World {
       const id = rng.weighted(Object.fromEntries(ids.map((k) => [k, weights[k]!])));
       const def = this.defs[id]!;
       weights[id] = 0;
-      const obstacles = this.overlapping(def, transform, parent);
+      const obstacles = this.overlapping(def, transform, baseY, parent);
       if (obstacles.length === 0) {
-        this.link(parent, connector, this.createModule(def, transform));
+        this.link(parent, connector, this.createModule(def, transform, baseY));
         return;
       }
       if (!fallback && obstacles.every((m) => this.canEvict(m, parent))) fallback = { def, obstacles };
@@ -347,19 +371,26 @@ export class World {
       for (const m of fallback.obstacles) this.destroyModule(m);
       this.counters.evictions += fallback.obstacles.length;
       if (!parent.alive) return;
-      this.link(parent, connector, this.createModule(fallback.def, transform));
+      this.link(parent, connector, this.createModule(fallback.def, transform, baseY));
       return;
     }
     // Rien ne rentre sans toucher à ce que le visiteur voit : impasse (toujours placée).
-    this.link(parent, connector, this.createModule(this.defs['cap']!, transform));
+    this.link(parent, connector, this.createModule(this.defs['cap']!, transform, baseY));
   }
 
-  /** Modules chargés que chevaucherait `def` placé en `transform`. */
-  private overlapping(def: ModuleDef, transform: { x: number; z: number; angle: number }, parent: WorldModule): WorldModule[] {
+  /**
+   * Modules chargés que chevaucherait `def` placé en `transform` à la hauteur `baseY`.
+   * Deux modules superposés sans se recouper verticalement (étages) ne se gênent pas.
+   */
+  private overlapping(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number, parent: WorldModule): WorldModule[] {
     const poly = shrinkConvex(def.footprint.map((p) => applyTransform(transform, p)), 0.05);
+    const H = this.preset.geometry.ceilingHeight * def.ceilingScale;
+    const y0 = baseY + Math.min(0, def.rise), y1 = baseY + Math.max(0, def.rise) + H;
     const out: WorldModule[] = [];
     for (const m of this.modules) {
       if (m === parent) continue;
+      // Marge verticale : l'épaisseur du plancher entre deux étages.
+      if (y1 <= m.yRange[0] + 0.3 || y0 >= m.yRange[1] - 0.3) continue;
       if (convexOverlap(poly, shrinkConvex(m.footprint, 0.05))) out.push(m);
     }
     return out;
@@ -382,9 +413,9 @@ export class World {
     child.graphDistance = parent.graphDistance + 1;
   }
 
-  private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }): WorldModule {
+  private createModule(def: ModuleDef, transform: { x: number; z: number; angle: number }, baseY: number): WorldModule {
     const id = this.nextId++;
-    const m = new WorldModule(id, def, { ...transform }, this.preset, `${this.seed}:${id}`, this.cache);
+    const m = new WorldModule(id, def, { ...transform }, baseY, this.preset, `${this.seed}:${id}`, this.cache);
     m.build(this.artCtx);
     this.root.add(m.group);
     this.modules.add(m);

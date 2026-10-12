@@ -290,7 +290,10 @@ export class Engine {
   private readonly loop = (now: number) => {
     if (!this.running) return;
     this.rafId = requestAnimationFrame(this.loop);
-    const realDt = Math.min(0.1, (now - this.lastTime) / 1000);
+    // L'horodatage de requestAnimationFrame peut précéder un performance.now() relevé
+    // juste avant (démarrage, sortie du menu) : sans ce plancher, dt devient négatif et le
+    // lissage de la vitesse s'emballe (le visiteur finissait par traverser les murs).
+    const realDt = Math.max(0, Math.min(0.1, (now - this.lastTime) / 1000));
     this.lastTime = now;
 
     this.checkViewSize();
@@ -339,17 +342,20 @@ export class Engine {
 
     this.player.applyLook(dYaw, dPitch);
     const before = { ...this.player.position };
-    this.player.update(dt, move, speed, this.world.collisionWalls(this.player.position, this.walls));
+    this.player.update(dt, move, speed, this.world.collisionWalls(this.player.position, this.player.floorY, this.walls));
     this.distanceWalked += Math.hypot(this.player.position.x - before.x, this.player.position.z - before.z);
+    // Hauteur du sol (escaliers) : suivie rapidement mais sans à-coup.
+    const floor = this.world.floorAt(this.player.position, this.player.floorY);
+    this.player.floorY += (floor - this.player.floorY) * Math.min(1, dt * 14);
 
-    const shift = this.world.update(this.player.position);
+    const shift = this.world.update(this.player.position, this.player.floorY);
     if (shift) {
       this.player.position.x += shift.x;
       this.player.position.z += shift.z;
       this.autoWalk.shift(shift.x, shift.z);
     }
 
-    this.camera.position.set(this.player.position.x, this.player.eyeY, this.player.position.z);
+    this.camera.position.set(this.player.position.x, this.player.floorY + this.player.eyeY, this.player.position.z);
     this.camera.rotation.set(this.player.pitch, this.player.yaw, 0);
     this.camera.updateMatrixWorld();
     this.projView.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);

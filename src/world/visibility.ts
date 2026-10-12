@@ -32,13 +32,24 @@ const MAX_DEPTH = 24;
 /** En deçà de cette distance d'une ouverture, l'œil est « dans » l'ouverture. */
 const PORTAL_EPS = 0.05;
 
-export function modulesContaining(p: Vec2, modules: Iterable<WorldModule>): WorldModule[] {
+/** Écart de hauteur toléré entre le visiteur et le sol d'un module pour s'y trouver. */
+const FLOOR_TOLERANCE = 1.3;
+
+/**
+ * Modules dont l'empreinte contient le point. Avec `y` (hauteur du sol du visiteur),
+ * seuls les modules du même étage comptent : deux étages peuvent se superposer.
+ */
+export function modulesContaining(p: Vec2, modules: Iterable<WorldModule>, y?: number): WorldModule[] {
   const out: WorldModule[] = [];
-  for (const m of modules) if (pointInConvex(p, m.footprint)) out.push(m);
+  for (const m of modules) {
+    if (!pointInConvex(p, m.footprint)) continue;
+    if (y !== undefined && Math.abs(m.floorAt(p) - y) > FLOOR_TOLERANCE) continue;
+    out.push(m);
+  }
   return out;
 }
 
-export function computeVisibility(eyes: Vec2[], modules: Iterable<WorldModule>, maxDistance: number, result?: VisibilityResult): VisibilityResult {
+export function computeVisibility(eyes: Vec2[], modules: Iterable<WorldModule>, maxDistance: number, y?: number, result?: VisibilityResult): VisibilityResult {
   const res = result ?? { modules: new Set(), openConnectors: [] };
   const all = Array.from(modules);
   const openSeen = new Set<string>();
@@ -54,7 +65,7 @@ export function computeVisibility(eyes: Vec2[], modules: Iterable<WorldModule>, 
   for (let e = 0; e < eyes.length; e++) {
     const eye = eyes[e]!;
     firstEye = e === 0;
-    const roots = modulesContaining(eye, all);
+    const roots = modulesContaining(eye, all, y);
     const rootSet = new Set(roots);
     // Un œil posé dans une ouverture voit pleinement les deux modules.
     for (let i = 0; i < roots.length; i++) {

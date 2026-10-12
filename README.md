@@ -4,7 +4,20 @@ Un musée infini, explorable à la première personne sur PC et sur mobile. Le b
 
 **Version en ligne** : https://hugohismans.github.io/infArt/
 
-## État : phase 2, vraies œuvres
+## État : phase 3, embranchements
+
+- **Intersections** : en T (gauche et droite, tout droit et gauche, tout droit et droite) et carrefour en croix. Chaque direction mène à un chemin différent, généré à la demande.
+- **Salles**, plus hautes de plafond, avec un linteau au-dessus des portes :
+  - petite salle avec un banc de velours (sortie au fond, ou sur les côtés) ;
+  - grande salle à trois sorties, avec une cimaise centrale accrochée des deux côtés.
+- **Escaliers** montants et descendants (±2,4 m) :
+  - le monde a désormais des étages, et deux modules peuvent se superposer s'ils ne se recoupent pas verticalement ;
+  - collisions et visibilité tiennent compte de l'étage.
+- **Impasses** : un couloir court avec une seule œuvre au fond. L'auto-marche s'y arrête quelques secondes avant de repartir.
+- **Auto-marche** : elle calcule un itinéraire dans chaque module (graphe de points libres) pour contourner bancs et cimaises.
+- Les poids de tirage des modules sont dans `CONFIG.world.moduleWeights`.
+
+## Phase 2, vraies œuvres
 
 - **Phase 1** : couloir infini (couloirs, virages, impasses), génération devant et destruction derrière, visibilité à 360°, contrôles PC et mobile.
 - **Phase 2** : vraies œuvres tirées de quatre musées, cadres selon le type et l'époque, échelle réelle, cartels, fiche détaillée zoomable.
@@ -118,7 +131,7 @@ Le déploiement sur GitHub Pages se fait automatiquement à chaque push sur `mai
 
 1. ~~Prototype de couloir infini~~
 2. ~~Vraies œuvres : Worker Cloudflare, adaptateurs de musées, cartels, fiche détaillée~~
-3. Embranchements : T, carrefours, salles, escaliers
+3. ~~Embranchements : T, carrefours, salles, escaliers, impasses~~
 4. Ambiances et Directeur
 5. Plus de sources : affiches, jaquettes, pochettes, livres
 6. Décors procéduraux et son

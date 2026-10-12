@@ -4,12 +4,15 @@ import { dist, sub, v2, type Segment, type Vec2 } from '../math2d';
 /**
  * Description purement géométrique d'un type de module, dans son repère local.
  *
- * Convention : l'entrée (connecteur 0) est en (0, 0), sa normale sortante est (0, -1),
- * le module s'étend vers +Z. En regardant vers +Z, +X est à GAUCHE (repère Three.js).
+ * Convention : l'entrée (connecteur 0) est en (0, 0), à la hauteur 0, sa normale
+ * sortante est (0, -1) ; le module s'étend vers +Z. En regardant vers +Z, +X est
+ * à GAUCHE (repère Three.js).
  */
 export interface ConnectorDef {
   /** Centre de l'ouverture, au sol. */
   pos: Vec2;
+  /** Hauteur du sol à l'ouverture (escaliers). */
+  y: number;
   /** Normale sortante (vers le module voisin). */
   normal: Vec2;
   /** Largeur de l'ouverture. */
@@ -21,32 +24,58 @@ export interface WallDef {
   seg: Segment;
   /** On peut accrocher des œuvres sur ce mur. */
   hangable: boolean;
+  /** Hauteur du mur s'il ne monte pas jusqu'au plafond (cimaise). */
+  height?: number;
+  /** Mur d'un obstacle (dessiné avec l'obstacle, mais utilisé pour les collisions et l'accrochage). */
+  obstacle?: boolean;
+}
+
+/** Obstacle posé au sol, aligné sur les axes du module (cimaise, banc). */
+export interface ObstacleDef {
+  kind: 'cimaise' | 'bench';
+  center: Vec2;
+  /** Dimensions au sol (x, z). */
+  size: Vec2;
+  height: number;
 }
 
 export interface ArtSlotDef {
   /** Point au pied du mur, au centre de l'emplacement. */
   pos: Vec2;
+  /** Hauteur du sol à cet endroit. */
+  y: number;
   /** Normale du mur, tournée vers l'intérieur du module. */
   normal: Vec2;
   /** Largeur maximale disponible. */
   maxWidth: number;
+  /** Hauteur du mur porteur (sinon : hauteur sous plafond du module). */
+  wallHeight?: number;
 }
+
+export type ModuleKind = 'straight' | 'turn' | 'junction' | 'room' | 'stairs' | 'deadend' | 'cap';
 
 export interface ModuleDef {
   id: string;
-  kind: 'straight' | 'turn' | 'cap';
-  /** Sens du virage en allant de l'entrée (0) vers la sortie (1) : +1 gauche, -1 droite, 0 aucun. */
-  turn: -1 | 0 | 1;
-  /** Polygone convexe au sol (sens antihoraire ou horaire, cohérent). */
+  kind: ModuleKind;
+  /** Polygone convexe au sol (rectangle). */
   footprint: Vec2[];
   connectors: ConnectorDef[];
   walls: WallDef[];
   /** Le module a un sol et un plafond (pas l'impasse « cap »). */
   hasFloor: boolean;
+  /** Hauteur sous plafond, relative à celle de l'ambiance (salles plus hautes). */
+  ceilingScale: number;
+  /** Dénivelé entre l'entrée et la sortie (escaliers), en m. */
+  rise: number;
+  /** Hauteur du sol en un point local. */
+  floorAt(p: Vec2): number;
+  /** Ouvertures au-dessus desquelles il faut un linteau (plafond plus haut que les couloirs). */
+  lintels: Segment[];
+  obstacles: ObstacleDef[];
   /** Bandes lumineuses au plafond. */
   lightStrips: Segment[];
-  /** Points de passage pour l'auto-marche, entre l'entrée et chaque sortie. */
-  waypoints: Vec2[];
+  /** Points libres pour l'itinéraire de l'auto-marche (contourner les obstacles). */
+  navPoints: Vec2[];
   artSlots: ArtSlotDef[];
 }
 
@@ -56,8 +85,10 @@ export function wallNormal(seg: Segment): Vec2 {
   return { x: d.z / l, z: -d.x / l };
 }
 
+const flat = () => 0;
+
 /** Répartit des emplacements d'œuvres le long des murs accrochables. */
-function computeArtSlots(walls: WallDef[]): ArtSlotDef[] {
+function computeArtSlots(walls: WallDef[], floorAt: (p: Vec2) => number): ArtSlotDef[] {
   const slots: ArtSlotDef[] = [];
   const margin = 0.5;
   for (const wall of walls) {
@@ -70,11 +101,8 @@ function computeArtSlots(walls: WallDef[]): ArtSlotDef[] {
     const n = wallNormal(wall.seg);
     for (let i = 0; i < count; i++) {
       const t = (margin + step * (i + 0.5)) / len;
-      slots.push({
-        pos: { x: wall.seg.a.x + (wall.seg.b.x - wall.seg.a.x) * t, z: wall.seg.a.z + (wall.seg.b.z - wall.seg.a.z) * t },
-        normal: n,
-        maxWidth: step - 0.6,
-      });
+      const pos = { x: wall.seg.a.x + (wall.seg.b.x - wall.seg.a.x) * t, z: wall.seg.a.z + (wall.seg.b.z - wall.seg.a.z) * t };
+      slots.push({ pos, y: floorAt(pos), normal: n, maxWidth: step - 0.6, ...(wall.height ? { wallHeight: wall.height } : {}) });
     }
   }
   return slots;
@@ -84,6 +112,68 @@ function rect(minX: number, maxX: number, minZ: number, maxZ: number): Vec2[] {
   return [v2(minX, minZ), v2(maxX, minZ), v2(maxX, maxZ), v2(minX, maxZ)];
 }
 
+type Side = 'S' | 'N' | 'E' | 'W';
+
+/** Ouverture sur un côté d'une pièce rectangulaire (centre le long du côté). */
+interface Opening {
+  side: Side;
+  center: number;
+  width: number;
+}
+
+/**
+ * Murs d'une pièce rectangulaire percée d'ouvertures, orientés vers l'intérieur.
+ * Côtés : S (z = minZ), N (z = maxZ), W (x = minX, à droite en regardant vers +Z), E (x = maxX, à gauche).
+ */
+function perimeter(minX: number, maxX: number, minZ: number, maxZ: number, openings: Opening[], hangable: boolean): { walls: WallDef[]; lintels: Segment[] } {
+  const walls: WallDef[] = [];
+  const lintels: Segment[] = [];
+  // Pour chaque côté : axe parcouru et sens qui donne une normale intérieure.
+  const sides: Record<Side, { from: number; to: number; at: (t: number) => Vec2 }> = {
+    S: { from: maxX, to: minX, at: (t) => v2(t, minZ) },
+    N: { from: minX, to: maxX, at: (t) => v2(t, maxZ) },
+    W: { from: minZ, to: maxZ, at: (t) => v2(minX, t) },
+    E: { from: maxZ, to: minZ, at: (t) => v2(maxX, t) },
+  };
+  for (const side of ['S', 'N', 'W', 'E'] as Side[]) {
+    const { from, to, at } = sides[side];
+    const dir = Math.sign(to - from);
+    // Intervalles d'ouverture, triés dans le sens de parcours.
+    const holes = openings
+      .filter((o) => o.side === side)
+      .map((o) => [o.center - (dir * o.width) / 2, o.center + (dir * o.width) / 2] as [number, number])
+      .sort((a, b) => dir * (a[0] - b[0]));
+    let cursor = from;
+    for (const [h0, h1] of holes) {
+      if (Math.abs(h0 - cursor) > 0.01) walls.push({ seg: { a: at(cursor), b: at(h0) }, hangable });
+      lintels.push({ a: at(h0), b: at(h1) });
+      cursor = h1;
+    }
+    if (Math.abs(to - cursor) > 0.01) walls.push({ seg: { a: at(cursor), b: at(to) }, hangable });
+  }
+  return { walls, lintels };
+}
+
+/** Murs d'un obstacle (boîte alignée sur les axes), orientés vers l'extérieur. */
+function obstacleWalls(o: ObstacleDef, hangable: boolean): WallDef[] {
+  const x0 = o.center.x - o.size.x / 2, x1 = o.center.x + o.size.x / 2;
+  const z0 = o.center.z - o.size.z / 2, z1 = o.center.z + o.size.z / 2;
+  // Sens inverse d'une pièce : la normale « intérieure » pointe vers l'extérieur de la boîte.
+  const long = o.size.x >= o.size.z;
+  return [
+    { seg: { a: v2(x0, z0), b: v2(x1, z0) }, hangable: hangable && long, height: o.height, obstacle: true },
+    { seg: { a: v2(x1, z1), b: v2(x0, z1) }, hangable: hangable && long, height: o.height, obstacle: true },
+    { seg: { a: v2(x0, z1), b: v2(x0, z0) }, hangable: hangable && !long, height: o.height, obstacle: true },
+    { seg: { a: v2(x1, z0), b: v2(x1, z1) }, hangable: hangable && !long, height: o.height, obstacle: true },
+  ];
+}
+
+const entrance = (w: number): ConnectorDef => ({ pos: v2(0, 0), y: 0, normal: v2(0, -1), width: w });
+
+function base(id: string, kind: ModuleKind): Pick<ModuleDef, 'id' | 'kind' | 'hasFloor' | 'ceilingScale' | 'rise' | 'floorAt' | 'lintels' | 'obstacles' | 'navPoints'> {
+  return { id, kind, hasFloor: true, ceilingScale: 1, rise: 0, floorAt: flat, lintels: [], obstacles: [], navPoints: [] };
+}
+
 function straight(id: string, w: number, length: number): ModuleDef {
   const h = w / 2;
   const walls: WallDef[] = [
@@ -91,69 +181,163 @@ function straight(id: string, w: number, length: number): ModuleDef {
     { seg: { a: v2(h, length), b: v2(h, 0) }, hangable: true }, // gauche
   ];
   return {
-    id,
-    kind: 'straight',
-    turn: 0,
+    ...base(id, 'straight'),
     footprint: rect(-h, h, 0, length),
-    connectors: [
-      { pos: v2(0, 0), normal: v2(0, -1), width: w },
-      { pos: v2(0, length), normal: v2(0, 1), width: w },
-    ],
+    connectors: [entrance(w), { pos: v2(0, length), y: 0, normal: v2(0, 1), width: w }],
     walls,
-    hasFloor: true,
     lightStrips: [{ a: v2(0, 0.6), b: v2(0, length - 0.6) }],
-    waypoints: [v2(0, length)],
-    artSlots: computeArtSlots(walls),
+    artSlots: computeArtSlots(walls, flat),
   };
 }
 
 function turn(id: string, w: number, side: 'left' | 'right'): ModuleDef {
   const h = w / 2;
   const s = side === 'left' ? 1 : -1; // +X = gauche
-  // Le mur extérieur (côté opposé au virage) et le mur du fond.
   const outer: WallDef =
-    side === 'left'
-      ? { seg: { a: v2(-h, 0), b: v2(-h, w) }, hangable: true }
-      : { seg: { a: v2(h, w), b: v2(h, 0) }, hangable: true };
+    side === 'left' ? { seg: { a: v2(-h, 0), b: v2(-h, w) }, hangable: true } : { seg: { a: v2(h, w), b: v2(h, 0) }, hangable: true };
   const back: WallDef = { seg: { a: v2(-h, w), b: v2(h, w) }, hangable: true };
   const walls = [outer, back];
   return {
-    id,
-    kind: 'turn',
-    turn: s as 1 | -1,
+    ...base(id, 'turn'),
     footprint: rect(-h, h, 0, w),
-    connectors: [
-      { pos: v2(0, 0), normal: v2(0, -1), width: w },
-      { pos: v2(s * h, h), normal: v2(s, 0), width: w },
-    ],
+    connectors: [entrance(w), { pos: v2(s * h, h), y: 0, normal: v2(s, 0), width: w }],
     walls,
-    hasFloor: true,
     lightStrips: [
       { a: v2(0, 0.6), b: v2(0, h) },
       { a: v2(0, h), b: v2(s * (h - 0.6), h) },
     ],
-    waypoints: [v2(0, h * 0.9), v2(s * h, h)],
-    artSlots: computeArtSlots(walls),
+    navPoints: [v2(0, h)],
+    artSlots: computeArtSlots(walls, flat),
   };
 }
 
-/** Impasse : un simple mur qui ferme une ouverture, avec une œuvre au centre. */
+/** Intersection carrée (T ou croix) : `exits` parmi N (tout droit), E (gauche), W (droite). */
+function junction(id: string, w: number, exits: Array<'N' | 'E' | 'W'>): ModuleDef {
+  const h = w / 2;
+  const openings: Opening[] = [{ side: 'S', center: 0, width: w }, ...exits.map((side) => ({ side, center: side === 'N' ? 0 : h, width: w }))];
+  const { walls } = perimeter(-h, h, 0, w, openings, true);
+  const connectors: ConnectorDef[] = [entrance(w)];
+  for (const e of exits) {
+    if (e === 'N') connectors.push({ pos: v2(0, w), y: 0, normal: v2(0, 1), width: w });
+    if (e === 'E') connectors.push({ pos: v2(h, h), y: 0, normal: v2(1, 0), width: w });
+    if (e === 'W') connectors.push({ pos: v2(-h, h), y: 0, normal: v2(-1, 0), width: w });
+  }
+  const strips: Segment[] = [{ a: v2(0, 0.6), b: v2(0, exits.includes('N') ? w - 0.6 : h) }];
+  if (exits.includes('E') || exits.includes('W')) strips.push({ a: v2(exits.includes('W') ? -h + 0.6 : 0, h), b: v2(exits.includes('E') ? h - 0.6 : 0, h) });
+  return {
+    ...base(id, 'junction'),
+    footprint: rect(-h, h, 0, w),
+    connectors,
+    walls,
+    lightStrips: strips,
+    navPoints: [v2(0, h)],
+    artSlots: computeArtSlots(walls, flat),
+  };
+}
+
+/**
+ * Salle rectangulaire, plus haute de plafond. `exits` : N (au centre du fond),
+ * E / W (au milieu des côtés). Petite salle : un banc ; grande salle : une cimaise
+ * centrale accrochée des deux côtés.
+ */
+function room(id: string, w: number, width: number, depth: number, exits: Array<'N' | 'E' | 'W'>, furniture: 'bench' | 'cimaise'): ModuleDef {
+  const hx = width / 2;
+  const openings: Opening[] = [{ side: 'S', center: 0, width: w }];
+  const connectors: ConnectorDef[] = [entrance(w)];
+  for (const e of exits) {
+    if (e === 'N') {
+      openings.push({ side: 'N', center: 0, width: w });
+      connectors.push({ pos: v2(0, depth), y: 0, normal: v2(0, 1), width: w });
+    } else {
+      openings.push({ side: e, center: depth / 2, width: w });
+      connectors.push({ pos: v2(e === 'E' ? hx : -hx, depth / 2), y: 0, normal: v2(e === 'E' ? 1 : -1, 0), width: w });
+    }
+  }
+  const { walls, lintels } = perimeter(-hx, hx, 0, depth, openings, true);
+  const c = v2(0, depth / 2);
+  const obstacles: ObstacleDef[] =
+    furniture === 'bench'
+      ? [{ kind: 'bench', center: c, size: v2(1.8, 0.55), height: 0.46 }]
+      : [{ kind: 'cimaise', center: c, size: v2(Math.min(5.2, width - 6), 0.3), height: 2.9 }];
+  const obstacle = obstacles[0]!;
+  walls.push(...obstacleWalls(obstacle, furniture === 'cimaise'));
+  // Points libres tout autour de l'obstacle, pour que l'auto-marche le contourne.
+  const ox = obstacle.size.x / 2 + 1.1, oz = obstacle.size.z / 2 + 1.1;
+  const navPoints = [v2(-ox, c.z), v2(ox, c.z), v2(0, c.z - oz), v2(0, c.z + oz), v2(-ox, c.z - oz), v2(ox, c.z - oz), v2(-ox, c.z + oz), v2(ox, c.z + oz)];
+  const nStrips = width > 10 ? 3 : 2;
+  const lightStrips: Segment[] = [];
+  for (let i = 0; i < nStrips; i++) {
+    const x = (i - (nStrips - 1) / 2) * (width / nStrips);
+    lightStrips.push({ a: v2(x, 1), b: v2(x, depth - 1) });
+  }
+  return {
+    ...base(id, 'room'),
+    ceilingScale: 1.4,
+    footprint: rect(-hx, hx, 0, depth),
+    connectors,
+    walls,
+    lintels,
+    obstacles,
+    lightStrips,
+    navPoints,
+    artSlots: computeArtSlots(walls, flat),
+  };
+}
+
+/** Escalier droit : le sol monte (ou descend) de `rise` sur la longueur. */
+function stairs(id: string, w: number, length: number, rise: number): ModuleDef {
+  const h = w / 2;
+  const floorAt = (p: Vec2) => rise * Math.max(0, Math.min(1, p.z / length));
+  const walls: WallDef[] = [
+    { seg: { a: v2(-h, 0), b: v2(-h, length) }, hangable: false },
+    { seg: { a: v2(h, length), b: v2(h, 0) }, hangable: false },
+  ];
+  return {
+    ...base(id, 'stairs'),
+    rise,
+    floorAt,
+    footprint: rect(-h, h, 0, length),
+    connectors: [entrance(w), { pos: v2(0, length), y: rise, normal: v2(0, 1), width: w }],
+    walls,
+    lightStrips: [{ a: v2(0, 0.6), b: v2(0, length - 0.6) }],
+    artSlots: [],
+  };
+}
+
+/** Impasse : un couloir court fermé, une seule œuvre au fond, mise en valeur. */
+function deadend(id: string, w: number, length: number): ModuleDef {
+  const h = w / 2;
+  const walls: WallDef[] = [
+    { seg: { a: v2(-h, 0), b: v2(-h, length) }, hangable: false },
+    { seg: { a: v2(h, length), b: v2(h, 0) }, hangable: false },
+    { seg: { a: v2(-h, length), b: v2(h, length) }, hangable: true },
+  ];
+  return {
+    ...base(id, 'deadend'),
+    footprint: rect(-h, h, 0, length),
+    connectors: [entrance(w)],
+    walls,
+    lightStrips: [{ a: v2(0, 0.6), b: v2(0, length - 1.6) }],
+    // Point d'arrêt de l'auto-marche, face à l'œuvre.
+    navPoints: [v2(0, length - 2)],
+    artSlots: [{ pos: v2(0, length), y: 0, normal: v2(0, -1), maxWidth: w - 0.9 }],
+  };
+}
+
+/** Bouchon : un simple mur qui ferme une ouverture (dernier recours), avec une œuvre au centre. */
 function cap(id: string, w: number): ModuleDef {
   const h = w / 2;
   // Le mur est collé à l'ouverture (5 mm) pour ne laisser aucune fente visible aux coins.
   const depth = 0.005;
   const walls: WallDef[] = [{ seg: { a: v2(-h - 0.05, depth), b: v2(h + 0.05, depth) }, hangable: true }];
   return {
-    id,
-    kind: 'cap',
-    turn: 0,
-    footprint: rect(-h, h, 0, 0.05),
-    connectors: [{ pos: v2(0, 0), normal: v2(0, -1), width: w }],
-    walls,
+    ...base(id, 'cap'),
     hasFloor: false,
+    footprint: rect(-h, h, 0, 0.05),
+    connectors: [entrance(w)],
+    walls,
     lightStrips: [],
-    waypoints: [],
-    artSlots: [{ pos: v2(0, depth), normal: v2(0, -1), maxWidth: w - 1.2 }],
+    artSlots: [{ pos: v2(0, depth), y: 0, normal: v2(0, -1), maxWidth: w - 1.2 }],
   };
 }
 
@@ -166,6 +350,16 @@ export function makeModuleDefs(corridorWidth: number): Record<string, ModuleDef>
     straight('straight-l', w, 19.8),
     turn('turn-left', w, 'left'),
     turn('turn-right', w, 'right'),
+    junction('tee', w, ['E', 'W']),
+    junction('tee-left', w, ['N', 'E']),
+    junction('tee-right', w, ['N', 'W']),
+    junction('cross', w, ['N', 'E', 'W']),
+    room('room-s', w, 2 * w, 2 * w, ['N'], 'bench'),
+    room('room-s-side', w, 2 * w, 2 * w, ['E', 'W'], 'bench'),
+    room('room-l', w, 3 * w, 3 * w, ['N', 'E', 'W'], 'cimaise'),
+    stairs('stairs-up', w, 7.6, 2.4),
+    stairs('stairs-down', w, 7.6, -2.4),
+    deadend('deadend', w, 5.4),
     cap('cap', w),
   ];
   return Object.fromEntries(defs.map((d) => [d.id, d]));

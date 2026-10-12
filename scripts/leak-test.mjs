@@ -57,6 +57,8 @@ while (Date.now() < end) {
     textures: s.textures,
     heapMB: s.heapMB === null ? null : Number(s.heapMB.toFixed(2)),
     artTextures: s.art?.liveTextures ?? 0,
+    // Textures d'œuvres qui ne sont ni accrochées, ni en réserve, ni en HD : doit rester proche de 0.
+    artOrphans: s.art ? s.art.liveTextures - s.world.arts - s.art.ready - s.art.highRes : 0,
     artMB: s.art ? Number(s.art.gpuMB.toFixed(1)) : 0,
     artReady: s.art?.ready ?? 0,
     fps: Math.round(s.fps),
@@ -77,10 +79,14 @@ const max = (rows, k) => Math.max(...rows.map((r) => r[k] ?? 0));
 const avg = (rows, k) => rows.reduce((a, r) => a + (r[k] ?? 0), 0) / rows.length;
 const failures = [];
 
+// Le monde chargé varie beaucoup (salles, embranchements) : on compare des moyennes.
 for (const k of ['geometries', 'textures', 'modules', 'artTextures']) {
-  const a = max(first, k), b = max(second, k);
-  if (b > a * 1.3 + 4) failures.push(`${k} augmente : max ${a} puis ${b}`);
+  const a = avg(first, k), b = avg(second, k);
+  if (b > a * 1.35 + 4) failures.push(`${k} augmente : moyenne ${a.toFixed(1)} puis ${b.toFixed(1)}`);
 }
+// Fuite de textures d'œuvres : des textures vivantes qui n'appartiennent plus à rien.
+const orphans = max(samples, 'artOrphans');
+if (orphans > 12) failures.push(`textures d'œuvres orphelines : jusqu'à ${orphans}`);
 if (samples[0]?.heapMB !== null) {
   const a = avg(first, 'heapMB'), b = avg(second, 'heapMB');
   if (b > a * 1.3 + 3) failures.push(`tas JS augmente : moyenne ${a.toFixed(1)} Mo puis ${b.toFixed(1)} Mo`);
