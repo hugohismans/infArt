@@ -39,7 +39,7 @@ export const whiteCube: AmbiancePreset = {
     lightShafts: 0,
     dust: 0.1,
   },
-  sound: { roomTone: 0.4, hvac: 0.75, hum: 0, rain: 0, birds: 0, distantSteps: 0.3, reverb: 0.6 },
+  sound: { roomTone: 0.4, hvac: 0.75, hum: 0, rain: 0, birds: 0, distantSteps: 0.3, reverb: 0.6, wind: 0, crickets: 0, water: 0 },
   art: { density: 0.7, frames: 'moderne', prefer: ['photographie', 'dessin', 'estampe'] },
   modules: { 'room-l': 3, 'room-s': 1.8, 'room-s-side': 1.5, 'straight-l': 0.6, deadend: 1.4 },
 };

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { AmbiancePreset } from '../ambiances/types';
 import { CONFIG } from '../config';
-import type { Segment } from '../world/math2d';
+import { pointSegmentDistance, type Segment } from '../world/math2d';
+import type { WorldModule } from '../world/WorldModule';
 import { World, type WorldStats } from '../world/World';
 import { AutoWalk } from './AutoWalk';
 import { InputState } from './input/InputState';
@@ -14,7 +15,9 @@ import type { Artwork } from '../../shared/artwork';
 import type { ArtContext, ArtPiece } from '../art/ArtPiece';
 import type { LibraryStats } from '../art/ArtLibrary';
 import type { AudioEngine } from '../audio/AudioEngine';
-import { DustField } from '../decor/dust';
+import { ParticleSystem } from '../decor/dust';
+import { Sky } from './Sky';
+import { Ground } from './Ground';
 
 const DEG = Math.PI / 180;
 
@@ -96,7 +99,14 @@ export class Engine {
   private readonly frustum = new THREE.Frustum();
   private readonly projView = new THREE.Matrix4();
   private readonly sphere = new THREE.Sphere();
-  private readonly dust: DustField;
+  private readonly particles: ParticleSystem;
+  private readonly sky = new Sky();
+  private readonly ground: Ground;
+  /** Lampe torche (ambiances plongées dans le noir) : toujours présente, éteinte par défaut. */
+  private readonly flashlight = new THREE.SpotLight('#fff1d6', 0, 22, 0.52, 0.55, 1.2);
+  /** Module précédent (pour savoir par où le visiteur est entré). */
+  private previousModule: WorldModule | null = null;
+  private readonly portalPoint = new THREE.Vector3();
   /** Dernier pas sonorisé (demi-foulées parcourues). */
   private lastStep = 0;
   private readonly forward = new THREE.Vector3();
@@ -146,8 +156,13 @@ export class Engine {
     this.world = new World(options.seed, amb, options.art ?? null);
     this.scene.add(this.world.root);
     this.world.onDrip = (x, y, z) => options.audio?.drip(x, y, z);
-    this.dust = new DustField(CONFIG.decor.dustCount[mobile ? 'mobile' : 'desktop']);
-    this.scene.add(this.dust.points);
+    this.particles = new ParticleSystem(CONFIG.decor.dustCount[mobile ? 'mobile' : 'desktop']);
+    for (const f of this.particles.fields) this.scene.add(f.points);
+    this.scene.add(this.sky.group);
+    this.ground = new Ground(this.world.cache);
+    this.scene.add(this.ground.mesh);
+    // La lampe suit la caméra ; sa cible est placée devant à chaque image.
+    this.scene.add(this.flashlight, this.flashlight.target);
     const start = this.world.init();
     this.player.position = start.position;
     this.player.yaw = start.yaw;
@@ -265,15 +280,53 @@ export class Engine {
 
   private readonly tmpColor = new THREE.Color();
 
+  /**
+   * Étrangeté « porte murée » : une fois le visiteur avancé dans le module et l'entrée
+   * hors de sa vue, elle est murée derrière lui.
+   */
+  private updateSeal(): void {
+    const m = this.world.currentModule;
+    if (!m) return;
+    if (m !== this.previousModule) {
+      if (m.enteredFrom < 0 && this.previousModule) m.enteredFrom = m.connectors.findIndex((c) => c.neighbor?.module === this.previousModule);
+      this.previousModule = m;
+    }
+    if (!m.sealEntrance || m.enteredFrom < 0) return;
+    const c = m.connectors[m.enteredFrom];
+    if (!c || c.sealed || !c.neighbor) return;
+    const p = this.player.position;
+    if (pointSegmentDistance(p, c.portal.a, c.portal.b) < CONFIG.director.sealDistance) return;
+    // Aucun point de l'ouverture ne doit être à l'écran.
+    for (const end of [c.portal.a, c.portal.b, c.pos]) {
+      for (const h of [0.3, 1.6, 2.6]) {
+        this.portalPoint.set(end.x, c.y + h, end.z);
+        if (this.frustum.containsPoint(this.portalPoint)) return;
+      }
+    }
+    this.world.seal(m, m.enteredFrom);
+  }
+
   /** Poussière, sons d'ambiance et pas du visiteur, selon l'ambiance du module courant. */
   private updateAmbience(dt: number): void {
     const m = this.world.currentModule;
     if (!m) return;
     const p = m.preset;
-    this.dust.update(dt, this.camera.position, this.player.floorY, p.decor.dust);
+    this.particles.update(dt, this.camera.position, this.player.floorY, p.decor.particles ?? 'poussiere', p.decor.dust);
+    const k = 1 - Math.exp(-dt * CONFIG.director.envLerpRate);
+    this.sky.update(this.camera.position, this.camera.far * 0.92, p.sky ?? this.world.nearbySky(), this.background, k);
+    this.ground.update(this.world.nearbyOpenAir(), this.camera.position, this.player.floorY, this.camera.far * 2.2);
+    this.camera.getWorldDirection(this.forward);
+    const torch = p.lighting.flashlight ?? 0;
+    this.flashlight.intensity += (torch * CONFIG.lighting.flashlight - this.flashlight.intensity) * Math.min(1, dt * 3);
+    this.flashlight.visible = this.flashlight.intensity > 0.01;
+    if (this.flashlight.visible) {
+      this.flashlight.position.copy(this.camera.position);
+      this.flashlight.position.y -= 0.15;
+      this.flashlight.target.position.copy(this.camera.position).addScaledVector(this.forward, 5);
+      this.flashlight.target.updateMatrixWorld();
+    }
     const audio = this.options.audio;
     if (!audio?.started) return;
-    this.camera.getWorldDirection(this.forward);
     audio.setListener(this.camera.position.x, this.camera.position.y, this.camera.position.z, this.forward.x, this.forward.z);
     audio.update(dt, p.sound, p.lighting.flicker, this.camera.position);
     // Un pas toutes les demi-foulées, tant que le visiteur avance vraiment.
@@ -341,7 +394,9 @@ export class Engine {
     this.mouse.dispose();
     this.touch.dispose();
     this.world.dispose();
-    this.dust.dispose();
+    this.particles.dispose();
+    this.sky.dispose();
+    this.ground.dispose();
     if (this.options.art?.viewer === this) this.options.art.viewer = null;
     this.renderer.dispose();
     this.renderer.domElement.remove();
@@ -459,6 +514,7 @@ export class Engine {
 
     this.world.updateArts(dt, this.player.position);
     this.updateAmbience(dt);
+    this.updateSeal();
     this.pumpTimer -= dt;
     if (this.pumpTimer <= 0) {
       this.pumpTimer = 0.25;

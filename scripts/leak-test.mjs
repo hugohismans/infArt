@@ -58,7 +58,7 @@ while (Date.now() < end) {
     heapMB: s.heapMB === null ? null : Number(s.heapMB.toFixed(2)),
     artTextures: s.art?.liveTextures ?? 0,
     // Textures d'œuvres qui ne sont ni accrochées, ni en réserve, ni en HD : doit rester proche de 0.
-    artOrphans: s.art ? s.art.liveTextures - s.world.arts - s.art.ready - (s.art.themeReady ?? 0) - s.art.highRes : 0,
+    artOrphans: s.art ? s.art.liveTextures - s.world.artTextures - s.art.ready - (s.art.themeReady ?? 0) : 0,
     artMB: s.art ? Number(s.art.gpuMB.toFixed(1)) : 0,
     artReady: s.art?.ready ?? 0,
     fps: Math.round(s.fps),
@@ -80,7 +80,8 @@ const avg = (rows, k) => rows.reduce((a, r) => a + (r[k] ?? 0), 0) / rows.length
 const failures = [];
 
 // Le monde chargé varie beaucoup (salles, embranchements) : on compare des moyennes.
-for (const k of ['geometries', 'textures', 'modules', 'artTextures']) {
+// Le nombre de textures d'œuvres dépend des ambiances traversées (accrochage serré…) : ce sont les orphelines qui comptent.
+for (const k of ['geometries', 'textures', 'modules']) {
   const a = avg(first, k), b = avg(second, k);
   if (b > a * 1.35 + 4) failures.push(`${k} augmente : moyenne ${a.toFixed(1)} puis ${b.toFixed(1)}`);
 }

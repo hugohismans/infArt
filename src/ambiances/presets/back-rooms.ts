@@ -44,7 +44,7 @@ export const backRooms: AmbiancePreset = {
     lightShafts: 0,
     dust: 0.25,
   },
-  sound: { roomTone: 0.5, hvac: 0.3, hum: 1, rain: 0, birds: 0, distantSteps: 0.04, reverb: 0.15 },
+  sound: { roomTone: 0.5, hvac: 0.3, hum: 1, rain: 0, birds: 0, distantSteps: 0.04, reverb: 0.15, wind: 0, crickets: 0, water: 0 },
   art: { density: 0.12, frames: 'bon-marche' },
   modules: {
     'straight-l': 3,

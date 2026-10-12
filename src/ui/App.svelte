@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { DEFAULT_AMBIANCE } from '../ambiances';
+  import { AMBIANCES, DEFAULT_AMBIANCE } from '../ambiances';
   import { Engine, isTouchDevice } from '../engine/Engine';
   import { randomSeed } from '../world/random';
   import { t } from '../i18n';
@@ -16,6 +16,7 @@
   import { ArtLibrary } from '../art/ArtLibrary';
   import type { ArtContext } from '../art/ArtPiece';
   import { AudioEngine } from '../audio/AudioEngine';
+  import { Director, type Oddity } from '../director/Director';
   import { parseWeights, type Artwork } from '../../shared/artwork';
 
   const params = readUrlParams();
@@ -41,6 +42,9 @@
     textureSizeHigh: mobile ? CONFIG.art.textureSizeHigh.mobile : CONFIG.art.textureSizeHigh.desktop,
     viewer: null,
   };
+
+  // Essais : &oddity=porte-muree impose une étrangeté partout.
+  Director.debugOddity = (new URLSearchParams(window.location.search).get('oddity') as Oddity | null) ?? null;
 
   // Le son ne démarre qu'au clic sur « Entrer » (contrainte des navigateurs).
   const audio = new AudioEngine();
@@ -82,7 +86,8 @@
     audio.unlock();
     const e = new Engine(container, overlay, {
       seed,
-      ambiance: DEFAULT_AMBIANCE,
+      // Essais : &ambiance=foret démarre dans une ambiance donnée.
+      ambiance: AMBIANCES[new URLSearchParams(window.location.search).get('ambiance') ?? ''] ?? DEFAULT_AMBIANCE,
       autoWalk,
       timeScale: params.timeScale,
       art: artCtx,

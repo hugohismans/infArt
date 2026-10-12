@@ -1,4 +1,4 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import type { AmbiancePreset, DecorKind } from '../ambiances/types';
 import { CONFIG } from '../config';
 import { dist, dot, pointInConvex, sub, type Segment, type Vec2 } from '../world/math2d';
@@ -23,6 +23,16 @@ export interface DecorBuild {
   collisions: Segment[];
   /** Fuites : point de départ de la goutte (plafond) et hauteur d'arrivée. */
   drips: Array<{ x: number; z: number; top: number; bottom: number }>;
+  /** Café encore chaud : d'où monte la fumée (repère du module). */
+  steam?: { x: number; y: number; z: number };
+}
+
+/** Étrangetés qui passent par le décor. */
+export interface DecorOddities {
+  /** Salle vidée : traces claires des cadres décrochés, et leurs clous. */
+  emptied?: boolean;
+  /** Une veste oubliée sur un banc ou une chaise, un gobelet de café qui fume encore. */
+  forgotten?: boolean;
 }
 
 interface Spot {
@@ -92,7 +102,7 @@ function edges(poly: Vec2[]): Segment[] {
   return poly.map((a, i) => ({ a, b: poly[(i + 1) % poly.length]! }));
 }
 
-export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hung: readonly ArtSlotDef[]): DecorBuild {
+export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hung: readonly ArtSlotDef[], odd: DecorOddities = {}): DecorBuild {
   const k = new Kit();
   const out: DecorBuild = { solid: null, glow: null, shafts: null, collisions: [], drips: [] };
   // Pas de décor dans les escaliers, les sas et les bouchons.
@@ -103,8 +113,69 @@ export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hun
   const placed: Vec2[][] = [];
   const free = (poly: Vec2[]) => !placed.some((p) => p.some((v) => pointInConvex(v, poly)) || poly.some((v) => pointInConvex(v, p)));
 
+  // Chevalets : l'œuvre est posée devant le mur, on ne la traverse pas.
+  if (preset.art.mount === 'chevalet') {
+    for (const slot of hung) {
+      if (slot.hangY) continue;
+      const poly = footprint(slot.pos, slot.normal, 1.1, CONFIG.art.easelDistance + 0.35);
+      placed.push(poly);
+      out.collisions.push(...edges(footprint(slot.pos, slot.normal, 1.0, CONFIG.art.easelDistance + 0.3)));
+    }
+  }
+  // Forêt : chaque œuvre est accrochée à un tronc.
+  if (d.trunksBehindArt) {
+    for (const slot of hung) {
+      if (slot.hangY) continue;
+      k.place(slot.pos.x, slot.y, slot.pos.z, angleOf(slot.normal));
+      const seed = rng.int(0, 1000);
+      k.cyl(0.32, ceiling + 1, 0, (ceiling + 1) / 2, 0.02, '#3b2c22', 9, 0.7);
+      k.blob(1.4, 0, ceiling + 1.2, 0.4, [new THREE.Color('#1d3320'), new THREE.Color('#25402a'), new THREE.Color('#183020')], seed);
+    }
+  }
+
+  // Salle vidée : il ne reste que les traces des cadres, plus claires que le mur, et les clous.
+  if (odd.emptied) {
+    const ghost = new THREE.Color(preset.palette.wall).lerp(new THREE.Color('#ffffff'), 0.22);
+    for (const slot of def.artSlots) {
+      const w = Math.min(slot.maxWidth, rng.range(0.4, 1.3)), h = rng.range(0.45, 1.2);
+      const cy = Math.max(1.55, h / 2 + 0.6);
+      k.place(slot.pos.x, slot.y, slot.pos.z, angleOf(slot.normal));
+      k.box(w, h, 0.003, 0, cy, 0.002, ghost);
+      k.cyl(0.006, 0.035, 0, cy + h / 2 - 0.1, 0.02, '#2a2622', 6, 1, { x: Math.PI / 2 });
+    }
+  }
+
   // Objets contre les murs.
   const spots = rng.shuffle(wallSpots(def, hung));
+
+  // Veste oubliée et café encore chaud : sur le banc s'il y en a un, sinon sur une chaise.
+  if (odd.forgotten) {
+    const jacket = rng.pick(['#2a2f3a', '#5a3a2a', '#3a4a3a', '#7a1f24']);
+    const bench = def.obstacles.find((o) => o.kind === 'bench');
+    if (bench) {
+      const y = bench.height;
+      k.place(bench.center.x, 0, bench.center.z, 0);
+      k.box(0.46, 0.05, 0.42, -0.35, y + 0.025, 0, jacket, { y: 0.3 });
+      k.box(0.12, 0.3, 0.1, -0.1, y - 0.12, 0.25, jacket, { z: 0.2 });
+      k.cyl(0.035, 0.1, 0.45, y + 0.05, 0.05, '#f2efe8', 10, 1.15);
+      out.steam = { x: bench.center.x + 0.45, y: y + 0.11, z: bench.center.z + 0.05 };
+    } else {
+      const spot = spots.find((sp) => sp.freeHigh >= 0.3 && !def.obstacles.some((o) => overlapsRect(footprint(sp.pos, sp.n, 0.5, 0.6), o, 0.3)));
+      if (spot) {
+        spots.splice(spots.indexOf(spot), 1);
+        placed.push(footprint(spot.pos, spot.n, 0.5, 0.6, 0.15));
+        k.place(spot.pos.x, def.floorAt(spot.pos), spot.pos.z, angleOf(spot.n));
+        CATALOG.chaise.build(k, rng, ceiling, true);
+        // Veste sur le dossier, gobelet sur l'assise.
+        k.box(0.48, 0.42, 0.06, 0, 0.72, 0.07, jacket);
+        k.box(0.5, 0.06, 0.12, 0, 0.94, 0.09, jacket);
+        k.cyl(0.035, 0.1, 0.1, 0.545, 0.32, '#f2efe8', 10, 1.15);
+        const p = { x: spot.pos.x + spot.n.x * 0.32 - spot.n.z * 0.1, z: spot.pos.z + spot.n.z * 0.32 + spot.n.x * 0.1 };
+        out.steam = { x: p.x, y: def.floorAt(spot.pos) + 0.6, z: p.z };
+        out.collisions.push(...edges(footprint(spot.pos, spot.n, 0.46, 0.55)));
+      }
+    }
+  }
   const room = def.kind === 'room';
   const count = Math.round(d.density * (room ? 2 : 1) * rng.range(0.4, 1.6) * CONFIG.decor.density);
   const pool = Object.entries(d.pool).filter(([, w]) => (w ?? 0) > 0) as Array<[DecorKind, number]>;

@@ -39,7 +39,7 @@ export const serre: AmbiancePreset = {
     lightShafts: 0.9,
     dust: 0.55,
   },
-  sound: { roomTone: 0.3, hvac: 0, hum: 0, rain: 0.6, birds: 0.6, distantSteps: 0.15, reverb: 0.35 },
+  sound: { roomTone: 0.3, hvac: 0, hum: 0, rain: 0.6, birds: 0.6, distantSteps: 0.15, reverb: 0.35, wind: 0.1, crickets: 0, water: 0 },
   art: { density: 0.75, frames: 'classique', prefer: ['peinture', 'dessin'] },
   modules: { 'room-l': 2.2, 'room-s': 1.6, 'room-s-side': 1.4, 'straight-l': 0.7 },
 };

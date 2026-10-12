@@ -24,6 +24,39 @@ export interface ArtContext {
   viewer: { watching(object: THREE.Object3D): boolean } | null;
 }
 
+/** Options d'une œuvre, dont les étrangetés du Directeur. */
+export interface ArtOptions {
+  /** Aile thématique du module : on y accroche en priorité des œuvres du thème. */
+  themeId?: string;
+  /** Cartel écrit dans une langue inventée. */
+  scrambled?: boolean;
+  /** L'œuvre change dès qu'on ne la regarde plus. */
+  changeling?: boolean;
+  /** Accrochée à l'envers. */
+  upsideDown?: boolean;
+  /** Œuvre imposée (la même trois fois de suite)… */
+  ready?: ReadyArt;
+  /** … dont la texture appartient à une autre pièce (elle ne la libère pas). */
+  borrowed?: boolean;
+}
+
+/** Une langue inventée : chaque lettre devient un glyphe, les mots gardent leur longueur. */
+const GLYPHS = 'ȝþðæœŋħłøʒɛɔʃǝʊɣχɮƛϟ';
+function scramble(text: string): string {
+  return text.replace(/[\p{L}\d]/gu, (ch) => GLYPHS[(ch.toLowerCase().codePointAt(0)! * 7) % GLYPHS.length]!);
+}
+function scrambleArtwork(art: Artwork | null): Artwork | null {
+  if (!art) return null;
+  return {
+    ...art,
+    title: scramble(art.title),
+    ...(art.creator ? { creator: scramble(art.creator) } : {}),
+    ...(art.date ? { date: scramble(art.date) } : {}),
+    ...(art.medium ? { medium: scramble(art.medium) } : {}),
+    credit: scramble(art.credit),
+  };
+}
+
 /** Formats courants (largeur / hauteur) pour les toiles en attente. */
 const PLACEHOLDER_ASPECTS = [0.75, 0.8, 1, 1.25, 1.33];
 
@@ -46,6 +79,12 @@ interface Layout {
  */
 export class ArtPiece {
   readonly object = new THREE.Group();
+  /** Contenu de l'œuvre (cadre, toile, cartel) : déplacé selon le support (chevalet, flottant…). */
+  private readonly holder = new THREE.Group();
+  /** Luminosité de la toile (caisson lumineux : rétroéclairée). */
+  private readonly brightness: number;
+  private readonly phase: number;
+  private time = 0;
   artwork: Artwork | null = null;
   /** Maillage cliquable (la toile). */
   canvasMesh: THREE.Mesh | null = null;
@@ -71,13 +110,23 @@ export class ArtPiece {
     private readonly ctx: ArtContext | null,
     /** Le module est-il potentiellement visible ? (sinon on peut tout reconstruire) */
     private readonly isVisible: () => boolean,
-    /** Aile thématique du module : on y accroche en priorité des œuvres du thème. */
-    themeId?: string,
+    private readonly opts: ArtOptions = {},
   ) {
     this.object.position.set(slot.pos.x, slot.y, slot.pos.z);
     this.object.rotation.y = Math.atan2(slot.normal.x, slot.normal.z);
+    if (slot.offset) this.object.translateX(slot.offset);
+    this.object.add(this.holder);
+    this.brightness = preset.art.mount === 'caisson' ? 1.25 : 0.92;
+    this.phase = rng.range(0, Math.PI * 2);
+    // Les œuvres flottantes bougent : leur matrice est recalculée à chaque image.
+    if (preset.art.mount === 'flottant') this.holder.userData.animated = true;
 
-    const ready = ctx?.library.take(preset.art.prefer, themeId) ?? null;
+    // Musée en travaux : certaines œuvres restent emballées.
+    if (preset.art.wrapped && rng.chance(preset.art.wrapped)) {
+      this.hangPlaceholder();
+      return;
+    }
+    const ready = opts.ready ?? ctx?.library.take(preset.art.prefer, opts.themeId) ?? null;
     if (ready) this.hang(ready);
     else if (!ctx || ctx.library.offline) this.hangProcedural();
     else {
@@ -86,12 +135,26 @@ export class ArtPiece {
     }
   }
 
+  /** Textures d'image détenues (ou empruntées) : pour le comptage des fuites. */
+  collectTextures(out: Set<THREE.Texture>): void {
+    if (this.baseTexture) out.add(this.baseTexture);
+    if (this.highTexture) out.add(this.highTexture);
+  }
+
   /** Avance les animations (fondu). */
   animate(dt: number): void {
+    if (this.preset.art.mount === 'flottant' && this.layout) {
+      // Le cadre flotte et pivote lentement, sans jamais toucher le mur.
+      this.time += dt;
+      const t = this.time;
+      this.holder.position.y = Math.sin(t * 0.6 + this.phase) * 0.08;
+      this.holder.rotation.y = Math.sin(t * 0.23 + this.phase) * 0.3;
+      this.holder.rotation.z = Math.sin(t * 0.31 + this.phase * 2) * 0.05;
+    }
     if (this.fadeT >= 1 || !this.canvasMaterial) return;
     this.fadeT = Math.min(1, this.fadeT + dt / CONFIG.art.fadeDuration);
     const k = this.fadeT * this.fadeT * (3 - 2 * this.fadeT);
-    this.canvasMaterial.color.setScalar(0.92 * k);
+    this.canvasMaterial.color.setScalar(this.brightness * k);
   }
 
   /** Niveaux de détail selon la distance du visiteur (cartel, haute résolution). */
@@ -103,13 +166,15 @@ export class ArtPiece {
     // Texte du cartel.
     if (this.cartelMesh) {
       if (d < CONFIG.art.cartelDistance && !this.cartelMaterial) {
-        const tex = makeCartelTexture(this.artwork);
+        const tex = makeCartelTexture(this.opts.scrambled ? scrambleArtwork(this.artwork) : this.artwork);
         this.cartelMaterial = new THREE.MeshBasicMaterial({ map: tex, color: 0xe6e2da });
         this.cartelMesh.material = this.cartelMaterial;
       } else if (d > CONFIG.art.cartelRelease && this.cartelMaterial) {
         this.releaseCartel();
       }
     }
+
+    if (this.opts.changeling) this.changeWhenUnseen(d);
 
     // Haute résolution (sources IIIF).
     const ctx = this.ctx;
@@ -139,6 +204,31 @@ export class ArtPiece {
     }
   }
 
+  /** Étrangeté : vue, puis quittée des yeux un instant, l'œuvre n'est plus la même. */
+  private seen = false;
+  private unseenTicks = 0;
+  private changes = 0;
+  private changeWhenUnseen(d: number): void {
+    const ctx = this.ctx;
+    if (!ctx?.viewer || !this.artwork || this.changes >= 3) return;
+    const watched = d < 12 && ctx.viewer.watching(this.object);
+    if (watched) {
+      this.seen = true;
+      this.unseenTicks = 0;
+      return;
+    }
+    // Le visiteur doit être encore tout près : il verra le changement en se retournant.
+    if (!this.seen || d > 9 || ++this.unseenTicks < 5) return;
+    const next = ctx.library.take(this.preset.art.prefer);
+    if (!next) return;
+    this.clear();
+    this.hang(next);
+    this.object.updateMatrixWorld(true);
+    this.seen = false;
+    this.unseenTicks = 0;
+    this.changes++;
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
@@ -146,7 +236,7 @@ export class ArtPiece {
     this.cancelWait = null;
     this.releaseHigh();
     this.releaseCartel();
-    this.baseTexture?.dispose();
+    if (!this.opts.borrowed) this.baseTexture?.dispose();
     this.baseTexture = null;
     this.canvasMaterial?.dispose();
     this.canvasMaterial = null;
@@ -210,7 +300,7 @@ export class ArtPiece {
     const canvas = this.makeCanvas(ready.texture, w, h, L.centerY, L.frontZ + 0.009);
     this.fadeT = 0;
     this.canvasMaterial!.color.setScalar(0);
-    this.object.add(canvas);
+    this.holder.add(canvas);
     this.object.updateMatrixWorld(true);
     if (this.cartelMaterial) this.releaseCartel(); // le texte sera régénéré
   }
@@ -254,14 +344,15 @@ export class ArtPiece {
     const extra = style.mount === 'record' ? 0.52 * w : style.mount === 'book' ? 0.1 : 0;
     const pad = 2 * (style.mat + style.border);
     const maxW = Math.max(0.3, this.slot.maxWidth) - pad - extra;
-    const maxH = this.wallHeight - 1.25 - pad;
+    const maxH = (this.slot.maxHeight ?? this.wallHeight - 1.25) - pad;
     const k = Math.min(1, maxW / w, maxH / h);
     w *= k;
     h *= k;
     const totalW = w + pad + (style.mount === 'record' ? 0.52 * w : style.mount === 'book' ? 0.1 : 0);
     const totalH = h + pad;
     // Ligne d'accrochage : centre à hauteur d'yeux, mais jamais trop près du sol.
-    const centerY = Math.max(CONFIG.art.hangHeight, totalH / 2 + 0.55);
+    // (Accrochage serré : chaque rang a sa propre hauteur.)
+    const centerY = this.slot.hangY ?? Math.max(CONFIG.art.hangHeight, totalH / 2 + 0.55);
     const frontZ = style.depth + (style.lip ? 0.012 : 0);
     return { w, h, style, totalW, totalH, centerY, frontZ };
   }
@@ -269,7 +360,7 @@ export class ArtPiece {
   private makeCanvas(texture: THREE.Texture | null, w: number, h: number, y: number, z: number): THREE.Mesh {
     let material: THREE.Material;
     if (texture) {
-      this.canvasMaterial = new THREE.MeshBasicMaterial({ map: texture, color: new THREE.Color().setScalar(0.92) });
+      this.canvasMaterial = new THREE.MeshBasicMaterial({ map: texture, color: new THREE.Color().setScalar(this.brightness) });
       material = this.canvasMaterial;
     } else {
       material = this.mats.drape;
@@ -290,7 +381,7 @@ export class ArtPiece {
       const mesh = new THREE.Mesh(m.unitBox, mat);
       mesh.scale.set(sx, sy, sz);
       mesh.position.set(0, centerY, z);
-      this.object.add(mesh);
+      this.holder.add(mesh);
       return mesh;
     };
 
@@ -313,9 +404,9 @@ export class ArtPiece {
         const mat = new THREE.Mesh(m.unitPlane, m.mat);
         mat.scale.set(w + 2 * style.mat, h + 2 * style.mat, 1);
         mat.position.set(0, centerY, L.frontZ + 0.003);
-        this.object.add(mat);
+        this.holder.add(mat);
       }
-      this.object.add(this.makeCanvas(texture, w, h, centerY, L.frontZ + 0.006));
+      this.holder.add(this.makeCanvas(texture, w, h, centerY, L.frontZ + 0.006));
       if (style.mount === 'clip') {
         // Affiche tenue par quatre pinces métalliques, qui mordent sur les coins.
         const cw = Math.min(0.05, w * 0.12), ch = 0.014;
@@ -324,14 +415,15 @@ export class ArtPiece {
             const clip = new THREE.Mesh(m.unitBox, m.frameKinds.alu);
             clip.scale.set(cw, ch, 0.006);
             clip.position.set(sx * (w / 2 - cw / 2 + 0.004), centerY + sy * (h / 2 - ch / 2 + 0.004), L.frontZ + 0.009);
-            this.object.add(clip);
+            this.holder.add(clip);
           }
         }
       }
     }
 
-    // Pas de halo sur une cimaise : il déborderait au-dessus de la cloison.
-    if (this.preset.lighting.artGlow > 0 && this.wallHeight > 3.2) {
+    // Pas de halo sur une cimaise (il déborderait au-dessus de la cloison), ni loin du mur.
+    const onWall = (this.preset.art.mount ?? 'mur') === 'mur' || this.preset.art.mount === 'caisson';
+    if (this.preset.lighting.artGlow > 0 && this.wallHeight > 3.2 && onWall && !this.slot.hangY) {
       // Halo additif sur le mur : simule un spot sans lumière dynamique.
       const glow = new THREE.Mesh(m.unitPlane, m.glow);
       const gw = totalW * 1.5 + 0.6;
@@ -340,11 +432,75 @@ export class ArtPiece {
       // Le point le plus lumineux (42 % du haut du halo) se trouve 35 cm au-dessus du cadre.
       glow.position.set(0, centerY + totalH / 2 + 0.35 - gh * 0.08, 0.012);
       glow.renderOrder = 1;
-      this.object.add(glow);
+      this.holder.add(glow);
     }
 
-    this.addCartel(L);
+    if (!this.slot.hangY) this.addCartel(L);
+    this.applyMount(L);
+    if (this.opts.upsideDown && (this.preset.art.mount ?? 'mur') === 'mur') {
+      // Étrangeté : tête en bas (le cartel aussi).
+      this.holder.position.y = 2 * L.centerY;
+      this.holder.rotation.z = Math.PI;
+    }
     this.object.updateMatrixWorld(true);
+  }
+
+  /**
+   * Support de l'ambiance : chevalet devant le mur, cadre flottant, posé au sol contre
+   * le mur, ou caisson lumineux. (Les pochettes et les livres gardent leur tablette.)
+   */
+  private applyMount(L: Layout): void {
+    const mount = this.preset.art.mount ?? 'mur';
+    if (mount === 'mur' || L.style.mount === 'record' || L.style.mount === 'book') return;
+    const m = this.mats;
+    const bottom = L.centerY - L.totalH / 2;
+    const top = L.centerY + L.totalH / 2;
+    const bar = (mat: THREE.Material, sx: number, sy: number, sz: number, x: number, y: number, z: number, rx = 0) => {
+      const mesh = new THREE.Mesh(m.unitBox, mat);
+      mesh.scale.set(sx, sy, sz);
+      mesh.position.set(x, y, z);
+      mesh.rotation.x = rx;
+      this.object.add(mesh);
+    };
+    switch (mount) {
+      case 'chevalet': {
+        // Le tableau repose sur la traverse du chevalet, légèrement incliné vers l'arrière.
+        const z = CONFIG.art.easelDistance;
+        const tilt = 0.1;
+        this.holder.position.set(0, 0, z);
+        this.holder.rotation.x = -tilt;
+        const legTop = top + 0.18;
+        const wood = m.frameKinds.wood;
+        const half = Math.min(L.totalW / 2 - 0.05, 0.45);
+        for (const x of [-half, half]) bar(wood, 0.035, legTop, 0.035, x, legTop / 2, z + 0.12, -tilt);
+        // Montant arrière.
+        bar(wood, 0.035, legTop * 1.02, 0.035, 0, legTop / 2, z - 0.25, 0.32);
+        // Traverse qui porte le tableau.
+        bar(wood, Math.max(L.totalW, 0.5) + 0.08, 0.04, 0.09, 0, bottom - 0.02, z + 0.07 + bottom * Math.sin(tilt) * 0.02);
+        break;
+      }
+      case 'flottant':
+        this.holder.position.set(0, 0, CONFIG.art.floatDistance);
+        break;
+      case 'sol': {
+        // Posé par terre, appuyé contre le mur.
+        const tilt = 0.12;
+        this.holder.position.set(0, -bottom + 0.02, top * Math.sin(tilt) + 0.02);
+        this.holder.rotation.x = -tilt;
+        break;
+      }
+      case 'caisson': {
+        // Caisson lumineux : coffre profond, liseré lumineux autour de l'image.
+        bar(m.frameKinds.black, L.totalW + 0.05, L.totalH + 0.05, 0.12, 0, L.centerY, 0.06);
+        const z = L.frontZ + 0.004;
+        const t = 0.012;
+        bar(m.lights, L.w + 2 * t, t, 0.004, 0, L.centerY + L.h / 2 + t / 2, z);
+        bar(m.lights, L.w + 2 * t, t, 0.004, 0, L.centerY - L.h / 2 - t / 2, z);
+        bar(m.lights, t, L.h, 0.004, L.w / 2 + t / 2, L.centerY, z);
+        bar(m.lights, t, L.h, 0.004, -L.w / 2 - t / 2, L.centerY, z);
+        break;
+      }
+    }
   }
 
   /**
@@ -365,13 +521,13 @@ export class ArtPiece {
     const ledge = new THREE.Mesh(m.unitBox, m.frameKinds.wood);
     ledge.scale.set(w + overhang + 0.1, 0.022, ledgeDepth);
     ledge.position.set(0, bottom - 0.011, ledgeDepth / 2);
-    this.object.add(ledge);
+    this.holder.add(ledge);
 
     // Pivot au bas de l'objet, côté avant de la tablette ; le haut s'appuie vers le mur.
     const lean = new THREE.Group();
     lean.position.set(x0, bottom, ledgeDepth - 0.035);
     lean.rotation.x = -CONFIG.art.leanAngle;
-    this.object.add(lean);
+    this.holder.add(lean);
 
     const body = new THREE.Mesh(m.unitBox, record ? m.frameKinds.white : m.mat);
     body.scale.set(w, h, thickness);
@@ -410,7 +566,7 @@ export class ArtPiece {
     plate.scale.set(CARTEL_W, CARTEL_H, 0.008);
     plate.position.set(x, y, 0.006);
     this.cartelMesh = plate;
-    this.object.add(plate);
+    this.holder.add(plate);
   }
 
   private releaseCartel(): void {
@@ -439,10 +595,14 @@ export class ArtPiece {
     this.releaseCartel();
     this.canvasMaterial?.dispose();
     this.canvasMaterial = null;
-    this.baseTexture?.dispose();
+    if (!this.opts.borrowed) this.baseTexture?.dispose();
     this.baseTexture = null;
     this.canvasMesh = null;
     this.cartelMesh = null;
+    this.holder.clear();
+    this.holder.position.set(0, 0, 0);
+    this.holder.rotation.set(0, 0, 0);
     this.object.clear();
+    this.object.add(this.holder);
   }
 }

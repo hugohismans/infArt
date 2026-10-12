@@ -296,8 +296,11 @@ export function buildModuleGeometries(def: ModuleDef, preset: AmbiancePreset): M
     }
   }
 
-  if (def.hasFloor) {
+  const openSky = preset.surfaces.ceiling === 'ciel';
+  if (def.hasFloor && !openSky) {
     surface(ceil, def.footprint, (p) => at(p) + H, -1, ceiling.clone().multiplyScalar(def.dark ? 0.3 : 1), 1);
+  }
+  if (def.hasFloor) {
     if (def.rise === 0) surface(floor, def.footprint, () => 0, 1, col('#ffffff'), 0.5);
     else {
       const xs = def.footprint.map((p) => p.x);
@@ -308,7 +311,7 @@ export function buildModuleGeometries(def: ModuleDef, preset: AmbiancePreset): M
 
   // Bandes lumineuses : une boîte plate suspendue sous le plafond (dessous + côtés).
   const white = col('#ffffff');
-  for (const s of def.lightStrips) {
+  for (const s of openSky ? [] : def.lightStrips) {
     const width = 0.28;
     const ya = at(s.a) + H, yb = at(s.b) + H;
     const d = sub(s.b, s.a);

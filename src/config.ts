@@ -140,6 +140,14 @@ export const CONFIG = {
     fadeDuration: 0.9,
     /** Distance max (m) pour ouvrir la fiche d'une œuvre. */
     pickDistance: 7,
+    /** Distance au mur d'un chevalet, d'un cadre flottant (m). */
+    easelDistance: 0.95,
+    floatDistance: 0.75,
+    /** Accrochage serré : rangs supérieurs (hauteur du centre, hauteur max), si le mur est assez haut. */
+    salonRows: [
+      [2.95, 1.1],
+      [4.15, 0.95],
+    ] as Array<[number, number]>,
     /** Grand côté (m) tiré au hasard quand la source ne donne pas les dimensions. */
     longSide: {
       peinture: [0.45, 1.3],
@@ -182,10 +190,15 @@ export const CONFIG = {
     /** Durée des fondus d'ambiance aux transitions (s). */
     crossfade: 3,
     /** Niveau de chaque nappe pour une intensité 1 dans le profil de l'ambiance. */
-    layers: { roomTone: 0.32, hvac: 0.1, hum: 0.05, rain: 0.08 },
+    layers: { roomTone: 0.32, hvac: 0.1, hum: 0.05, rain: 0.08, wind: 0.22, water: 0.12 },
     footsteps: 0.22,
     drips: 0.35,
     birds: 0.05,
+  },
+
+  lighting: {
+    /** Intensité de la lampe torche (multipliée par `lighting.flashlight` de l'ambiance). */
+    flashlight: 9,
   },
 
   decor: {
@@ -219,6 +232,20 @@ export const CONFIG = {
     wingGap: 10,
     /** Densité d'œuvres minimale de l'ambiance pour y ouvrir une aile. */
     wingMinDensity: 0.3,
+    /** Étrangetés : probabilité par module (× 0,4 + tension), écart minimal, poids de chacune. */
+    oddityChance: 0.07,
+    oddityGap: 6,
+    /** Porte murée : distance (m) à l'entrée avant qu'elle ne se referme, hors de la vue. */
+    sealDistance: 3.5,
+    oddities: {
+      'cartel-illisible': 1,
+      'oeuvre-changeante': 1.2,
+      triple: 1,
+      'porte-muree': 0.8,
+      'veste-cafe': 1,
+      'salle-vide': 0.9,
+      'a-l-envers': 1,
+    } as Record<string, number>,
   },
 
   quality: {

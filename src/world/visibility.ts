@@ -82,7 +82,7 @@ export function computeVisibility(eyes: Vec2[], modules: Iterable<WorldModule>, 
       root.connectors.forEach((c, idx) => {
         if (pointSegmentDistance(eye, c.portal.a, c.portal.b) > maxDistance) return;
         if (!c.neighbor) {
-          markOpen(root, idx);
+          if (!c.sealed) markOpen(root, idx);
           return;
         }
         if (rootSet.has(c.neighbor.module)) return;
@@ -103,7 +103,7 @@ export function computeVisibility(eyes: Vec2[], modules: Iterable<WorldModule>, 
       if (!clipped) return;
       if (pointSegmentDistance(eye, clipped.a, clipped.b) > maxDistance) return;
       if (!c.neighbor) {
-        markOpen(module, idx);
+        if (!c.sealed) markOpen(module, idx);
         return;
       }
       const sub = coneFromSegment(eye, clipped);

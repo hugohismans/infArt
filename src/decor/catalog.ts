@@ -171,6 +171,219 @@ export const CATALOG: Record<DecorKind, DecorItem> = {
       if (ceilingStain) k.splotch(0.4, 0, ceiling - 0.008, 0.45, '#8c7a52', seed + 1, true);
     },
   },
+
+  /** Étagère de livres contre le mur, jusqu'à 2,4 m. */
+  etagere: {
+    width: 1.2, depth: 0.38, height: 2.4, low: false, flat: false,
+    build(k, rng) {
+      const wood = rng.pick(['#4a3020', '#5c3b25', '#3a2818']);
+      const spines = ['#7a2a24', '#2d4a6b', '#3d5a35', '#8a6a2c', '#5a3a5c', '#2a2a2a', '#9c8a6a', '#6b2f2f'];
+      k.box(1.2, 2.4, 0.04, 0, 1.2, 0.02, wood);
+      for (const x of [-0.58, 0.58]) k.box(0.04, 2.4, 0.36, x, 1.2, 0.18, wood);
+      for (let r = 0; r < 6; r++) {
+        const y = 0.06 + r * 0.42;
+        k.box(1.16, 0.03, 0.34, 0, y, 0.18, wood);
+        if (r === 5) break;
+        let x = -0.55;
+        while (x < 0.52) {
+          const w = rng.range(0.03, 0.07), h = rng.range(0.24, 0.36);
+          if (rng.chance(0.06)) { x += 0.08; continue; }
+          k.box(w - 0.004, h, rng.range(0.18, 0.26), x + w / 2, y + 0.015 + h / 2, 0.16, rng.pick(spines));
+          x += w;
+        }
+      }
+    },
+  },
+
+  /** Échelle de bibliothèque appuyée contre le mur. */
+  echelle: {
+    width: 0.5, depth: 0.7, height: 3, low: false, flat: false,
+    build(k) {
+      const wood = '#6e4a2c';
+      const a = 0.2, H = 3;
+      const at = (y: number) => 0.62 - y * Math.tan(a);
+      for (const x of [-0.2, 0.2]) k.box(0.05, H / Math.cos(a), 0.04, x, H / 2, at(H / 2), wood, { x: -a });
+      for (let i = 1; i <= 9; i++) {
+        const y = (i * H) / 10;
+        k.box(0.4, 0.03, 0.04, 0, y, at(y), wood);
+      }
+    },
+  },
+
+  /** Bureau avec fauteuil et écran éteint. */
+  bureau: {
+    width: 1.3, depth: 1.2, height: 1.2, low: false, flat: false,
+    build(k, rng) {
+      const top = rng.pick(['#d9d4c7', '#bfb8a8', '#8d8577']);
+      k.box(1.25, 0.03, 0.65, 0, 0.74, 0.36, top);
+      for (const x of [-0.58, 0.58]) k.box(0.04, 0.72, 0.6, x, 0.37, 0.36, '#5b5d60');
+      k.box(0.5, 0.32, 0.03, 0.1, 0.95, 0.2, '#16171a');
+      k.box(0.08, 0.16, 0.08, 0.1, 0.83, 0.22, '#2a2b2e');
+      // Fauteuil de bureau, un peu de travers.
+      const r = rng.range(-0.5, 0.5);
+      k.box(0.48, 0.07, 0.46, -0.1, 0.48, 0.95, '#2c2e33', { y: r });
+      k.box(0.46, 0.5, 0.06, -0.1 + Math.sin(r) * 0.2, 0.78, 1.15, '#2c2e33', { y: r });
+      k.cyl(0.03, 0.4, -0.1, 0.24, 0.95, '#6a6c70', 6);
+      k.cyl(0.26, 0.03, -0.1, 0.04, 0.95, '#3a3c40', 5);
+    },
+  },
+
+  /** Pilier de parking en béton, rayé jaune et noir, numéroté. */
+  pilier: {
+    width: 0.7, depth: 0.8, height: 3, low: false, flat: false,
+    build(k, rng, ceiling) {
+      const z = 0.4;
+      k.box(0.6, ceiling, 0.6, 0, ceiling / 2, z, '#8e8b85');
+      for (let i = 0; i < 4; i++) k.box(0.62, 0.12, 0.62, 0, 0.06 + i * 0.24, z, i % 2 ? '#1c1c1c' : '#d9b11e');
+      k.box(0.3, 0.3, 0.62, 0, 2.0, z, rng.pick(['#2a62a8', '#b8322a', '#2a7a3a']));
+    },
+  },
+
+  /** Cônes de chantier. */
+  cone: {
+    width: 0.6, depth: 0.55, height: 0.7, low: true, flat: false,
+    build(k, rng) {
+      const n = rng.int(1, 3);
+      for (let i = 0; i < n; i++) {
+        const x = (i - (n - 1) / 2) * 0.22;
+        k.box(0.36, 0.03, 0.36, x, 0.015, 0.3, '#2a2a2a');
+        k.cyl(0.16, 0.5, x, 0.28, 0.3, '#e8641e', 10, 0.18);
+        k.cyl(0.11, 0.07, x, 0.32, 0.3, '#f2f2f2', 10, 0.75);
+      }
+    },
+  },
+
+  /** Échafaudage contre le mur. */
+  echafaudage: {
+    width: 1.8, depth: 0.8, height: 3.2, low: false, flat: false,
+    build(k, rng, ceiling) {
+      const H = Math.min(ceiling - 0.3, 3.4);
+      const steel = '#9aa0a6';
+      for (const x of [-0.85, 0.85]) for (const z of [0.1, 0.7]) k.cyl(0.025, H, x, H / 2, z, steel, 6);
+      for (const y of [0.15, H / 2, H - 0.1]) {
+        for (const z of [0.1, 0.7]) k.cyl(0.02, 1.7, 0, y, z, steel, 6, 1, { z: Math.PI / 2 });
+        k.box(1.7, 0.04, 0.6, 0, y + 0.04, 0.4, rng.pick(['#9a7a4a', '#8a6d42']));
+      }
+      k.cyl(0.02, Math.hypot(1.7, H / 2), 0, H * 0.25, 0.1, steel, 6, 1, { z: Math.atan2(1.7, H / 2) });
+    },
+  },
+
+  /** Bâche de protection tendue sur le mur. */
+  bache: {
+    width: 1.8, depth: 0.12, height: 3, low: false, flat: true,
+    build(k, rng, ceiling) {
+      const H = Math.min(ceiling - 0.2, 3.2);
+      const color = rng.pick(['#4d6f8f', '#b9bdb6', '#6b7a5a']);
+      for (let i = 0; i < 6; i++) k.box(0.3, H, 0.02, -0.75 + i * 0.3, H / 2, 0.04 + (i % 2) * 0.03, color, { y: (i % 2 ? 1 : -1) * 0.12 });
+    },
+  },
+
+  /** Arbre (forêt) : tronc et houppier. On y accroche parfois une œuvre. */
+  arbre: {
+    width: 1.2, depth: 1.2, height: 4.5, low: false, flat: false,
+    build(k, rng) {
+      const seed = rng.int(0, 1000);
+      const dark = [new THREE.Color('#1d3320'), new THREE.Color('#25402a'), new THREE.Color('#183020'), new THREE.Color('#2c4a2c')];
+      k.cyl(0.18, 4, 0, 2, 0.6, '#3b2c22', 8, 0.6);
+      k.blob(1.1, 0, 4.2, 0.6, dark, seed);
+      k.blob(0.8, 0.5, 3.6, 0.4, dark, seed + 3);
+    },
+  },
+
+  /** Palmier (vaporwave). */
+  palmier: {
+    width: 1.4, depth: 1.4, height: 4, low: false, flat: false,
+    build(k, rng) {
+      const trunk = '#c98fb8';
+      for (let i = 0; i < 6; i++) k.cyl(0.13 - i * 0.012, 0.65, Math.sin(i * 0.4) * 0.08, 0.32 + i * 0.6, 0.7, trunk, 7, 0.9);
+      const leaf = rng.pick(['#3fd9b0', '#2ec4c4', '#59e0a0']);
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2;
+        k.box(1.3, 0.04, 0.28, Math.cos(a) * 0.6, 3.7, 0.7 + Math.sin(a) * 0.6, leaf, { y: -a, z: -0.35 });
+      }
+    },
+  },
+
+  /** Buste antique sur son socle. */
+  statue: {
+    width: 0.6, depth: 0.7, height: 1.8, low: false, flat: false,
+    build(k, rng) {
+      const marble = rng.pick(['#eae6de', '#f2efe9', '#dcd8d0']);
+      const white = [new THREE.Color(marble), new THREE.Color(marble).multiplyScalar(0.94), new THREE.Color(marble).multiplyScalar(0.88)];
+      k.box(0.45, 1.05, 0.45, 0, 0.525, 0.4, marble);
+      k.box(0.52, 0.05, 0.52, 0, 1.075, 0.4, marble);
+      k.blob(0.2, 0, 1.25, 0.4, white, rng.int(0, 99), 0.7);
+      k.cyl(0.07, 0.14, 0, 1.38, 0.4, marble, 8);
+      k.blob(0.15, 0, 1.58, 0.42, white, rng.int(0, 99), 1.15);
+    },
+  },
+
+  /** Brancard d'hôpital oublié. */
+  brancard: {
+    width: 2, depth: 0.75, height: 0.95, low: false, flat: false,
+    build(k) {
+      k.box(1.9, 0.12, 0.62, 0, 0.72, 0.4, '#e8eef0');
+      k.box(1.95, 0.03, 0.66, 0, 0.64, 0.4, '#9aa3a8');
+      for (const x of [-0.85, 0.85]) for (const z of [0.15, 0.65]) {
+        k.box(0.03, 0.6, 0.03, x, 0.33, z, '#9aa3a8');
+        k.cyl(0.05, 0.04, x, 0.05, z, '#2a2a2a', 8, 1, { z: Math.PI / 2 });
+      }
+      k.box(0.5, 0.08, 0.35, -0.7, 0.82, 0.4, '#ffffff');
+    },
+  },
+
+  /** Présentoir de cassettes vidéo. */
+  'presentoir-vhs': {
+    width: 1.3, depth: 0.45, height: 2, low: false, flat: false,
+    build(k, rng) {
+      k.box(1.3, 2, 0.4, 0, 1, 0.2, '#1b1b22');
+      const covers = ['#c8282e', '#1f4fa0', '#f2c230', '#2a8a4a', '#e6e6e6', '#7a2aa0', '#111111', '#e86a1a'];
+      for (let r = 0; r < 5; r++) {
+        const y = 0.3 + r * 0.36;
+        k.box(1.24, 0.02, 0.38, 0, y - 0.13, 0.22, '#30303a');
+        for (let i = 0; i < 9; i++) k.box(0.115, 0.21, 0.025, -0.55 + i * 0.137, y, 0.41, rng.pick(covers), { x: -0.08 });
+      }
+    },
+  },
+
+  /** Lanterne de pierre (galerie japonaise). */
+  lanterne: {
+    width: 0.6, depth: 0.7, height: 1.3, low: false, flat: false,
+    build(k) {
+      const stone = '#8d8a82';
+      k.cyl(0.24, 0.12, 0, 0.06, 0.4, stone, 6);
+      k.cyl(0.08, 0.55, 0, 0.4, 0.4, stone, 6);
+      k.box(0.36, 0.06, 0.36, 0, 0.7, 0.4, stone);
+      k.glowBox(0.22, 0.2, 0.22, 0, 0.84, 0.4, '#ffd9a0');
+      k.cyl(0.3, 0.16, 0, 1.02, 0.4, stone, 6, 0.25);
+      k.cyl(0.04, 0.1, 0, 1.15, 0.4, stone, 6);
+    },
+  },
+
+  /** Bonsaï sur une sellette basse. */
+  bonsai: {
+    width: 0.6, depth: 0.6, height: 1.0, low: false, flat: false,
+    build(k, rng) {
+      const greens = [new THREE.Color('#3d5e2e'), new THREE.Color('#4c6e36'), new THREE.Color('#2f4c25')];
+      k.box(0.5, 0.45, 0.4, 0, 0.225, 0.32, '#3a2a1c');
+      k.box(0.36, 0.08, 0.24, 0, 0.49, 0.32, '#5a6a72');
+      k.cyl(0.03, 0.25, 0.02, 0.64, 0.32, '#4a3626', 6, 0.7, { z: 0.3 });
+      k.blob(0.16, -0.06, 0.82, 0.32, greens, rng.int(0, 99), 0.6);
+      k.blob(0.12, 0.12, 0.74, 0.3, greens, rng.int(0, 99), 0.6);
+    },
+  },
+
+  /** Stalactites de glace sous la corniche (givre). */
+  stalactite: {
+    width: 1.2, depth: 0.15, height: 0.6, low: false, flat: true,
+    build(k, rng, ceiling) {
+      const n = rng.int(4, 8);
+      for (let i = 0; i < n; i++) {
+        const h = rng.range(0.15, 0.6);
+        k.cyl(rng.range(0.02, 0.05), h, -0.55 + (i / (n - 1)) * 1.1, ceiling - h / 2 - 0.05, 0.07, '#dff2ff', 6, 0.05, { x: Math.PI });
+      }
+    },
+  },
 };
 
 /** Cordon de sécurité devant une œuvre : deux poteaux en laiton, une corde rouge. */

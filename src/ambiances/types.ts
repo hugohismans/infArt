@@ -7,9 +7,32 @@ import type { ArtType } from '../../shared/artwork';
  */
 export type Rarity = 'commune' | 'rare' | 'tres-rare';
 
-export type FloorPattern = 'parquet' | 'beton' | 'moquette' | 'carrelage';
-export type WallPattern = 'uni' | 'papier-peint';
-export type CeilingStyle = 'uni' | 'dalles' | 'verriere';
+export type FloorPattern =
+  | 'parquet'
+  | 'beton'
+  | 'moquette'
+  | 'carrelage'
+  | 'marbre'
+  | 'tatami'
+  | 'lino'
+  | 'eau'
+  | 'sable'
+  | 'grille'
+  | 'nuages'
+  | 'herbe'
+  | 'neige';
+/**
+ * Motif des murs. « brume » : mur non éclairé, de la couleur du brouillard (lieux sans
+ * murs : désert, néant, rêve…). Il continue de cacher ce qui est derrière, si bien que la
+ * génération reste invisible.
+ */
+export type WallPattern = 'uni' | 'papier-peint' | 'damas' | 'shoji' | 'faience' | 'rayonnages' | 'boiserie' | 'brume';
+/** Plafond. « ciel » : pas de plafond, le ciel de l'ambiance (voir `sky`). */
+export type CeilingStyle = 'uni' | 'dalles' | 'verriere' | 'ciel' | 'peint' | 'beton';
+/** Support des œuvres : au mur (défaut), sur chevalet, flottantes, en caisson lumineux, posées au sol. */
+export type ArtMount = 'mur' | 'chevalet' | 'flottant' | 'caisson' | 'sol';
+/** Particules en suspension. */
+export type Particles = 'poussiere' | 'neige' | 'lucioles' | 'paillettes';
 /** Mobilier des salles : banc, cimaise, jardinières, rien. */
 export type Furniture = 'banc' | 'cimaise' | 'jardinieres' | 'aucun';
 /** Objets de décor posés ou accrochés (voir src/decor/catalog.ts). */
@@ -23,7 +46,22 @@ export type DecorKind =
   | 'escabeau'
   | 'caisse'
   | 'cartons'
-  | 'seau';
+  | 'seau'
+  | 'etagere'
+  | 'echelle'
+  | 'bureau'
+  | 'pilier'
+  | 'cone'
+  | 'echafaudage'
+  | 'bache'
+  | 'arbre'
+  | 'palmier'
+  | 'statue'
+  | 'brancard'
+  | 'presentoir-vhs'
+  | 'lanterne'
+  | 'bonsai'
+  | 'stalactite';
 
 /** Profil sonore d'une ambiance (intensités de 0 à 1, interpolées aux transitions). */
 export interface SoundProfile {
@@ -41,6 +79,12 @@ export interface SoundProfile {
   distantSteps: number;
   /** Réverbération (taille et dureté du lieu). */
   reverb: number;
+  /** Vent (désert, givre). */
+  wind: number;
+  /** Grillons (forêt la nuit). */
+  crickets: number;
+  /** Clapotis (eau au sol). */
+  water: number;
 }
 
 /** Style de cadres privilégié. */
@@ -87,6 +131,9 @@ export interface AmbiancePreset {
 
   fog: { color: string; near: number; far: number };
 
+  /** Ciel visible (plafond « ciel ») : dégradé du zénith à l'horizon, étoiles. */
+  sky?: { top: string; horizon: string; stars?: boolean };
+
   lighting: {
     hemiSky: string;
     hemiGround: string;
@@ -95,6 +142,10 @@ export interface AmbiancePreset {
     artGlow: number;
     /** Néons qui grésillent : probabilité de vacillement (0 = jamais). */
     flicker: number;
+    /** Lampe torche du visiteur (intensité, 0 = aucune). */
+    flashlight?: number;
+    /** Bandes lumineuses de couleur changeante (néons RVB). */
+    rgb?: boolean;
   };
 
   furniture: { small: Furniture; large: Furniture };
@@ -105,6 +156,14 @@ export interface AmbiancePreset {
     frames: FrameBias;
     /** Types d'œuvres privilégiés quand il y a le choix. */
     prefer?: ArtType[];
+    /** Support (défaut : au mur). */
+    mount?: ArtMount;
+    /** Accrochage serré, en plusieurs rangs jusqu'au plafond (palais baroque). */
+    salon?: boolean;
+    /** Couleur de la matière des cadres (givre : cadres pris dans la glace). */
+    frameTint?: string;
+    /** Part des œuvres emballées sous une bâche (musée en travaux). */
+    wrapped?: number;
   };
 
   /** Décors procéduraux tirés dans le pool de l'ambiance, avec la graine du module. */
@@ -125,6 +184,10 @@ export interface AmbiancePreset {
     lightShafts: number;
     /** Poussière en suspension (0 à 1). */
     dust: number;
+    /** Nature des particules (défaut : poussière). */
+    particles?: Particles;
+    /** Un tronc d'arbre derrière chaque œuvre (forêt de cadres). */
+    trunksBehindArt?: boolean;
   };
 
   sound: SoundProfile;

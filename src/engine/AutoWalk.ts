@@ -110,7 +110,7 @@ export class AutoWalk {
       });
     }
     // Sorties possibles : pas celle d'entrée, ni un bouchon.
-    const exits = m.connectors.map((c, i) => ({ c, i })).filter(({ c, i }) => i !== entered && c.neighbor?.module.def.kind !== 'cap');
+    const exits = m.connectors.map((c, i) => ({ c, i })).filter(({ c, i }) => i !== entered && !c.sealed && c.neighbor?.module.def.kind !== 'cap');
     this.targets = [];
 
     if (exits.length === 0 && m.def.kind === 'deadend' && m.navPoints[0]) {

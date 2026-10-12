@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { AmbiancePreset } from '../ambiances/types';
 import { Rng } from './random';
-import { makeCeilingTexture, makeFloorTexture, makeWallTexture } from './textures';
+import { FLOOR_EMISSIVE, makeCeilingTexture, makeFloorTexture, makeWallTexture } from './textures';
 import { buildModuleGeometries, type ModuleGeometries } from './modules/build';
 import type { ModuleDef } from './modules/defs';
 
@@ -15,8 +15,8 @@ import type { ModuleDef } from './modules/defs';
  */
 
 export interface PresetMaterials {
-  /** Murs (couleurs par sommet, motif éventuel : papier peint). */
-  walls: THREE.MeshLambertMaterial;
+  /** Murs (couleurs par sommet, motif éventuel : papier peint ; « brume » : non éclairés). */
+  walls: THREE.MeshLambertMaterial | THREE.MeshBasicMaterial;
   /** Plinthes, corniches, obstacles (couleurs par sommet). */
   trims: THREE.MeshLambertMaterial;
   /** Plafond (dalles, verrière lumineuse…). */
@@ -45,7 +45,46 @@ export interface PresetMaterials {
   shaft: THREE.MeshBasicMaterial;
   /** Gouttes d'eau. */
   water: THREE.MeshBasicMaterial;
+  /** Fumée (café encore chaud). */
+  steam: THREE.MeshBasicMaterial;
+  /** Sol continu jusqu'à l'horizon des lieux sans murs (texture propre : son décalage suit le visiteur). */
+  ground: THREE.MeshLambertMaterial | null;
   unitSphere: THREE.SphereGeometry;
+}
+
+/** Matières des cadres, éventuellement teintées (givre : prises dans la glace). */
+function frameMaterials(tint?: string): Record<FrameMaterialKey, THREE.MeshLambertMaterial> {
+  const base: Record<FrameMaterialKey, [string, string?]> = {
+    gold: ['#c49a3e', '#3a2808'],
+    goldDark: ['#8c6a24', '#1e1404'],
+    wood: ['#4a3320'],
+    black: ['#1a1816'],
+    white: ['#ebe7df'],
+    alu: ['#b9bcc1', '#1c1d20'],
+    vinyl: ['#111113'],
+  };
+  const t = tint ? new THREE.Color(tint) : null;
+  return Object.fromEntries(
+    Object.entries(base).map(([k, [color, emissive]]) => {
+      const c = new THREE.Color(color);
+      if (t) c.lerp(t, 0.65);
+      return [k, new THREE.MeshLambertMaterial({ color: c, ...(emissive ? { emissive } : {}) })];
+    }),
+  ) as Record<FrameMaterialKey, THREE.MeshLambertMaterial>;
+}
+
+/** Lieu sans murs (désert, néant, rêve…) : sol continu et ciel. */
+export function isOpenAir(preset: AmbiancePreset): boolean {
+  return preset.surfaces.wall === 'brume';
+}
+
+/** Sol : texturé ; lumineux pour les sols qui éclairent (grille néon, nuages). */
+function floorMaterial(preset: AmbiancePreset, extra: THREE.MeshLambertMaterialParameters, ground = false): THREE.MeshLambertMaterial {
+  const map = makeFloorTexture(preset);
+  if (ground) map.anisotropy = 8;
+  return FLOOR_EMISSIVE.has(preset.surfaces.floor)
+    ? new THREE.MeshLambertMaterial({ map, emissive: '#ffffff', emissiveMap: map, emissiveIntensity: preset.surfaces.floor === 'nuages' ? 0.25 : 0.75, ...extra })
+    : new THREE.MeshLambertMaterial({ map, ...extra });
 }
 
 export type FrameMaterialKey = 'gold' | 'goldDark' | 'wood' | 'black' | 'white' | 'alu' | 'vinyl';
@@ -139,25 +178,24 @@ export class ResourceCache {
         dip: 0,
         baseLight: new THREE.Color(pal.lightStrip),
         value: {
-          walls: new THREE.MeshLambertMaterial({ vertexColors: true, map: makeWallTexture(preset) }),
+          // Lieux sans murs : les murs sont invisibles mais remplissent la profondeur. Ils
+          // cachent donc toujours ce qui est derrière (la génération reste invisible), tandis
+          // que le sol continu et le ciel, dessinés avant, donnent l'illusion d'un paysage ouvert.
+          walls:
+            preset.surfaces.wall === 'brume'
+              ? new THREE.MeshBasicMaterial({ colorWrite: false })
+              : new THREE.MeshLambertMaterial({ vertexColors: true, map: makeWallTexture(preset) }),
           trims: new THREE.MeshLambertMaterial({ vertexColors: true }),
           // La verrière laisse passer le jour : elle n'est pas éclairée, elle éclaire.
           ceiling:
             preset.surfaces.ceiling === 'verriere'
               ? new THREE.MeshBasicMaterial({ vertexColors: true, map: makeCeilingTexture(preset) })
               : new THREE.MeshLambertMaterial({ vertexColors: true, map: makeCeilingTexture(preset) }),
-          floor: new THREE.MeshLambertMaterial({ map: makeFloorTexture(preset) }),
+          floor: floorMaterial(preset, isOpenAir(preset) ? { colorWrite: false } : {}),
+          ground: isOpenAir(preset) ? floorMaterial(preset, { depthWrite: false }, true) : null,
           lights: new THREE.MeshBasicMaterial({ color: pal.lightStrip }),
           frames: pal.frame.map((c) => new THREE.MeshLambertMaterial({ color: c })),
-          frameKinds: {
-            gold: new THREE.MeshLambertMaterial({ color: '#c49a3e', emissive: '#3a2808' }),
-            goldDark: new THREE.MeshLambertMaterial({ color: '#8c6a24', emissive: '#1e1404' }),
-            wood: new THREE.MeshLambertMaterial({ color: '#4a3320' }),
-            black: new THREE.MeshLambertMaterial({ color: '#1a1816' }),
-            white: new THREE.MeshLambertMaterial({ color: '#ebe7df' }),
-            alu: new THREE.MeshLambertMaterial({ color: '#b9bcc1', emissive: '#1c1d20' }),
-            vinyl: new THREE.MeshLambertMaterial({ color: '#111113' }),
-          },
+          frameKinds: frameMaterials(preset.art.frameTint),
           mat: new THREE.MeshLambertMaterial({ color: '#f3eee3' }),
           drape: new THREE.MeshLambertMaterial({ map: makeDrapeTexture() }),
           cartelBlank: new THREE.MeshLambertMaterial({ color: '#efe9dc' }),
@@ -186,6 +224,7 @@ export class ResourceCache {
             fog: true,
           }),
           water: new THREE.MeshBasicMaterial({ color: '#cfe3ef', transparent: true, opacity: 0.85 }),
+          steam: new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.22, depthWrite: false }),
           unitSphere: new THREE.SphereGeometry(0.5, 6, 4),
         },
       };
@@ -201,11 +240,14 @@ export class ResourceCache {
     if (--entry.refs > 0) return;
     const m = entry.value;
     m.floor.map?.dispose();
+    // (emissiveMap est la même texture que map.)
+    m.ground?.map?.dispose();
+    m.ground?.dispose();
     m.walls.map?.dispose();
     m.ceiling.map?.dispose();
     m.glow.map?.dispose();
     m.drape.map?.dispose();
-    for (const mat of [m.walls, m.trims, m.ceiling, m.floor, m.lights, m.glow, m.mat, m.drape, m.cartelBlank, m.decorGlow, m.shaft, m.water, ...m.frames, ...Object.values(m.frameKinds)]) mat.dispose();
+    for (const mat of [m.walls, m.trims, m.ceiling, m.floor, m.lights, m.glow, m.mat, m.drape, m.cartelBlank, m.decorGlow, m.shaft, m.water, m.steam, ...m.frames, ...Object.values(m.frameKinds)]) mat.dispose();
     m.unitBox.dispose();
     m.unitPlane.dispose();
     m.unitDisc.dispose();
@@ -242,7 +284,12 @@ export class ResourceCache {
    * dont `lighting.flicker` > 0 (tous les modules de l'ambiance vacillent ensemble).
    */
   animate(dt: number): void {
+    this.time += dt;
     for (const e of this.presets.values()) {
+      // Eau au sol : les reflets dérivent.
+      if (e.preset.surfaces.floor === 'eau' && e.value.floor.map) e.value.floor.map.offset.set(Math.sin(this.time * 0.13) * 0.05, this.time * 0.012);
+      // Néons RVB : la couleur tourne lentement.
+      if (e.preset.lighting.rgb) e.value.lights.color.setHSL((this.time * 0.05) % 1, 0.85, 0.6);
       const f = e.preset.lighting.flicker;
       if (f <= 0) continue;
       if (e.dip > 0) e.dip -= dt;
@@ -250,6 +297,8 @@ export class ResourceCache {
       e.value.lights.color.copy(e.baseLight).multiplyScalar(e.dip > 0 ? 0.25 + Math.random() * 0.3 : 1);
     }
   }
+
+  private time = 0;
 
   /** Statistiques pour le panneau de debug. */
   stats(): { presets: number; moduleGeometries: number } {

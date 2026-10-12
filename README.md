@@ -4,7 +4,42 @@ Un musée infini, explorable à la première personne sur PC et sur mobile. Le b
 
 **Version en ligne** : https://hugohismans.github.io/infArt/
 
-## État : phase 6, décors et son
+## État : phase 7 (première vague), toutes les ambiances et étrangetés
+
+### 20 ambiances
+Chaque ambiance reste un simple fichier de données (`src/ambiances/presets/`). Le Directeur les choisit selon leur rareté, la courbe de tension et leurs affinités. Pour en essayer une directement : `?ambiance=foret` (identifiants ci-dessous).
+
+| Famille | Ambiances |
+|---|---|
+| Musées « réels » | beaux-arts, white-cube, `baroque` (damas, marbre, plafond peint, accrochage serré jusqu'au plafond), `galerie-japonaise` (tatamis, shoji, lanternes, bonsaïs), `musee-nuit` (lampe torche, veilleuses, sorties de secours) |
+| Lieux détournés | `videoclub` (néons, cassettes, affiches en caissons lumineux), `bibliotheque` (rayonnages jusqu'au plafond, échelles) |
+| Liminal | back-rooms, `poolrooms` (faïence, eau turquoise au sol, échos), `bureaux-nuit`, `hopital`, `parking` (piliers, lumière orange, œuvres posées au sol), `travaux` (bâches, échafaudages, œuvres emballées) |
+| Onirique | serre, `reve-pastel` (nuages, cadres flottants), `vaporwave` (grille néon, couchant, statues, palmiers), `foret` (la nuit, lucioles, œuvres accrochées aux arbres), `desert` (dunes, vent, chevalets) |
+| Étrange | `neant` (blanc infini, chevalets, seulement nos pas), `givre` (neige qui tombe, cadres pris dans la glace) |
+
+**Moteur.** Les ambiances s'appuient sur de nouvelles capacités, toutes pilotées par les données :
+- **surfaces** : 13 sols (marbre, tatami, lino, eau animée, sable, grille néon, nuages, herbe, neige…), murs (damas, shoji, faïence, rayonnages, boiseries), plafonds (fresque, béton, ciel ouvert) ;
+- **lieux sans murs** (`wall: 'brume'`) :
+  - les murs y sont invisibles mais remplissent la profondeur : ils cachent toujours ce qui se génère derrière eux ;
+  - un sol continu jusqu'à l'horizon et un ciel en dégradé, avec des étoiles, donnent l'illusion d'un paysage ouvert ;
+- **lumière** : lampe torche du visiteur, néons RVB ;
+- **particules** : poussière, neige, lucioles, paillettes ;
+- **supports d'œuvres** : chevalet, cadre flottant, caisson lumineux, posé au sol, accrochage serré sur plusieurs rangs ;
+- **son** : vent, grillons, clapotis ; pas dans l'eau, le sable et la neige.
+
+### Étrangetés
+Le Directeur les saupoudre rarement, un peu plus quand la tension monte (`CONFIG.director.oddities`) :
+- un cartel écrit dans une langue inventée ;
+- une œuvre qui change dès qu'on ne la regarde plus ;
+- la même œuvre trois fois de suite ;
+- une porte murée derrière soi : une fois l'entrée hors de vue, elle devient un mur de briques et le chemin du retour disparaît ;
+- une veste oubliée et un café qui fume encore ;
+- une salle vidée, où ne restent que les clous et les traces claires des cadres ;
+- une œuvre accrochée à l'envers.
+
+Pour en essayer une : `?oddity=porte-muree`.
+
+## Phase 6, décors et son
 
 ### Décors procéduraux (`src/decor/`)
 Chaque module tire ses décors dans le pool de son ambiance (`decor` dans les presets), avec la graine du module :
@@ -173,6 +208,8 @@ Le clavier est lu par **position physique** des touches (`KeyboardEvent.code`) :
 - `&timescale=3` : accélère la simulation (tests).
 - `&api=https://…` : utilise un autre Worker (par exemple `http://localhost:8787` en local).
 - `&mix=affiche:1,couverture-livre:1` : force les types d'œuvres tirés (essais).
+- `&ambiance=foret` : démarre dans une ambiance donnée.
+- `&oddity=salle-vide` : impose une étrangeté à chaque module (essais).
 
 ## Comment ça marche
 

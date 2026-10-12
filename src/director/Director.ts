@@ -43,20 +43,38 @@ export interface Wing {
   left: number;
 }
 
+/**
+ * Étrangetés ponctuelles, saupoudrées par le Directeur (plus souvent quand la tension monte).
+ * Chacune s'applique à un module ; celui-ci l'ignore si elle ne lui convient pas.
+ */
+export type Oddity =
+  | 'cartel-illisible'
+  | 'oeuvre-changeante'
+  | 'triple'
+  | 'porte-muree'
+  | 'veste-cafe'
+  | 'salle-vide'
+  | 'a-l-envers';
+
 export interface ZoneState {
   zone: Zone;
   /** Rang du module dans la zone (0 = premier module). */
   step: number;
   wing?: Wing;
+  oddity?: Oddity;
 }
 
 const RARITY_WEIGHT: Record<Rarity, number> = { commune: 1, rare: 0.35, 'tres-rare': 0.1 };
 
 export class Director {
+  /** Essais : impose une étrangeté à chaque module (paramètre d'URL `oddity`). */
+  static debugOddity: Oddity | null = null;
+
   private zoneCount = 0;
   private wingCount = 0;
-  /** Modules créés depuis la dernière aile thématique. */
+  /** Modules créés depuis la dernière aile thématique, la dernière étrangeté. */
   private sinceWing = 0;
+  private sinceOddity = 0;
   /** Fournit un thème prêt (œuvres chargées), ou null. Renseigné par le monde. */
   claimTheme: (() => ArtTheme | null) | null = null;
   /** Dernières ambiances choisies (pour éviter les répétitions). */
@@ -104,7 +122,20 @@ export class Director {
     const state: ZoneState = !ended && !branchOff ? { zone: z, step: parent.step + 1 } : { zone: this.newZone(z, rng), step: 0 };
     const wing = this.nextWing(parent, state, rng);
     if (wing) state.wing = wing;
+    const oddity = this.nextOddity(state, rng);
+    if (oddity) state.oddity = oddity;
     return state;
+  }
+
+  private nextOddity(state: ZoneState, rng: Rng): Oddity | undefined {
+    const d = CONFIG.director;
+    if (Director.debugOddity) return Director.debugOddity;
+    this.sinceOddity++;
+    // Jamais pendant la visite rassurante du début.
+    if (state.zone.transition === 'depart' || this.sinceOddity < d.oddityGap) return undefined;
+    if (!rng.chance(d.oddityChance * (0.4 + state.zone.tension))) return undefined;
+    this.sinceOddity = 0;
+    return rng.weighted(d.oddities) as Oddity;
   }
 
   private nextWing(parent: ZoneState, state: ZoneState, rng: Rng): Wing | undefined {

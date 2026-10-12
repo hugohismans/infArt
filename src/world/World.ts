@@ -4,7 +4,7 @@ import { CONFIG } from '../config';
 import { angleOf, applyTransform, convexOverlap, pointInConvex, pointSegmentDistance, segmentsIntersect, type Segment, type Vec2 } from './math2d';
 import { makeModuleDefs, type ModuleDef } from './modules/defs';
 import { Rng } from './random';
-import { ResourceCache } from './resources';
+import { isOpenAir, ResourceCache } from './resources';
 import { computeVisibility, modulesContaining, type VisibilityResult } from './visibility';
 import { WorldModule } from './WorldModule';
 import type { ArtContext } from '../art/ArtPiece';
@@ -17,6 +17,8 @@ export interface WorldStats {
   destroyed: number;
   visible: number;
   arts: number;
+  /** Textures d'œuvres réellement accrochées (distinctes). */
+  artTextures: number;
   urgentFills: number;
   /** Modules créés alors qu'ils étaient potentiellement visibles en deçà du brouillard (doit rester à 0). */
   popIns: number;
@@ -28,6 +30,8 @@ export interface WorldStats {
   evictions: number;
   /** Impasses retirées pour retenter une génération. */
   capRetries: number;
+  /** Portes murées (étrangeté). */
+  seals: number;
   currentModule: string;
   /** Zone courante (Directeur). */
   zone: string;
@@ -53,7 +57,7 @@ export class World {
   private nextId = 0;
   private current: WorldModule | null = null;
   private lastVisibility: VisibilityResult = { modules: new Set(), openConnectors: [] };
-  private counters = { created: 0, destroyed: 0, urgentFills: 0, popIns: 0, originShifts: 0, evictions: 0, capRetries: 0 };
+  private counters = { created: 0, destroyed: 0, urgentFills: 0, popIns: 0, originShifts: 0, evictions: 0, capRetries: 0, seals: 0 };
   private warm = false;
   private popInLog: string[] = [];
 
@@ -127,7 +131,7 @@ export class World {
     //    (normalement elle est au-delà du brouillard, donc invisible à l'écran).
     for (const open of vis.openConnectors) {
       const c = open.module.connectors[open.connector];
-      if (!open.module.alive || !c || c.neighbor) continue;
+      if (!open.module.alive || !c || c.neighbor || c.sealed) continue;
       this.fill(open.module, open.connector);
       this.counters.urgentFills++;
       // Une vraie apparition à l'écran : ouverture vue depuis la position du joueur, en deçà du brouillard.
@@ -149,7 +153,7 @@ export class World {
     for (const m of this.modules) {
       if (m.graphDistance >= cfg.generationRadius) continue;
       m.connectors.forEach((c, i) => {
-        if (!c.neighbor) toFill.push({ module: m, connector: i });
+        if (!c.neighbor && !c.sealed) toFill.push({ module: m, connector: i });
       });
     }
     toFill.sort((a, b) => a.module.graphDistance - b.module.graphDistance);
@@ -257,25 +261,64 @@ export class World {
     return out;
   }
 
+  /** Ciel d'un module proche et visible (on aperçoit le ciel par une ouverture). */
+  nearbySky(): AmbiancePreset['sky'] {
+    for (const m of this.modules) if (m.preset.sky && m.visible && m.graphDistance <= 3) return m.preset.sky;
+    return undefined;
+  }
+
+  /** Ambiance sans murs du module courant ou d'un voisin visible (son sol continu se voit). */
+  nearbyOpenAir(): AmbiancePreset | null {
+    if (this.current && isOpenAir(this.current.preset)) return this.current.preset;
+    for (const m of this.modules) if (isOpenAir(m.preset) && m.visible && m.graphDistance <= 2) return m.preset;
+    return null;
+  }
+
+  /**
+   * Étrangeté « porte murée » : l'ouverture `index` de `m` est murée. Le module voisin,
+   * désormais coupé du reste et invisible, sera détruit comme les autres.
+   */
+  seal(m: WorldModule, index: number): void {
+    const c = m.connectors[index];
+    if (!c || c.sealed) return;
+    const n = c.neighbor;
+    if (n) {
+      m.clearAdapter(index);
+      n.module.clearAdapter(n.connector);
+      const other = n.module.connectors[n.connector];
+      if (other) other.neighbor = null;
+    }
+    c.neighbor = null;
+    c.sealed = true;
+    m.addSeal(index);
+    this.counters.seals++;
+  }
+
   get currentModule(): WorldModule | null {
     return this.current;
   }
 
   stats(): WorldStats {
     let arts = 0;
-    for (const m of this.modules) arts += m.artCount;
+    const held = new Set<THREE.Texture>();
+    for (const m of this.modules) {
+      arts += m.artCount;
+      for (const a of m.artPieces) a.collectTextures(held);
+    }
     return {
       modules: this.modules.size,
       created: this.counters.created,
       destroyed: this.counters.destroyed,
       visible: this.lastVisibility.modules.size,
       arts,
+      artTextures: held.size,
       urgentFills: this.counters.urgentFills,
       popIns: this.counters.popIns,
       popInLog: this.popInLog.slice(),
       originShifts: this.counters.originShifts,
       evictions: this.counters.evictions,
       capRetries: this.counters.capRetries,
+      seals: this.counters.seals,
       currentModule: this.current ? `#${this.current.id} ${this.current.def.id}` : '-',
       zone: this.current
         ? `${this.current.zone.zone.id} · ${this.current.preset.id} · ${this.current.zone.step + 1}/${this.current.zone.zone.length} · ${this.current.zone.zone.transition} · tension ${this.current.zone.zone.tension.toFixed(2)}${this.current.zone.wing ? ` · aile « ${this.current.zone.wing.theme.id} »` : ''}`
@@ -374,7 +417,7 @@ export class World {
   private fill(parent: WorldModule, connector: number): void {
     if (!parent.alive) return;
     const c = parent.connectors[connector]!;
-    if (c.neighbor) return;
+    if (c.neighbor || c.sealed) return;
     const transform = { x: c.pos.x, z: c.pos.z, angle: angleOf(c.normal) };
     const baseY = c.y;
     const rng = new Rng(this.seed, 'pick', this.nextId);

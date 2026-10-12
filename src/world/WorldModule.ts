@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { AmbiancePreset } from '../ambiances/types';
-import { ArtPiece, type ArtContext } from '../art/ArtPiece';
+import { ArtPiece, type ArtContext, type ArtOptions } from '../art/ArtPiece';
 import { CONFIG } from '../config';
 import { applyTransform, inverseTransform, rotate, type Segment, type Transform2, type Vec2 } from './math2d';
 import type { ModuleDef } from './modules/defs';
@@ -36,6 +36,33 @@ export interface Connector {
   neighbor: { module: WorldModule; connector: number } | null;
   /** Debug : module qui occupait cette ouverture avant d'être détruit. */
   detachedFrom?: string;
+  /** Ouverture murée (étrangeté) : plus jamais de voisin, elle se comporte comme un mur. */
+  sealed?: boolean;
+}
+
+/** Texture de briques, partagée par toutes les portes murées (créée à la première). */
+let brickMaterial: THREE.MeshLambertMaterial | null = null;
+function bricks(): THREE.MeshLambertMaterial {
+  if (brickMaterial) return brickMaterial;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#cfc6b8';
+  ctx.fillRect(0, 0, 128, 128);
+  const rows = 8, bw = 32, bh = 128 / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let x = -bw; x < 128 + bw; x += bw) {
+      const ox = r % 2 ? bw / 2 : 0;
+      const l = 120 + Math.floor(Math.random() * 40);
+      ctx.fillStyle = `rgb(${l + 40},${l - 10},${l - 30})`;
+      ctx.fillRect(x + ox + 1, r * bh + 1, bw - 2, bh - 2);
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  brickMaterial = new THREE.MeshLambertMaterial({ map: tex });
+  return brickMaterial;
 }
 
 /**
@@ -50,6 +77,35 @@ export class WorldModule {
   /** Contours des décors au sol (monde) : collisions et auto-marche, pas la visibilité. */
   decorWalls: Segment[] = [];
   private drips: Drip[] = [];
+  /** Café encore chaud : une fumée qui monte (repère du module). */
+  private steam: { x: number; y: number; z: number } | null = null;
+  private steamPuffs: THREE.Mesh[] = [];
+  private steamTime = 0;
+  /** Étrangeté « porte murée » : l'entrée sera murée derrière le visiteur. */
+  sealEntrance = false;
+  /** Ouverture par laquelle le visiteur est entré (pour la murer derrière lui). */
+  enteredFrom = -1;
+  private seals: THREE.Mesh[] = [];
+
+  /** Mure l'ouverture `index` (mur de briques, côté intérieur). */
+  addSeal(index: number): void {
+    const c = this.def.connectors[index];
+    if (!c) return;
+    const { width, top } = this.opening(index);
+    const geo = new THREE.PlaneGeometry(width + 0.12, top + 0.05);
+    const uv = geo.attributes.uv as THREE.BufferAttribute;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * (width + 0.12), uv.getY(i) * (top + 0.05));
+    const mesh = new THREE.Mesh(geo, bricks());
+    // Un peu en deçà de l'ouverture, face à l'intérieur du module.
+    mesh.position.set(c.pos.x - c.normal.x * 0.012, c.y + (top + 0.05) / 2, c.pos.z - c.normal.z * 0.012);
+    mesh.rotation.y = Math.atan2(-c.normal.x, -c.normal.z);
+    mesh.updateMatrix();
+    mesh.matrixAutoUpdate = false;
+    this.group.add(mesh);
+    this.group.updateMatrixWorld(true);
+    this.seals.push(mesh);
+    this.ownedGeometries.push(geo);
+  }
   private ownedGeometries: THREE.BufferGeometry[] = [];
   /** Points libres pour l'itinéraire de l'auto-marche (monde). */
   readonly navPoints: Vec2[];
@@ -126,19 +182,69 @@ export class WorldModule {
     const rng = new Rng(this.seed, 'art');
     const density = CONFIG.art.density * this.preset.art.density;
     const hung: ArtSlotDef[] = [];
-    for (const slot of this.def.artSlots) {
+    const odd = this.zone.oddity;
+    // Salle vide : les œuvres sont parties, il reste les clous et les traces des cadres.
+    const emptied = odd === 'salle-vide' && this.def.kind === 'room';
+    // La même œuvre, trois fois de suite.
+    const triple = odd === 'triple' && this.def.artSlots.length >= 3 ? artCtx?.library.take(this.preset.art.prefer) ?? null : null;
+    let tripleLeft = triple ? 3 : 0;
+    const oddIndex = rng.int(0, Math.max(0, this.def.artSlots.length - 1));
+    let index = -1;
+    const hang = (slot: ArtSlotDef, wallHeight: number) => {
+      index++;
+      const opts: ArtOptions = { ...(this.zone.wing ? { themeId: this.zone.wing.theme.id } : {}) };
+      if (odd === 'cartel-illisible') opts.scrambled = true;
+      if (odd === 'oeuvre-changeante' && index === oddIndex) opts.changeling = true;
+      if (odd === 'a-l-envers' && index === oddIndex) opts.upsideDown = true;
+      if (triple && tripleLeft > 0 && !slot.hangY) {
+        opts.ready = triple;
+        // La première pièce possède la texture ; les deux autres l'empruntent.
+        if (tripleLeft < 3) opts.borrowed = true;
+        tripleLeft--;
+      }
+      const art = new ArtPiece(slot, rng, this.preset, mats, wallHeight, artCtx, () => this.visible, opts);
+      this.arts.push(art);
+      this.group.add(art.object);
+    };
+    for (const slot of emptied ? [] : this.def.artSlots) {
       // Une impasse (ou un bouchon) expose toujours son œuvre unique.
       const always = this.def.kind === 'cap' || this.def.kind === 'deadend';
       if (!always && !rng.chance(density)) continue;
       const wallHeight = slot.wallHeight ?? this.preset.geometry.ceilingHeight * this.def.ceilingScale;
-      const art = new ArtPiece(slot, rng, this.preset, mats, wallHeight, artCtx, () => this.visible, this.zone.wing?.theme.id);
-      this.arts.push(art);
       hung.push(slot);
-      this.group.add(art.object);
+      // Accrochage serré : d'autres rangs au-dessus, jusqu'au plafond.
+      const rows = this.preset.art.salon && !slot.wallHeight ? CONFIG.art.salonRows.filter(([y, h]) => y + h / 2 + 0.25 < wallHeight) : [];
+      hang(rows.length > 0 ? { ...slot, maxHeight: CONFIG.art.salonRows[0]![0] - CONFIG.art.salonRows[0]![1] / 2 - 0.2 } : slot, wallHeight);
+      for (const [y, h] of rows) {
+        const pair = slot.maxWidth > 1.7 && rng.chance(0.7);
+        for (const side of pair ? [-1, 1] : [0]) {
+          if (!rng.chance(0.85)) continue;
+          hang({ ...slot, hangY: y, maxHeight: h, maxWidth: pair ? slot.maxWidth / 2 - 0.1 : slot.maxWidth * 0.8, offset: (side * slot.maxWidth) / 4 }, wallHeight);
+        }
+      }
     }
 
+    // Œuvre réservée pour « trois fois la même » mais jamais accrochée : on la libère.
+    if (triple && tripleLeft === 3) triple.texture.dispose();
+
     // Décors (géométries propres au module : chaque module tire les siens).
-    const decor = buildDecor(this.def, this.preset, new Rng(this.seed, 'decor'), hung);
+    const decor = buildDecor(this.def, this.preset, new Rng(this.seed, 'decor'), hung, {
+      emptied,
+      forgotten: odd === 'veste-cafe',
+    });
+    if (decor.steam) {
+      this.steam = decor.steam;
+      for (let i = 0; i < 6; i++) {
+        const puff = new THREE.Mesh(mats.unitSphere, mats.steam);
+        puff.scale.setScalar(0.001);
+        puff.matrixAutoUpdate = true;
+        this.steamPuffs.push(puff);
+        this.group.add(puff);
+      }
+    }
+    // Porte murée : l'entrée se fermera derrière le visiteur (voir World).
+    // (Jamais dans une impasse : le visiteur serait enfermé.)
+    this.sealEntrance = odd === 'porte-muree' && this.def.connectors.length >= 2 && this.def.kind !== 'sas';
     const own = (g: THREE.BufferGeometry | null, mat: THREE.Material, order = 0) => {
       if (!g) return;
       this.ownedGeometries.push(g);
@@ -166,10 +272,26 @@ export class WorldModule {
     this.group.matrixAutoUpdate = false;
     this.group.traverse((o) => (o.matrixAutoUpdate = false));
     for (const d of this.drips) d.mesh.matrixAutoUpdate = true;
+    for (const p of this.steamPuffs) p.matrixAutoUpdate = true;
+    // Éléments animés (œuvres flottantes).
+    this.group.traverse((o) => {
+      if (o.userData.animated) o.matrixAutoUpdate = true;
+    });
   }
 
   /** Décor animé : gouttes qui tombent. `onDrip` reçoit le point d'impact (monde). */
   animateDecor(dt: number, onDrip: (x: number, y: number, z: number) => void): void {
+    if (this.steam) {
+      // Fumée du café : des bouffées qui montent, grossissent et s'évanouissent.
+      this.steamTime += dt;
+      const s = this.steam;
+      this.steamPuffs.forEach((p, i) => {
+        const t = (this.steamTime * 0.45 + i / this.steamPuffs.length) % 1;
+        const r = 0.02 + t * 0.06;
+        p.scale.setScalar(r * (1 - t) * 2);
+        p.position.set(s.x + Math.sin(t * 6 + i) * 0.03 * t, s.y + t * 0.4, s.z + Math.cos(t * 5 + i) * 0.03 * t);
+      });
+    }
     const g = 9.81;
     for (const d of this.drips) {
       d.timer -= dt;
@@ -189,7 +311,7 @@ export class WorldModule {
   }
 
   get hasAnimatedDecor(): boolean {
-    return this.drips.length > 0;
+    return this.drips.length > 0 || this.steam !== null;
   }
 
   get alive(): boolean {
@@ -305,6 +427,9 @@ export class WorldModule {
     for (const g of this.ownedGeometries) g.dispose();
     this.ownedGeometries = [];
     this.drips = [];
+    this.steam = null;
+    this.steamPuffs = [];
+    this.seals = [];
     this.decorWalls = [];
     this.group.removeFromParent();
     this.group.clear();

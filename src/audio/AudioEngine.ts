@@ -1,6 +1,36 @@
 import type { FloorPattern, SoundProfile } from '../ambiances/types';
 import { CONFIG } from '../config';
 
+type StepSpec = { thump: number; thumpGain: number; click: number; clickQ: number; clickGain: number; len: number; wet: number };
+
+/** Sonorité des pas par famille de sol. */
+const STEP_SPECS: Record<'bois' | 'dur' | 'sonore' | 'mou' | 'eau' | 'crissant', StepSpec> = {
+  bois: { thump: 95, thumpGain: 0.9, click: 1900, clickQ: 0.9, clickGain: 0.55, len: 0.07, wet: 0.35 },
+  dur: { thump: 110, thumpGain: 0.5, click: 3200, clickQ: 0.7, clickGain: 0.8, len: 0.05, wet: 0.6 },
+  sonore: { thump: 120, thumpGain: 0.45, click: 4200, clickQ: 1.2, clickGain: 0.95, len: 0.045, wet: 0.7 },
+  mou: { thump: 75, thumpGain: 0.55, click: 520, clickQ: 0.6, clickGain: 0.35, len: 0.09, wet: 0.05 },
+  // Éclaboussure : un bruit long et clair.
+  eau: { thump: 70, thumpGain: 0.25, click: 1300, clickQ: 0.5, clickGain: 0.9, len: 0.22, wet: 0.5 },
+  // Sable, neige : crissement étouffé.
+  crissant: { thump: 60, thumpGain: 0.3, click: 2600, clickQ: 0.4, clickGain: 0.6, len: 0.16, wet: 0.05 },
+};
+
+const STEP_KIND: Record<FloorPattern, keyof typeof STEP_SPECS> = {
+  parquet: 'bois',
+  tatami: 'mou',
+  beton: 'dur',
+  lino: 'dur',
+  grille: 'dur',
+  carrelage: 'sonore',
+  marbre: 'sonore',
+  moquette: 'mou',
+  nuages: 'mou',
+  herbe: 'mou',
+  eau: 'eau',
+  sable: 'crissant',
+  neige: 'crissant',
+};
+
 /**
  * Son procédural (Web Audio, aucun fichier) : tout est synthétisé à partir de bruit
  * et d'oscillateurs, donc libre de droits et très léger.
@@ -19,7 +49,8 @@ export class AudioEngine {
   private dry!: GainNode;
   private wet!: GainNode;
   private reverb!: ConvolverNode;
-  private layers!: Record<'roomTone' | 'hvac' | 'hum' | 'rain', GainNode>;
+  private layers!: Record<'roomTone' | 'hvac' | 'hum' | 'rain' | 'wind' | 'water', GainNode>;
+  private nextCricket = 1;
   private humBuzz!: GainNode;
   private noise!: { white: AudioBuffer; pink: AudioBuffer; brown: AudioBuffer };
   private muted = false;
@@ -93,6 +124,9 @@ export class AudioEngine {
     this.rainDrift += dt * 0.07;
     const gust = 0.75 + 0.25 * Math.sin(this.rainDrift * 2.3) * Math.sin(this.rainDrift * 0.9 + 1);
     this.layers.rain.gain.setTargetAtTime(profile.rain * v.rain * gust, t, fade);
+    const windGust = 0.55 + 0.45 * Math.sin(this.rainDrift * 1.7 + 2) * Math.sin(this.rainDrift * 0.6);
+    this.layers.wind.gain.setTargetAtTime(profile.wind * v.wind * windGust, t, fade);
+    this.layers.water.gain.setTargetAtTime(profile.water * v.water * (0.8 + 0.2 * Math.sin(this.rainDrift * 5)), t, fade);
     // Néons : bourdonnement constant, grésillement qui suit le vacillement.
     let hum = profile.hum * v.hum;
     this.flickerTimer -= dt;
@@ -109,6 +143,11 @@ export class AudioEngine {
     if (this.nextDistantSteps <= 0) {
       this.nextDistantSteps = 10 + Math.random() * 25;
       if (Math.random() < profile.distantSteps) this.distantWalker(listener);
+    }
+    this.nextCricket -= dt;
+    if (this.nextCricket <= 0) {
+      this.nextCricket = 0.25 + Math.random() * 0.9;
+      if (Math.random() < profile.crickets) this.cricket(listener);
     }
     this.nextBird -= dt;
     if (this.nextBird <= 0) {
@@ -207,7 +246,12 @@ export class AudioEngine {
       o.start();
     }
     this.humBuzz = loop(this.noise.white, filter('bandpass', 3400, 6));
-    this.layers = { roomTone, hvac, hum, rain };
+    // Vent : bruit brun dans les médiums, qui siffle un peu.
+    const wind = loop(this.noise.brown, filter('bandpass', 420, 0.8), filter('lowpass', 1600));
+    // Clapotis : bruit rose grave et doux.
+    const water = loop(this.noise.pink, filter('lowpass', 650), filter('highpass', 120));
+    water.connect(this.reverb);
+    this.layers = { roomTone, hvac, hum, rain, wind, water };
   }
 
   /** Réponse impulsionnelle synthétique : bruit à décroissance exponentielle (stéréo). */
@@ -276,12 +320,7 @@ export class AudioEngine {
   private step(t: number, floor: FloorPattern, gain: number, out: AudioNode | null): void {
     const ctx = this.ctx!;
     const dest = out ?? this.dry;
-    const spec = {
-      parquet: { thump: 95, thumpGain: 0.9, click: 1900, clickQ: 0.9, clickGain: 0.55, len: 0.07, wet: 0.35 },
-      beton: { thump: 110, thumpGain: 0.5, click: 3200, clickQ: 0.7, clickGain: 0.8, len: 0.05, wet: 0.6 },
-      carrelage: { thump: 120, thumpGain: 0.45, click: 4200, clickQ: 1.2, clickGain: 0.95, len: 0.045, wet: 0.7 },
-      moquette: { thump: 75, thumpGain: 0.55, click: 520, clickQ: 0.6, clickGain: 0.35, len: 0.09, wet: 0.05 },
-    }[floor];
+    const spec = STEP_SPECS[STEP_KIND[floor]];
     const jitter = 0.9 + Math.random() * 0.2;
     // Talon.
     const o = ctx.createOscillator();
@@ -327,6 +366,27 @@ export class AudioEngine {
     const pace = 0.5 + Math.random() * 0.15;
     const floor = (['parquet', 'beton', 'carrelage'] as const)[Math.floor(Math.random() * 3)]!;
     for (let i = 0; i < steps; i++) this.step(ctx.currentTime + 0.1 + i * pace, floor, 0.5 * (1 - (i / steps) * 0.5), g);
+  }
+
+  /** Stridulation d'un grillon : trois impulsions aiguës. */
+  private cricket(at: { x: number; y: number; z: number }): void {
+    const ctx = this.ctx!;
+    const a = Math.random() * Math.PI * 2;
+    const p = this.panner(at.x + Math.cos(a) * 6, at.y - 1, at.z + Math.sin(a) * 6, 2);
+    const f = 4200 + Math.random() * 900;
+    let t = ctx.currentTime + 0.02;
+    for (let i = 0; i < 3; i++) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(CONFIG.audio.birds * 0.6, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+      o.connect(g).connect(p);
+      o.start(t);
+      o.stop(t + 0.035);
+      t += 0.045;
+    }
   }
 
   /** Gazouillis : quelques notes glissées. */

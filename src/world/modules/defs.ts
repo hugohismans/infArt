@@ -52,6 +52,11 @@ export interface ArtSlotDef {
   maxWidth: number;
   /** Hauteur du mur porteur (sinon : hauteur sous plafond du module). */
   wallHeight?: number;
+  /** Rang supérieur d'un accrochage serré : hauteur du centre et hauteur maximale. */
+  hangY?: number;
+  maxHeight?: number;
+  /** Décalage le long du mur (plusieurs œuvres côte à côte sur un même emplacement). */
+  offset?: number;
 }
 
 export type ModuleKind = 'straight' | 'turn' | 'junction' | 'room' | 'stairs' | 'deadend' | 'sas' | 'cap';
