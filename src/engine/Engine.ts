@@ -63,6 +63,9 @@ export class Engine {
   private readonly timeScale: number;
   private rafId = 0;
   private lastTime = 0;
+  /** Taille d'affichage pour laquelle la caméra a été réglée. */
+  private viewW = 0;
+  private viewH = 0;
   private running = false;
   private paused = false;
   private autoWalkEnabled: boolean;
@@ -250,9 +253,24 @@ export class Engine {
     this.renderer.domElement.remove();
   }
 
+  /**
+   * La taille réellement affichée du canvas a-t-elle changé ? Vérifié à chaque image :
+   * sur iOS, l'événement `resize` d'une rotation arrive avant la mise à jour de la mise
+   * en page, et l'image restait étirée aux proportions de l'ancienne orientation.
+   */
+  private checkViewSize(): void {
+    const canvas = this.renderer.domElement;
+    const w = canvas.clientWidth || this.container.clientWidth;
+    const h = canvas.clientHeight || this.container.clientHeight;
+    if (w > 0 && h > 0 && (w !== this.viewW || h !== this.viewH)) this.onResize();
+  }
+
   private readonly onResize = () => {
-    const w = this.container.clientWidth || window.innerWidth;
-    const h = this.container.clientHeight || window.innerHeight;
+    const canvas = this.renderer.domElement;
+    const w = canvas.clientWidth || this.container.clientWidth || window.innerWidth;
+    const h = canvas.clientHeight || this.container.clientHeight || window.innerHeight;
+    this.viewW = w;
+    this.viewH = h;
     this.renderer.setSize(w, h, false);
     const aspect = w / h;
     this.camera.aspect = aspect;
@@ -274,6 +292,7 @@ export class Engine {
     const realDt = Math.min(0.1, (now - this.lastTime) / 1000);
     this.lastTime = now;
 
+    this.checkViewSize();
     const t0 = performance.now();
     if (!this.paused) {
       // Sous-pas de simulation : évite les grands sauts quand la frame est longue
