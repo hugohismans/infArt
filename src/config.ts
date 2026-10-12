@@ -33,7 +33,8 @@ export const CONFIG = {
     /** Champ horizontal minimum garanti en portrait. */
     minHorizontalFov: 62,
     maxVerticalFov: 92,
-    near: 0.05,
+    /** Plan proche : trop petit, il dégrade la précision de profondeur (scintillement des décors plaqués au mur). */
+    near: 0.1,
     /** Inclinaison verticale max (haut/bas). */
     maxPitch: 85,
   },
@@ -125,6 +126,11 @@ export const CONFIG = {
     fadeDuration: 0.9,
     /** Distance max (m) pour ouvrir la fiche d'une œuvre. */
     pickDistance: 7,
+  },
+
+  quality: {
+    /** Résolution de rendu max (multiple des pixels CSS). Plus haut = plus net, plus coûteux. */
+    maxPixelRatio: { desktop: 2, mobile: 2 },
   },
 
   debug: {

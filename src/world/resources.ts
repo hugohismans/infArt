@@ -160,6 +160,10 @@ export class ResourceCache {
             opacity: preset.lighting.artGlow,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
+            // Toujours devant le mur qu'il éclaire, même avec une précision de profondeur faible (mobiles).
+            polygonOffset: true,
+            polygonOffsetFactor: -2,
+            polygonOffsetUnits: -4,
           }),
           unitBox: new THREE.BoxGeometry(1, 1, 1),
           unitPlane: new THREE.PlaneGeometry(1, 1),

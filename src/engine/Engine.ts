@@ -102,11 +102,12 @@ export class Engine {
     const mobile = isTouchDevice();
     const dpr = window.devicePixelRatio || 1;
     this.renderer = new THREE.WebGLRenderer({
-      antialias: dpr < 2,
+      // Lissage des bords (MSAA) partout, y compris sur les écrans haute densité.
+      antialias: true,
       powerPreference: 'high-performance',
       stencil: false,
     });
-    this.renderer.setPixelRatio(Math.min(dpr, mobile ? 1.5 : 2));
+    this.renderer.setPixelRatio(Math.min(dpr, CONFIG.quality.maxPixelRatio[mobile ? 'mobile' : 'desktop']));
     this.renderer.domElement.className = 'game-canvas';
     container.appendChild(this.renderer.domElement);
 

@@ -205,7 +205,7 @@ export class ArtPiece {
       w = h * ready.aspect;
     }
     if (this.canvasMesh) this.canvasMesh.material = this.mats.mat;
-    const canvas = this.makeCanvas(ready.texture, w, h, L.centerY, L.frontZ + 0.004);
+    const canvas = this.makeCanvas(ready.texture, w, h, L.centerY, L.frontZ + 0.009);
     this.fadeT = 0;
     this.canvasMaterial!.color.setScalar(0);
     this.object.add(canvas);
@@ -300,10 +300,10 @@ export class ArtPiece {
     if (style.mat > 0) {
       const mat = new THREE.Mesh(m.unitPlane, m.mat);
       mat.scale.set(w + 2 * style.mat, h + 2 * style.mat, 1);
-      mat.position.set(0, centerY, L.frontZ + 0.001);
+      mat.position.set(0, centerY, L.frontZ + 0.003);
       this.object.add(mat);
     }
-    this.object.add(this.makeCanvas(texture, w, h, centerY, L.frontZ + 0.002));
+    this.object.add(this.makeCanvas(texture, w, h, centerY, L.frontZ + 0.006));
 
     if (this.preset.lighting.artGlow > 0) {
       // Halo additif sur le mur : simule un spot sans lumière dynamique.
@@ -311,7 +311,7 @@ export class ArtPiece {
       const gw = totalW * 1.5 + 0.6;
       const gh = Math.max(totalH * 2.2, 2.2);
       glow.scale.set(gw, gh, 1);
-      glow.position.set(0, centerY + totalH / 2 + 0.35 - gh * 0.2, 0.004);
+      glow.position.set(0, centerY + totalH / 2 + 0.35 - gh * 0.2, 0.012);
       glow.renderOrder = 1;
       this.object.add(glow);
     }
@@ -334,7 +334,7 @@ export class ArtPiece {
     }
     const plate = new THREE.Mesh(this.mats.unitBox, this.mats.cartelBlank);
     plate.scale.set(CARTEL_W, CARTEL_H, 0.008);
-    plate.position.set(x, y, 0.004);
+    plate.position.set(x, y, 0.006);
     this.cartelMesh = plate;
     this.object.add(plate);
   }
