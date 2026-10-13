@@ -198,10 +198,12 @@ export const CONFIG = {
     pedestalHeight: 0.9,
     pedestalDepth: 0.5,
     /** Ailes thématiques : œuvres prêtes avant d'ouvrir une aile, et réserve visée. */
-    themeMinReady: 5,
-    themeBufferTarget: 7,
+    themeMinReady: 8,
+    themeBufferTarget: 10,
     /** Lots tentés pour un thème avant de l'abandonner. */
-    themeMaxBatches: 4,
+    themeMaxBatches: 8,
+    /** Œuvres du thème encore disponibles pour prolonger l'aile d'un module. */
+    themeModuleMin: 4,
   },
 
   audio: {

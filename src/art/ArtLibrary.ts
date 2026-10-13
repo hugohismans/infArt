@@ -155,6 +155,9 @@ export class ArtLibrary {
         this.pump();
         return art;
       }
+      // Le thème a encore des œuvres à venir : l'emplacement les attend (requestTheme)
+      // plutôt que d'accrocher une œuvre étrangère au thème.
+      if (pool && !this.poolDone(pool)) return null;
     }
     let index = this.ready.findIndex((r) => !onPedestal(r));
     if (index < 0) return null;
@@ -288,7 +291,7 @@ export class ArtLibrary {
    */
   requestTheme(themeId: string, cb: Waiter): (() => void) | null {
     const p = this.activePools.find((x) => x.theme.id === themeId);
-    if (!p || (p.exhausted && p.queued.length === 0 && p.loading === 0)) return null;
+    if (!p || this.poolDone(p)) return null;
     p.waiters.push(cb);
     p.lastTake = performance.now();
     this.pump();
@@ -298,6 +301,24 @@ export class ArtLibrary {
       const j = this.waiters.indexOf(cb);
       if (j >= 0) this.waiters.splice(j, 1);
     };
+  }
+
+  /**
+   * Une aile peut-elle continuer ? Seulement s'il reste au thème des œuvres connues (prêtes,
+   * en chargement ou en file) pour un module de plus, une fois servis les emplacements qui
+   * attendent déjà ; pendant une recherche, on accorde un module d'avance.
+   */
+  themeAlive(id: string): boolean {
+    const p = this.activePools.find((x) => x.theme.id === id);
+    if (!p) return false;
+    const min = CONFIG.art.themeModuleMin;
+    const spare = p.ready.length + p.queued.length + p.loading - p.waiters.length;
+    return spare >= min || (p.fetching && !p.exhausted && p.waiters.length < min);
+  }
+
+  /** Le thème n'a plus rien à offrir (ni en file, ni en chargement, ni à demander). */
+  private poolDone(p: ThemePool): boolean {
+    return p.exhausted && p.queued.length === 0 && p.loading === 0;
   }
 
   /**
@@ -379,9 +400,13 @@ export class ArtLibrary {
     this.pumpThemes();
   }
 
-  /** Les thèmes passent après la réserve générale : jamais d'attente à cause d'eux. */
+  /**
+   * Les thèmes passent après la réserve générale : tant qu'elle a des emplacements en
+   * attente, seules les ailes qui attendent elles aussi continuent de charger.
+   */
   private pumpThemes(): void {
-    if (this.waiters.length > 0 || this.offline) return;
+    if (this.offline) return;
+    const starving = this.waiters.length > 0;
     const now = performance.now();
     // Une aile délaissée depuis 40 s ne réclamera plus rien : on libère ses textures.
     for (const p of [...this.activePools]) {
@@ -392,8 +417,9 @@ export class ArtLibrary {
       this.dropPool(this.upcoming);
       this.upcoming = null;
     }
-    if (!this.upcoming && this.ready.length >= CONFIG.art.bufferTarget / 2) this.upcoming = this.newPool();
+    if (!this.upcoming && !starving && this.ready.length >= CONFIG.art.bufferTarget / 2) this.upcoming = this.newPool();
     for (const p of this.upcoming ? [this.upcoming, ...this.activePools] : this.activePools) {
+      if (starving && p.waiters.length === 0) continue;
       const target = CONFIG.art.themeBufferTarget + p.waiters.length;
       while (p.queued.length > 0 && p.ready.length + p.loading < target) this.loadNext(p);
       if (!p.fetching && !p.exhausted && p.queued.length === 0 && p.ready.length + p.loading < target) {

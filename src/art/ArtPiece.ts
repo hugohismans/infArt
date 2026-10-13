@@ -201,7 +201,10 @@ export class ArtPiece {
     this.pendingId = 'local';
     const ready = ctx.library.take(this.preset.art.prefer, this.opts.themeId);
     if (ready) this.arrive(ready);
-    else this.cancelWait = ctx.library.request((r) => this.arrive(r));
+    else {
+      const cb = (r: ReadyArt) => this.arrive(r);
+      this.cancelWait = (this.opts.themeId ? ctx.library.requestTheme(this.opts.themeId, cb) : null) ?? ctx.library.request(cb);
+    }
   }
 
   /** Le texte du cartel est affiché (une texture). */

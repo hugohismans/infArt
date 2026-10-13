@@ -150,6 +150,7 @@ export class World {
     // Une aile thématique ne s'ouvre que si ses œuvres sont déjà chargées.
     if (artCtx) {
       this.director.claimTheme = () => artCtx.library.claimTheme();
+      this.director.themeAlive = (id) => artCtx.library.themeAlive(id);
       this.director.wingBoost = () => (artCtx.library.interestReady ? CONFIG.interest.wingBoost : 1);
     }
   }

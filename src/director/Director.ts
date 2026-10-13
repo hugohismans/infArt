@@ -91,6 +91,8 @@ export class Director {
   requestedOddity: Oddity | null = null;
   /** Fournit un thème prêt (œuvres chargées), ou null. Renseigné par le monde. */
   claimTheme: (() => ArtTheme | null) | null = null;
+  /** Le thème d'une aile a-t-il encore de quoi remplir un module ? (Sinon l'aile s'arrête.) */
+  themeAlive: ((id: string) => boolean) | null = null;
   /** Multiplicateur de fréquence des ailes (un thème apparenté aux goûts du visiteur est prêt). */
   wingBoost: (() => number) | null = null;
   /** Dernières ambiances choisies (pour éviter les répétitions). */
@@ -188,7 +190,7 @@ export class Director {
     // Pas d'aile dans une zone presque vide (back rooms) ni pendant le départ.
     if (state.zone.ambiance.art.density < d.wingMinDensity) return undefined;
     const pw = parent.wing;
-    if (pw) return pw.left > 1 ? { ...pw, left: pw.left - 1 } : undefined;
+    if (pw) return pw.left > 1 && (this.themeAlive?.(pw.theme.id) ?? true) ? { ...pw, left: pw.left - 1 } : undefined;
     if (state.zone.transition === 'depart' && state.step < 4) return undefined;
     const boost = this.wingBoost?.() ?? 1;
     if (this.sinceWing < d.wingGap / boost || !rng.chance(Math.min(1, d.wingChance * boost))) return undefined;
