@@ -204,6 +204,8 @@ export const CONFIG = {
     themeMaxBatches: 8,
     /** Œuvres du thème encore disponibles pour prolonger l'aile d'un module. */
     themeModuleMin: 4,
+    /** Part des thèmes fixes proposés récemment (d'une visite à l'autre) qui ne reviennent pas encore. */
+    themeHistory: 0.75,
   },
 
   audio: {

@@ -5,6 +5,9 @@ import { THEMES, themesFor, type ArtTheme } from '../../shared/themes';
 import { CONFIG } from '../config';
 import type { ArtClient } from './ArtClient';
 import type { ImageLoader } from './ImageLoader';
+import { readJson, writeJson } from '../progress/storage';
+
+const THEME_HISTORY_KEY = 'galerie-infinie:themes';
 
 /** Une œuvre dont l'image est prête à être accrochée. */
 export interface ReadyArt {
@@ -98,7 +101,8 @@ export class ArtLibrary {
   private upcoming: ThemePool | null = null;
   /** Thèmes ouverts récemment (une aile peut encore réclamer des œuvres). */
   private activePools: ThemePool[] = [];
-  private recentThemes: string[] = [];
+  /** Thèmes déjà proposés, d'une visite à l'autre (les plus récents à la fin). */
+  private recentThemes: string[] = readJson<string[]>(THEME_HISTORY_KEY, []);
   /** Thèmes apparentés aux œuvres qui ont retenu le visiteur. */
   private interests = new Map<string, Interest>();
   /** Le thème en préparation vient d'être écarté pour un intérêt : le suivant en vient forcément. */
@@ -136,7 +140,6 @@ export class ArtLibrary {
     this.consecutiveFailures = 0;
     this.fetching = 0;
     this.dropAllPools();
-    this.recentThemes = [];
     this.pump();
   }
 
@@ -223,7 +226,7 @@ export class ArtLibrary {
     if (!p) {
       p = { theme, queued: [], ready: [], loading: 0, batch: 0, fetching: false, exhausted: false, active: true, dropped: false, lastTake: 0, interest: false, pinned: pin, waiters: [] };
       this.activePools.push(p);
-      this.recentThemes.push(theme.id);
+      this.rememberTheme(theme.id);
     }
     p.active = true;
     p.pinned ||= pin;
@@ -328,7 +331,7 @@ export class ArtLibrary {
   noteInterest(art: Artwork, strength: number): void {
     const now = performance.now();
     for (const { theme, weight } of themesFor(art)) {
-      if (!this.themeAvailable(theme) || this.recentThemes.includes(theme.id)) continue;
+      if (!this.themeAvailable(theme) || this.recentThemes.slice(-8).includes(theme.id)) continue;
       const cur = this.interests.get(theme.id);
       this.interests.set(theme.id, { theme, score: (cur ? this.decayed(cur, now) : 0) + strength * weight, at: now });
     }
@@ -436,11 +439,20 @@ export class ArtLibrary {
   private newPool(): ThemePool {
     // D'abord les intérêts du visiteur ; sinon un thème fixe au hasard.
     const wanted = this.pickInterest();
-    const choices = THEMES.filter((t) => !this.recentThemes.includes(t.id) && this.themeAvailable(t));
+    // Un thème fixe ne revient qu'une fois la plupart des autres proposés.
+    const available = THEMES.filter((t) => this.themeAvailable(t));
+    const memory = Math.floor(available.length * CONFIG.art.themeHistory);
+    const recent = this.recentThemes.slice(-memory);
+    const fresh = available.filter((t) => !recent.includes(t.id));
+    const choices = fresh.length > 0 ? fresh : available;
     const theme = wanted ?? choices[Math.floor(Math.random() * choices.length)] ?? THEMES[0]!;
-    this.recentThemes.push(theme.id);
-    if (this.recentThemes.length > Math.min(8, THEMES.length - 1)) this.recentThemes.shift();
+    this.rememberTheme(theme.id);
     return { theme, queued: [], ready: [], loading: 0, batch: 0, fetching: false, exhausted: false, active: false, dropped: false, lastTake: 0, interest: !!wanted, pinned: false, waiters: [] };
+  }
+
+  private rememberTheme(id: string): void {
+    this.recentThemes = [...this.recentThemes.filter((x) => x !== id), id].slice(-THEMES.length);
+    writeJson(THEME_HISTORY_KEY, this.recentThemes);
   }
 
   private dropPool(p: ThemePool): void {
