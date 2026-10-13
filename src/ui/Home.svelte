@@ -8,6 +8,7 @@
   import { collection } from '../progress/collection.svelte';
   import { ACHIEVEMENTS, progress } from '../progress/achievements.svelte';
   import { install } from './install.svelte';
+  import DevReset from './DevReset.svelte'; // TESTS : à retirer
 
   interface Props {
     onEnter: (pseudo: string | null) => void;
@@ -200,6 +201,7 @@
   </form>
 
   <p class="credits">{t('home.credits')}</p>
+  <DevReset /><!-- TESTS : à retirer -->
 </div>
 
 <style>
