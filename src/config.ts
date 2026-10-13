@@ -279,6 +279,8 @@ export const CONFIG = {
     pushLimit: 3,
     /** Une réplique attendue (pause, fiche ouverte) au-delà de ce délai est abandonnée. */
     staleAfter: 12,
+    /** Après une réplique d'histoire (ou juste avant), les commentaires attendent (s). */
+    storyHold: 4,
   },
 
   director: {

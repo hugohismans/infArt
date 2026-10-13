@@ -122,6 +122,8 @@ export class Narrator {
   private lastDebut = -Infinity;
   private lastMonde = -Infinity;
   private lastStory = -Infinity;
+  /** Fin de la dernière réplique d'histoire (s) : un commentaire laisse un temps avant de parler. */
+  private storyEnd = -Infinity;
   private visitTime = 0;
   private walkedAtStart = 0;
   private idle = 0;
@@ -1345,13 +1347,9 @@ export class Narrator {
     this.save();
   }
 
-  /** Coupe l'accueil (A01–A04) en cours ou en attente. */
+  /** Abandonne l'accueil (A01–A04) en attente ; celui en cours va jusqu'au bout. */
   private cutIntro(): void {
     this.queue = this.queue.filter((p) => p.id[0] !== 'A');
-    if (this.playing && this.playing.id[0] === 'A') {
-      this.playing.audio?.stop();
-      this.finish();
-    }
   }
 
   private updatePlayback(now: number): void {
@@ -1359,10 +1357,19 @@ export class Narrator {
     const p = this.playing;
     if (p && (p.audio ? p.audio.ended : now >= p.until)) this.finish();
     if (this.playing || !e) return;
-    // Pas pendant une pause (menu, fiche) ; une réplique trop ancienne est abandonnée.
-    this.queue = this.queue.filter((q) => ['scenario', 'texte'].includes(lineFamily(q.id)) || now - q.at < CONFIG.narrator.staleAfter);
+    // Pas pendant une pause (menu, fiche) ; une réplique trop ancienne est abandonnée
+    // (et pourra revenir plus tard : elle n'a pas été entendue).
+    const story = (q: Pending) => ['scenario', 'texte'].includes(lineFamily(q.id));
+    this.queue = this.queue.filter((q) => {
+      if (story(q) || now - q.at < CONFIG.narrator.staleAfter) return true;
+      this.memory.heard = this.memory.heard.filter((h) => h !== q.id);
+      return false;
+    });
     if (e.isPaused || document.hidden) return;
-    const next = this.queue.find((q) => q.at <= now);
+    // L'histoire d'abord : un commentaire ne s'intercale pas dans une suite de répliques
+    // (ni juste avant une réplique d'histoire attendue sous peu).
+    const storyNext = this.queue.some((q) => story(q) && q.at <= now + CONFIG.narrator.storyHold);
+    const next = this.queue.find((q) => q.at <= now && (story(q) || (!storyNext && now - this.storyEnd >= CONFIG.narrator.storyHold)));
     if (!next) return;
     this.queue.splice(this.queue.indexOf(next), 1);
     this.play(next, now);
@@ -1435,6 +1442,7 @@ export class Narrator {
 
   private finish(): void {
     const after = this.playing?.after;
+    if (this.playing && lineFamily(this.playing.id) === 'scenario') this.storyEnd = performance.now() / 1000;
     this.playing = null;
     this.current = null;
     this.audio.duck(false);
