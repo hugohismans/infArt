@@ -164,13 +164,13 @@ export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hun
 
   // Veste oubliée et café encore chaud : sur le banc s'il y en a un, sinon sur une chaise.
   if (odd.forgotten) {
-    const jacket = rng.pick(['#2a2f3a', '#5a3a2a', '#3a4a3a', '#7a1f24']);
+    // Tissu, revers (plus sombre), doublure : des teintes qui se détachent de la chaise (pas de rouge : l'assise l'est souvent).
+    const jacket = rng.pick(JACKETS);
     const bench = def.obstacles.find((o) => o.kind === 'bench');
     if (bench) {
       const y = bench.height;
       k.place(bench.center.x, 0, bench.center.z, 0);
-      k.box(0.46, 0.05, 0.42, -0.35, y + 0.025, 0, jacket, { y: 0.3 });
-      k.box(0.12, 0.3, 0.1, -0.1, y - 0.12, 0.25, jacket, { z: 0.2 });
+      jacketFolded(k, jacket, -0.3, y);
       k.cyl(0.035, 0.1, 0.45, y + 0.05, 0.05, '#f2efe8', 10, 1.15);
       out.steam = { x: bench.center.x + 0.45, y: y + 0.11, z: bench.center.z + 0.05 };
     } else {
@@ -181,8 +181,7 @@ export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hun
         placeOnWall(spot.pos, def.floorAt(spot.pos), spot.n);
         CATALOG.chaise.build(k, rng, ceiling, true);
         // Veste sur le dossier, gobelet sur l'assise.
-        k.box(0.48, 0.42, 0.06, 0, 0.72, 0.07, jacket);
-        k.box(0.5, 0.06, 0.12, 0, 0.94, 0.09, jacket);
+        jacketOnChair(k, jacket);
         k.cyl(0.035, 0.1, 0.1, 0.545, 0.32, '#f2efe8', 10, 1.15);
         const p = { x: spot.pos.x + spot.n.x * 0.32 - spot.n.z * 0.1, z: spot.pos.z + spot.n.z * 0.32 + spot.n.x * 0.1 };
         out.steam = { x: p.x, y: def.floorAt(spot.pos) + 0.6, z: p.z };
@@ -275,4 +274,51 @@ export function buildDecor(def: ModuleDef, preset: AmbiancePreset, rng: Rng, hun
   }
 
   return { ...out, ...k.build() };
+}
+
+/** Veste oubliée : tissu, revers, doublure. */
+const JACKETS: Array<[string, string, string]> = [
+  ['#b07a3c', '#8a5a28', '#e6dcc6'], // camel
+  ['#3e6694', '#2c4b70', '#d8d2c4'], // jean
+  ['#6f7d3c', '#535e2b', '#d9cfb0'], // kaki
+  ['#c9c1ad', '#a69d86', '#7a2a2a'], // trench
+];
+
+/**
+ * Veste jetée sur le dossier d'une chaise (celle du catalogue : dossier en z = 0,1, haut à
+ * 0,95 m) : épaules et col par-dessus, devant ouvert sur la doublure, revers en V, deux
+ * boutons, des poches, et les manches qui pendent de chaque côté.
+ */
+function jacketOnChair(k: Kit, [cloth, lapel, lining]: [string, string, string]): void {
+  const top = 0.975;
+  // Épaules arrondies par-dessus le dossier, qui retombent de chaque côté.
+  k.box(0.3, 0.06, 0.13, 0, top, 0.1, cloth);
+  for (const sx of [-1, 1]) k.box(0.15, 0.06, 0.13, sx * 0.2, top - 0.03, 0.1, cloth, { z: sx * -0.4 });
+  // Col relevé, derrière.
+  k.box(0.18, 0.07, 0.035, 0, top + 0.04, 0.06, lapel, { x: -0.25 });
+  // Dos qui pend derrière le dossier.
+  k.box(0.46, 0.44, 0.025, 0, top - 0.25, 0.07, cloth);
+  // Devant : doublure au milieu, deux pans, revers en V.
+  k.box(0.14, 0.24, 0.01, 0, top - 0.15, 0.125, lining);
+  for (const sx of [-1, 1]) {
+    k.box(0.2, 0.42, 0.03, sx * 0.115, top - 0.24, 0.135, cloth, { z: sx * 0.05 });
+    k.box(0.055, 0.24, 0.012, sx * 0.062, top - 0.13, 0.153, lapel, { z: sx * 0.32 });
+    // Poche à rabat.
+    k.box(0.1, 0.022, 0.012, sx * 0.13, top - 0.33, 0.153, lapel);
+    // Manche : du bout de l'épaule jusque sous l'assise, poignet en doublure.
+    k.cyl(0.048, 0.48, sx * 0.29, top - 0.29, 0.12, cloth, 8, 0.85, { z: sx * 0.1, x: 0.06 });
+    k.cyl(0.042, 0.035, sx * 0.315, top - 0.54, 0.105, lining, 8);
+  }
+  // Boutons, là où les pans se croisent.
+  for (const y of [top - 0.3, top - 0.39]) k.box(0.028, 0.028, 0.012, 0.012, y, 0.155, '#e8dfc8');
+}
+
+/** Veste pliée en deux sur un banc : col et revers dessus, une manche qui pend. */
+function jacketFolded(k: Kit, [cloth, lapel, lining]: [string, string, string], x: number, y: number): void {
+  k.box(0.44, 0.06, 0.36, x, y + 0.03, 0, cloth, { y: 0.25 });
+  k.box(0.16, 0.012, 0.22, x + 0.02, y + 0.066, 0.02, lining, { y: 0.25 });
+  for (const sx of [-1, 1]) k.box(0.05, 0.012, 0.2, x + 0.02 + sx * 0.07, y + 0.07, 0.02, lapel, { y: 0.25 + sx * 0.3 });
+  k.box(0.2, 0.05, 0.05, x - 0.05, y + 0.08, -0.15, lapel, { y: 0.25 });
+  k.cyl(0.045, 0.34, x + 0.24, y - 0.13, 0.12, cloth, 8, 0.85, { z: 0.25 });
+  k.cyl(0.04, 0.03, x + 0.28, y - 0.3, 0.12, lining, 8);
 }
