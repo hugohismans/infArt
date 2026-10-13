@@ -526,7 +526,8 @@ export class ArtPiece {
       // Le point le plus lumineux (42 % du haut du halo) se trouve 35 cm au-dessus du cadre.
       glow.position.set(0, centerY + totalH / 2 + 0.35 - gh * 0.08, 0.012);
       glow.renderOrder = 1;
-      this.holder.add(glow);
+      // (Sur le mur lui-même, même quand le tableau en est décollé : caisson.)
+      this.object.add(glow);
     }
 
     if (!this.slot.hangY) this.addCartel(L);
@@ -652,8 +653,11 @@ export class ArtPiece {
       }
       case 'caisson': {
         // Caisson lumineux : coffre profond, liseré lumineux autour de l'image.
-        bar(m.frameKinds.black, L.totalW + 0.05, L.totalH + 0.05, 0.12, 0, L.centerY, 0.06);
-        const z = L.frontZ + 0.004;
+        // Le tableau (et son liseré) est posé sur la face avant du coffre.
+        const depth = 0.12;
+        bar(m.frameKinds.black, L.totalW + 0.05, L.totalH + 0.05, depth, 0, L.centerY, depth / 2);
+        this.holder.position.set(0, 0, depth);
+        const z = depth + L.frontZ + 0.004;
         const t = 0.012;
         bar(m.lights, L.w + 2 * t, t, 0.004, 0, L.centerY + L.h / 2 + t / 2, z);
         bar(m.lights, L.w + 2 * t, t, 0.004, 0, L.centerY - L.h / 2 - t / 2, z);
