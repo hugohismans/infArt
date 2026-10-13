@@ -217,6 +217,10 @@ export class Narrator {
     const deviceChanged = m.device !== null && m.device !== device;
     m.device = device;
     engine.world.signPlanner = (mod, exits) => this.plan(mod, exits);
+    engine.world.avoidDeadEnds = () => {
+      const m = this.m;
+      return this.active && (m.sortie.stage === 'chemin' || m.sortie.stage === 'ignore' || m.atelier.stage === 'quete' || m.autre.stage === 'poursuite');
+    };
     this.walkedAtStart = m.walked;
     if (this.active) {
       if (hub && m.story === 6 && !m.finaleDone) {
@@ -749,7 +753,7 @@ export class Narrator {
     }
     if (cur.special === 'sortie' && this.m.sortie.stage === 'chemin') {
       if (dist < 3.5) this.say('S18');
-      if (dist < 0.7) this.sortieTraversee();
+      if (dist < 0.7 || cur.reachedSpecial(pos)) this.sortieTraversee();
     }
   }
   private atelierLook = 0;

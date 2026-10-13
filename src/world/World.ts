@@ -134,6 +134,8 @@ export class World {
    * (aucun panneau), ou undefined (panneaux ordinaires vers un thème prêt).
    */
   signPlanner: ((m: WorldModule, exits: number[]) => SignPlan | null | undefined) | null = null;
+  /** Le visiteur suit un chemin fléché (voix off) : pas d'impasse tirée au sort en route. */
+  avoidDeadEnds: (() => boolean) | null = null;
   /** Panneaux d'orientation aux carrefours (désactivés pour les essais). */
   signsEnabled = true;
   private sinceSign = 0;
@@ -561,6 +563,8 @@ export class World {
       if (turn !== 0 && turn === t1) weights[id] = 0;
       else if (turn !== 0 && turn === t2) weights[id]! *= 0.35;
     }
+
+    if (this.avoidDeadEnds?.()) weights['deadend'] = 0;
 
     // Transition « seuil » : la zone commence par un sas.
     const forceSas = zone.step === 0 && zone.zone.transition === 'seuil';

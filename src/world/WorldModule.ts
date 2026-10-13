@@ -129,6 +129,16 @@ export class WorldModule {
   get specialPoint(): Vec2 | null {
     return this.specialLocal ? applyTransform(this.transform, this.specialLocal) : null;
   }
+
+  /**
+   * Le point `p` (monde) est-il au niveau de l'objet mis en scène, ou au-delà en venant de
+   * l'entrée ? (Un visiteur pressé franchit l'encadrement de la sortie entre deux contrôles.)
+   */
+  reachedSpecial(p: Vec2): boolean {
+    if (!this.specialLocal) return false;
+    const l = inverseTransform(this.transform, p);
+    return l.z >= this.specialLocal.z - 0.2 && Math.abs(l.x - this.specialLocal.x) < 1.5;
+  }
   private signParts: Array<{ dispose(): void }> = [];
   /** Panneaux construits (pour pouvoir les décrocher). */
   private signObjects: Array<{ object: THREE.Object3D; dispose(): void }> = [];
