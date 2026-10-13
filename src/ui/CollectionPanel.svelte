@@ -118,18 +118,20 @@
     z-index: 18;
     position: fixed;
     inset: 0;
-    display: grid;
-    place-items: center;
     background: rgba(5, 4, 3, 0.6);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
   }
+  /* Marges explicites plutôt qu'une hauteur en vh ou en % : Safari (iPhone) les résolvait
+     mal et le panneau sortait de l'écran par le bas. */
   .panel {
-    position: relative;
-    width: 100%;
+    position: absolute;
+    top: max(12px, env(safe-area-inset-top), 7vh);
+    bottom: max(12px, env(safe-area-inset-bottom), 7vh);
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    margin: 0 auto;
     max-width: 920px;
-    height: min(86vh, 100%);
     display: flex;
     flex-direction: column;
     background: var(--panel);
