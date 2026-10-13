@@ -34,7 +34,7 @@ export interface Zone {
   /** Tension visée au moment où la zone a été choisie. */
   tension: number;
   /** Zone mise en scène par la voix off : « sortie » = le chemin vers l'encadrement dans le néant. */
-  special?: 'sortie';
+  special?: 'sortie' | 'bouquet';
 }
 
 /** Aile thématique : indépendante des zones, elle peut traverser une transition. */
@@ -89,6 +89,8 @@ export class Director {
    * suivants jusqu'à ce qu'elle la retire.
    */
   requestedOddity: Oddity | null = null;
+  /** Une scène de la voix off se joue : ni étrangeté, ni aile, ni rupture. */
+  calm = false;
   /** Fournit un thème prêt (œuvres chargées), ou null. Renseigné par le monde. */
   claimTheme: (() => ArtTheme | null) | null = null;
   /** Le thème d'une aile a-t-il encore de quoi remplir un module ? (Sinon l'aile s'arrête.) */
@@ -135,7 +137,7 @@ export class Director {
     const d = CONFIG.director;
     const pool: Record<string, number> = {};
     for (const a of Object.values(this.ambiances)) {
-      if (a.id === this.start.id || a.rarity === 'tres-rare') continue;
+      if (a.id === this.start.id || a.rarity === 'tres-rare' || a.scripted) continue;
       pool[a.id] = RARITY_WEIGHT[a.rarity];
     }
     const out: ZoneState[] = [];
@@ -176,6 +178,7 @@ export class Director {
     const d = CONFIG.director;
     if (Director.debugOddity) return Director.debugOddity;
     if (this.requestedOddity) return this.requestedOddity;
+    if (this.calm) return undefined;
     this.sinceOddity++;
     // Jamais pendant la visite rassurante du début.
     if (state.zone.transition === 'depart' || this.sinceOddity < d.oddityGap) return undefined;
@@ -191,6 +194,7 @@ export class Director {
     if (state.zone.ambiance.art.density < d.wingMinDensity) return undefined;
     const pw = parent.wing;
     if (pw) return pw.left > 1 && (this.themeAlive?.(pw.theme.id) ?? true) ? { ...pw, left: pw.left - 1 } : undefined;
+    if (this.calm) return undefined;
     if (state.zone.transition === 'depart' && state.step < 4) return undefined;
     const boost = this.wingBoost?.() ?? 1;
     if (this.sinceWing < d.wingGap / boost || !rng.chance(Math.min(1, d.wingChance * boost))) return undefined;
@@ -256,7 +260,7 @@ export class Director {
 
     const weights: Record<string, number> = {};
     for (const a of Object.values(this.ambiances)) {
-      if (a.id === prev.ambiance.id) continue;
+      if (a.id === prev.ambiance.id || a.scripted) continue;
       const affinity = prev.ambiance.affinities?.[a.id] ?? 1;
       const fit = Math.exp(-((a.tension - target) ** 2) / 0.12);
       const repeat = recent.includes(a.id) ? 0.35 : 1;
@@ -270,7 +274,7 @@ export class Director {
     // Plus le saut de tension est grand, plus la rupture est probable.
     const jump = Math.abs(ambiance.tension - prev.ambiance.tension);
     const forced = ambiance.transition ?? prev.ambiance.transition;
-    const transition = forced ?? rng.weighted({
+    const transition = this.calm ? 'progressive' : forced ?? rng.weighted({
       progressive: d.transitionWeights.progressive,
       seuil: d.transitionWeights.seuil,
       rupture: d.transitionWeights.rupture * (jump > 0.5 ? 2 : 0.5),

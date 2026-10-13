@@ -385,6 +385,121 @@ export class AudioEngine {
 
   private listenerAt = { x: 0, y: 0, z: 0 };
 
+  /** Un banc de néons coupé : le claquement du disjoncteur, et la salle qui résonne. */
+  clack(): void {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const t = ctx.currentTime + 0.01;
+    const n = ctx.createBufferSource();
+    n.buffer = this.noise.white;
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 2600;
+    f.Q.value = 1.2;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.9, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    n.connect(f).connect(g);
+    g.connect(this.dry);
+    const w = ctx.createGain();
+    w.gain.value = 0.8;
+    g.connect(w).connect(this.reverb);
+    n.start(t, Math.random() * 2);
+    n.stop(t + 0.08);
+    const o = ctx.createOscillator();
+    const og = ctx.createGain();
+    o.frequency.setValueAtTime(120, t);
+    o.frequency.exponentialRampToValueAtTime(55, t + 0.12);
+    og.gain.setValueAtTime(0.5, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    o.connect(og).connect(this.dry);
+    o.start(t);
+    o.stop(t + 0.2);
+  }
+
+  /** Feu d'artifice : le départ d'une fusée (un sifflement qui monte). */
+  fireworkLaunch(x: number, y: number, z: number): void {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const t = ctx.currentTime + this.delayTo(x, y, z);
+    const p = this.farPanner(x, y, z);
+    const n = ctx.createBufferSource();
+    n.buffer = this.noise.white;
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 6;
+    f.frequency.setValueAtTime(900, t);
+    f.frequency.exponentialRampToValueAtTime(3200, t + 1.1);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.35, t + 0.3);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+    n.connect(f).connect(g).connect(p);
+    n.start(t, Math.random() * 2);
+    n.stop(t + 1.3);
+  }
+
+  /** Feu d'artifice : la détonation (en retard sur la lumière, comme en vrai), puis le crépitement. */
+  fireworkBurst(x: number, y: number, z: number, big: boolean): void {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const t = ctx.currentTime + this.delayTo(x, y, z);
+    const p = this.farPanner(x, y, z);
+    // Le coup sourd.
+    const o = ctx.createOscillator();
+    const og = ctx.createGain();
+    o.frequency.setValueAtTime(big ? 70 : 90, t);
+    o.frequency.exponentialRampToValueAtTime(32, t + 0.5);
+    og.gain.setValueAtTime(big ? 1.4 : 1, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+    o.connect(og).connect(p);
+    o.start(t);
+    o.stop(t + 0.75);
+    // Le souffle de l'explosion.
+    const n = ctx.createBufferSource();
+    n.buffer = this.noise.brown;
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(1800, t);
+    f.frequency.exponentialRampToValueAtTime(200, t + 1.2);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(big ? 1.6 : 1.1, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+    n.connect(f).connect(g).connect(p);
+    n.start(t, Math.random() * 2);
+    n.stop(t + 1.7);
+    // Crépitement : une poignée de petits claquements.
+    const crackles = big ? 14 : 6;
+    for (let i = 0; i < crackles; i++) {
+      const c = ctx.createBufferSource();
+      c.buffer = this.noise.white;
+      const cf = ctx.createBiquadFilter();
+      cf.type = 'highpass';
+      cf.frequency.value = 2500;
+      const cg = ctx.createGain();
+      const ct = t + 0.5 + Math.random() * 1.3;
+      cg.gain.setValueAtTime(0.25 + Math.random() * 0.3, ct);
+      cg.gain.exponentialRampToValueAtTime(0.0001, ct + 0.02);
+      c.connect(cf).connect(cg).connect(p);
+      c.start(ct, Math.random() * 2);
+      c.stop(ct + 0.03);
+    }
+  }
+
+  /** Temps que met le son pour parcourir la distance jusqu'au visiteur. */
+  private delayTo(x: number, y: number, z: number): number {
+    const l = this.listenerAt;
+    return Math.min(0.4, Math.hypot(x - l.x, y - l.y, z - l.z) / 343);
+  }
+
+  /** Source lointaine : portée plus grande que les sons du musée. */
+  private farPanner(x: number, y: number, z: number): PannerNode {
+    const p = this.panner(x, y, z, 25);
+    p.maxDistance = 300;
+    p.rolloffFactor = 0.6;
+    return p;
+  }
+
   /** Des pas, au loin (voix off : l'autre visiteur). */
   footsteps(): void {
     if (this.ctx?.state === 'running') this.distantWalker(this.listenerAt);

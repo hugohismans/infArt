@@ -21,6 +21,7 @@ import { QualityGovernor, type QualitySetting } from './Quality';
 import { ParticleSystem } from '../decor/dust';
 import { Sky } from './Sky';
 import { Ground } from './Ground';
+import { Fireworks } from './Fireworks';
 
 const DEG = Math.PI / 180;
 
@@ -125,6 +126,20 @@ export class Engine {
   private readonly ground: Ground;
   /** Lampe torche (ambiances plongées dans le noir) : toujours présente, éteinte par défaut. */
   private readonly flashlight = new THREE.SpotLight('#fff1d6', 0, 22, 0.52, 0.55, 1.2);
+  /** Lampe imposée par la voix off (0..1 ; null : celle de l'ambiance). */
+  torch: number | null = null;
+  /** Intensité relative de la lampe en ce moment (0..1). */
+  private torchNow = 0;
+  /**
+   * Lumière du musée (voix off) : 1 = normale, 0 = noir complet. Appliquée à l'exposition du
+   * rendu, donc à tout : murs, néons, ciel, tableaux (qui ne reprennent leur éclat que dans
+   * le faisceau de la lampe).
+   */
+  private lightNow = 1;
+  private lightTarget = 1;
+  private lightRate = 0;
+  /** Le bouquet final. */
+  readonly fireworks = new Fireworks();
   /** Module précédent (pour savoir par où le visiteur est entré). */
   private previousModule: WorldModule | null = null;
   private readonly portalPoint = new THREE.Vector3();
@@ -168,12 +183,16 @@ export class Engine {
     });
     this.renderer.setPixelRatio(Math.min(dpr, CONFIG.quality.levels.haut.pixelRatio));
     this.renderer.domElement.className = 'game-canvas';
+    // Exposition linéaire (identique au rendu sans tone mapping à 1) : sert à éteindre le musée.
+    this.renderer.toneMapping = THREE.LinearToneMapping;
+    this.renderer.toneMappingExposure = 1;
     container.appendChild(this.renderer.domElement);
 
     const amb = options.ambiance;
     this.background = new THREE.Color(amb.palette.background);
-    this.scene.background = this.background;
+    this.scene.background = this.shownBackground.copy(this.background);
     this.fog = new THREE.Fog(amb.fog.color, amb.fog.near, amb.fog.far);
+    this.fogBase.set(amb.fog.color);
     this.scene.fog = this.fog;
     this.hemi = new THREE.HemisphereLight(amb.lighting.hemiSky, amb.lighting.hemiGround, amb.lighting.hemiIntensity);
     this.scene.add(this.hemi);
@@ -196,6 +215,9 @@ export class Engine {
     this.scene.add(this.ground.mesh);
     // La lampe suit la caméra ; sa cible est placée devant à chaque image.
     this.scene.add(this.flashlight, this.flashlight.target);
+    this.scene.add(this.fireworks.points);
+    this.fireworks.onLaunch = (x, y, z) => options.audio?.fireworkLaunch(x, y, z);
+    this.fireworks.onBurst = (x, y, z, big) => options.audio?.fireworkBurst(x, y, z, big);
     const start = this.world.init(options.startHub ?? false, options.hub ?? {});
     this.player.position = start.position;
     this.player.yaw = start.yaw;
@@ -314,7 +336,7 @@ export class Engine {
     const p = m.preset;
     const k = snap ? 1 : 1 - Math.exp(-dt * CONFIG.director.envLerpRate);
     this.background.lerp(this.tmpColor.set(p.palette.background), k);
-    this.fog.color.lerp(this.tmpColor.set(p.fog.color), k);
+    this.fogBase.lerp(this.tmpColor.set(p.fog.color), k);
     this.fog.near += (p.fog.near - this.fog.near) * k;
     this.fog.far += (p.fog.far - this.fog.far) * k;
     this.hemi.color.lerp(this.tmpColor.set(p.lighting.hemiSky), k);
@@ -365,11 +387,21 @@ export class Engine {
     this.particles.update(dt, this.camera.position, this.player.floorY, p.decor.particles ?? 'poussiere', p.decor.dust);
     const k = 1 - Math.exp(-dt * CONFIG.director.envLerpRate);
     this.sky.update(this.camera.position, this.camera.far * 0.92, p.sky ?? this.world.nearbySky(), this.background, k);
-    this.ground.update(this.world.nearbyOpenAir(), this.camera.position, this.player.floorY, this.camera.far * 2.2);
+    const open = this.world.nearbyOpenAir();
+    this.ground.update(open?.ground === false ? null : open, this.camera.position, this.player.floorY, this.camera.far * 2.2);
     this.camera.getWorldDirection(this.forward);
-    const torch = p.lighting.flashlight ?? 0;
-    this.flashlight.intensity += (torch * CONFIG.lighting.flashlight - this.flashlight.intensity) * Math.min(1, dt * 3);
-    this.flashlight.visible = this.flashlight.intensity > 0.01;
+    // Lampe : celle de l'ambiance, ou celle que la voix off allume (et éteint d'un coup).
+    let torch = this.torch ?? p.lighting.flashlight ?? 0;
+    // La lampe qui meurt : elle grésille, puis s'éteint pour de bon.
+    if (this.flickerLeft > 0) {
+      this.flickerLeft -= dt;
+      torch = this.flickerLeft <= 0 ? 0 : Math.random() < 0.45 ? Math.random() * 0.3 : torch;
+      if (this.flickerLeft <= 0) this.torch = 0;
+    }
+    this.torchNow = this.torch !== null ? torch : this.torchNow + (torch - this.torchNow) * Math.min(1, dt * 3);
+    // Dans le noir, la lampe garde son éclat (l'exposition l'atténuerait comme le reste).
+    this.flashlight.intensity = (this.torchNow * CONFIG.lighting.flashlight) / Math.max(0.04, this.lightNow);
+    this.flashlight.visible = this.torchNow > 0.01;
     if (this.flashlight.visible) {
       this.flashlight.position.copy(this.camera.position);
       this.flashlight.position.y -= 0.15;
@@ -388,6 +420,37 @@ export class Engine {
     }
   }
 
+  /** Lumière du musée : rampe vers la cible, exposition, éclat des toiles proches. */
+  private updateLight(dt: number): void {
+    if (this.lightNow !== this.lightTarget && this.lightRate > 0) {
+      const step = this.lightRate * dt;
+      this.lightNow = Math.abs(this.lightTarget - this.lightNow) <= step ? this.lightTarget : this.lightNow + Math.sign(this.lightTarget - this.lightNow) * step;
+    }
+    this.renderer.toneMappingExposure = this.lightNow;
+    // (Le fond de la scène n'est pas soumis à l'exposition : on l'éteint à la main.)
+    this.shownBackground.copy(this.background).multiplyScalar(this.lightNow);
+    // (Le brouillard non plus : Three.js l'applique après l'exposition.)
+    this.fog.color.copy(this.fogBase).multiplyScalar(this.lightNow);
+    const dark = this.lightNow < 0.999;
+    if (!dark && !this.wasDark) return;
+    this.wasDark = dark;
+    const p = new THREE.Vector3();
+    for (const m of this.world.modules) {
+      if (m.graphDistance > 3) continue;
+      for (const art of m.artPieces) {
+        if (!dark) art.setLight(1);
+        else {
+          art.object.getWorldPosition(p);
+          p.y += 1.5;
+          art.setLight(this.artLight(p));
+        }
+      }
+    }
+  }
+  private wasDark = false;
+  private readonly shownBackground = new THREE.Color();
+  private readonly fogBase = new THREE.Color();
+
   private openAt(ndcX: number, ndcY: number): void {
     if (this.paused) return;
     const art = this.pick(ndcX, ndcY);
@@ -398,6 +461,7 @@ export class Engine {
   returnToStart(opts: HubOptions = {}): void {
     // (Un passage au noir masque le changement.)
     this.onRupture?.('noir');
+    this.fireworks.clear();
     const start = this.world.restart(opts);
     this.player.position = start.position;
     this.player.yaw = start.yaw;
@@ -407,6 +471,64 @@ export class Engine {
     this.world.markWarm();
     this.autoWalk.reset();
     this.previousModule = null;
+  }
+
+  /** Reconstruit le monde autour du visiteur, sans fondu (il fait déjà noir). */
+  rebuildAround(opts: HubOptions): void {
+    const start = this.world.restart(opts);
+    this.player.position = start.position;
+    this.player.yaw = start.yaw;
+    this.player.pitch = 0;
+    this.player.floorY = 0;
+    for (let i = 0; i < 40; i++) this.world.update(this.player.position);
+    this.world.markWarm();
+    this.autoWalk.reset();
+    this.previousModule = null;
+  }
+
+  /** La lampe grésille pendant `seconds`, puis s'éteint (voix off). */
+  flickerTorch(seconds: number): void {
+    this.flickerLeft = seconds;
+  }
+  private flickerLeft = 0;
+
+  /** Lumière du musée : `level` (0..1), tout de suite ou en `seconds` secondes. */
+  setLight(level: number, seconds = 0): void {
+    this.lightTarget = level;
+    if (seconds <= 0) this.lightNow = level;
+    this.lightRate = seconds > 0 ? Math.abs(level - this.lightNow) / seconds : 0;
+  }
+
+  get light(): number {
+    return this.lightNow;
+  }
+
+  /** Le soleil se couche dans cette direction (monde). */
+  setSunDirection(x: number, z: number): void {
+    this.sky.setSunDirection(x, z);
+  }
+
+  /** Position et direction du regard (monde). */
+  get eye(): { position: THREE.Vector3; forward: THREE.Vector3 } {
+    return { position: this.camera.position, forward: this.forward };
+  }
+
+  /**
+   * Éclat d'une toile dans le noir : la part de lumière ambiante, plus le faisceau de la
+   * lampe s'il l'atteint ; exprimé avant l'exposition (qui le ramène à l'écran).
+   */
+  private artLight(p: THREE.Vector3): number {
+    const L = this.lightNow;
+    if (L >= 0.999) return 1;
+    let beam = 0;
+    if (this.torchNow > 0.01) {
+      const dx = p.x - this.camera.position.x, dy = p.y - this.camera.position.y, dz = p.z - this.camera.position.z;
+      const d = Math.hypot(dx, dy, dz) || 1;
+      const cos = (dx * this.forward.x + dy * this.forward.y + dz * this.forward.z) / d;
+      const cone = Math.max(0, Math.min(1, (cos - 0.86) / 0.1));
+      beam = this.torchNow * cone * cone * (1 / (1 + (d / 9) ** 2));
+    }
+    return Math.min(1, L + beam) / Math.max(0.002, L);
   }
 
   /** Déplace le monde et le visiteur d'un bloc (raccordement à un autre visiteur). */
@@ -481,6 +603,7 @@ export class Engine {
     this.world.dispose();
     this.particles.dispose();
     this.sky.dispose();
+    this.fireworks.dispose();
     this.ground.dispose();
     if (this.options.art?.viewer === this) this.options.art.viewer = null;
     this.renderer.dispose();
@@ -605,7 +728,9 @@ export class Engine {
     this.frustum.setFromProjectionMatrix(this.projView);
 
     this.world.updateArts(dt, this.player.position);
+    this.updateLight(dt);
     this.updateAmbience(dt);
+    if (this.fireworks.active) this.fireworks.update(dt);
     this.updateSeal();
     this.pumpTimer -= dt;
     if (this.pumpTimer <= 0) {

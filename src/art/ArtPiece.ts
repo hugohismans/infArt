@@ -48,6 +48,8 @@ export interface ArtOptions {
   pedestal?: boolean;
   /** Visite à deux : l'œuvre sera choisie par l'autre visiteur (voile en attendant). */
   awaitRemote?: boolean;
+  /** Retournée face au mur : on n'en voit que le dos (salle punition de la voix off). */
+  reversed?: boolean;
 }
 
 /** Une langue inventée : chaque lettre devient un glyphe, les mots gardent leur longueur. */
@@ -225,6 +227,21 @@ export class ArtPiece {
     if (this.highTexture) out.add(this.highTexture);
   }
 
+  /**
+   * Éclat dans le noir (voix off) : les toiles et cartels ne sont pas éclairés par la scène,
+   * le moteur leur donne la part de lumière ambiante et celle de la lampe.
+   */
+  setLight(k: number): void {
+    if (Math.abs(k - this.lightK) < 0.005) return;
+    this.lightK = k;
+    if (this.canvasMaterial) {
+      const fade = this.fadeT >= 1 ? 1 : this.fadeT * this.fadeT * (3 - 2 * this.fadeT);
+      this.canvasMaterial.color.setScalar(this.brightness * fade * k);
+    }
+    this.cartelMaterial?.color.set(0xe6e2da).multiplyScalar(k);
+  }
+  private lightK = 1;
+
   /** Avance les animations (fondu). */
   animate(dt: number): void {
     if (this.preset.art.mount === 'flottant' && this.layout) {
@@ -237,12 +254,12 @@ export class ArtPiece {
     }
     // Projecteur : l'image papillote légèrement.
     if (this.preset.art.mount === 'projection' && this.canvasMaterial && this.fadeT >= 1) {
-      this.canvasMaterial.color.setScalar(this.brightness * (0.93 + Math.random() * 0.07));
+      this.canvasMaterial.color.setScalar(this.brightness * this.lightK * (0.93 + Math.random() * 0.07));
     }
     if (this.fadeT >= 1 || !this.canvasMaterial) return;
     this.fadeT = Math.min(1, this.fadeT + dt / CONFIG.art.fadeDuration);
     const k = this.fadeT * this.fadeT * (3 - 2 * this.fadeT);
-    this.canvasMaterial.color.setScalar(this.brightness * k);
+    this.canvasMaterial.color.setScalar(this.brightness * k * this.lightK);
   }
 
   /** Niveaux de détail selon la distance du visiteur (cartel, haute résolution). */
@@ -255,7 +272,7 @@ export class ArtPiece {
     if (this.cartelMesh) {
       if (d < CONFIG.art.cartelDistance && !this.cartelMaterial) {
         const tex = makeCartelTexture(this.opts.scrambled ? scrambleArtwork(this.artwork) : this.artwork);
-        this.cartelMaterial = new THREE.MeshBasicMaterial({ map: tex, color: 0xe6e2da });
+        this.cartelMaterial = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(0xe6e2da).multiplyScalar(this.lightK) });
         this.cartelMesh.material = this.cartelMaterial;
       } else if (d > CONFIG.art.cartelRelease && this.cartelMaterial) {
         this.releaseCartel();
@@ -553,6 +570,18 @@ export class ArtPiece {
       const a = this.rng.pick([0, Math.PI / 2, Math.PI, -Math.PI / 2]);
       this.holder.rotation.z = a;
       this.holder.position.set(L.centerY * Math.sin(a), L.centerY - L.centerY * Math.cos(a), 0);
+    }
+    if (this.opts.reversed && (this.preset.art.mount ?? 'mur') === 'mur') {
+      // Le dos du tableau : châssis en bois brut, deux traverses.
+      this.addBackBoard(L);
+      for (const y of [L.centerY - L.totalH * 0.2, L.centerY + L.totalH * 0.2]) {
+        const bar = new THREE.Mesh(this.mats.unitBox, this.mats.frameKinds.wood);
+        bar.scale.set(L.totalW - 0.06, 0.05, 0.025);
+        bar.position.set(0, y, -0.02);
+        this.holder.add(bar);
+      }
+      this.holder.rotation.y = Math.PI;
+      this.holder.position.z = L.frontZ + 0.04;
     }
     if (this.opts.upsideDown && (this.preset.art.mount ?? 'mur') === 'mur') {
       // Étrangeté : tête en bas (le cartel aussi).

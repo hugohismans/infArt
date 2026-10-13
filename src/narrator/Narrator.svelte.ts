@@ -1,13 +1,15 @@
 import { resolveTheme, themesFor } from '../../shared/themes';
 import type { Artwork } from '../../shared/artwork';
 import type { ArtLibrary } from '../art/ArtLibrary';
+import type { ArtPiece } from '../art/ArtPiece';
 import { LOCAL_SOURCE } from '../art/ArtClient';
 import type { AudioEngine } from '../audio/AudioEngine';
-import { AMBIANCES } from '../ambiances';
+import { AMBIANCES, DEFAULT_AMBIANCE } from '../ambiances';
 import { CONFIG } from '../config';
 import { isTouchDevice, type Engine } from '../engine/Engine';
 import { collection } from '../progress/collection.svelte';
 import { progress } from '../progress/achievements.svelte';
+import { applyTransform } from '../world/math2d';
 import { isOpenAir } from '../world/resources';
 import type { HubOptions, SignPlan, World } from '../world/World';
 import type { ModuleSign, WorldModule } from '../world/WorldModule';
@@ -28,6 +30,24 @@ export const SANS_TITRE: Artwork = {
   medium: 'Toile blanche, sur châssis',
   description: 'Le seul tableau du Conservateur. Il n’a jamais su peindre, seulement accrocher. Personne ne l’avait regardé avant vous.',
   tags: ['atelier'],
+  imageUrl: 'oeuvres/sans-titre.jpg',
+  aspectRatio: 900 / 1150,
+  sourceUrl: '',
+  license: 'Ailleurs',
+  credit: 'Le Conservateur',
+};
+
+/** La salle punition de la visite guidée : une seule toile, et son cartel. */
+const PUNITION: Artwork = {
+  id: `${LOCAL_SOURCE}:autre-porte`,
+  source: LOCAL_SOURCE,
+  type: 'peinture',
+  title: 'Vous auriez dû prendre l’autre porte',
+  creator: 'le Conservateur',
+  date: 'tout à l’heure',
+  medium: 'Toile blanche, sur châssis',
+  description: 'Accrochée exprès pour vous, pendant que vous preniez la mauvaise porte.',
+  tags: [],
   imageUrl: 'oeuvres/sans-titre.jpg',
   aspectRatio: 900 / 1150,
   sourceUrl: '',
@@ -166,6 +186,8 @@ export class Narrator {
     rappel: false,
     /** Une histoire a commencé ou s'est terminée pendant cette visite. */
     storyMoment: false,
+    /** Rappel du jeu des consignes déjà fait cette visite. */
+    guideRappel: false,
   };
   private readonly onVisibility = () => this.visibility();
   private readonly onResize = () => this.resized();
@@ -216,6 +238,14 @@ export class Narrator {
     const device = isTouchDevice() ? 'mobile' : 'pc';
     const deviceChanged = m.device !== null && m.device !== device;
     m.device = device;
+    // Visite guidée laissée en plan la dernière fois : reprise au début si le noir n'était
+    // pas encore tombé ; sinon c'est fini (et il le fera savoir).
+    const g = m.guide;
+    if (g.stage === 'jeu') m.guide = { stage: 'attente', round: 0, obeyed: 0, choices: [] };
+    else if (g.stage === 'noir' || g.stage === 'bouquet') {
+      g.stage = 'fin';
+      g.left = true;
+    }
     engine.world.signPlanner = (mod, exits) => this.plan(mod, exits);
     engine.world.avoidDeadEnds = () => {
       const m = this.m;
@@ -253,6 +283,7 @@ export class Narrator {
     window.removeEventListener('resize', this.onResize);
     document.removeEventListener('fullscreenchange', this.onFullscreen);
     this.silence();
+    this.guideRestore();
     this.engine = null;
   }
 
@@ -261,6 +292,12 @@ export class Narrator {
     if (this.disabled) return;
     this.active = !duo;
     if (duo) {
+      // Pas de visite guidée à deux : on rallume, elle attendra une visite en solo.
+      const g = this.m.guide;
+      if (g.stage === 'jeu' || g.stage === 'noir' || g.stage === 'bouquet') {
+        this.m.guide = { stage: 'attente', round: 0, obeyed: 0, choices: [] };
+        this.guideRestore();
+      }
       this.m.lastWasDuo = true;
       this.save();
       this.silence();
@@ -369,6 +406,7 @@ export class Narrator {
   /** Menu de pause refermé. */
   resumed(): void {
     if (!this.live) return;
+    if (this.m.guide.stage === 'noir') return this.say('J45', 0.5);
     this.v.pauses++;
     if (this.v.pauses === 5) this.say('E74', 1);
     else if (this.v.pauses === 1) this.say('E73', 1);
@@ -393,6 +431,7 @@ export class Narrator {
   achievement(id: string): void {
     if (!this.live || id === 'premier-pas') return;
     if (id === 'la-sortie') this.say('S34', 4);
+    else if (id === 'bouquet-final') return;
     else this.sayEvent('E15');
   }
 
@@ -473,6 +512,7 @@ export class Narrator {
     if (this.visitTime >= 45 && this.m.visits >= 2) this.say(this.m.device === 'mobile' ? 'E84' : 'E85');
 
     this.specialRooms(cur);
+    this.guideTick(cur, dt);
     this.storyTick(cur);
   }
 
@@ -487,6 +527,10 @@ export class Narrator {
       } else if (this.idle >= r2 - r1 && this.heard('A03')) this.say('A04');
       return;
     }
+    const g = m.guide;
+    if (g.stage === 'jeu' && this.idle >= 20 && cur?.signs.some((s) => s.tag === `guide${g.round + 1}`)) this.say('J43');
+    if (g.stage === 'noir' && this.gl.phase === 'torche' && this.idle >= 15) this.say('J27');
+    if (g.stage === 'noir' || g.stage === 'bouquet') return;
     if (this.idle < 6) return;
     const tags = new Set(cur?.signs.map((s) => s.tag ?? ''));
     if (tags.has('sortie1')) this.say(this.heard('S02') ? 'S03' : 'S02');
@@ -512,6 +556,7 @@ export class Narrator {
     if (!backward && via >= 0 && prev.signs.length > 0) this.leftSigned(prev, via);
     if (prev.def.kind === 'rotonde') this.leftRotonde = true;
     if (!backward && cur.signs.length > 0) this.enteredSigned(cur);
+    this.guideMoved(prev, cur, backward);
 
     // Demi-tours.
     this.backCount = backward ? this.backCount + 1 : 0;
@@ -595,10 +640,30 @@ export class Narrator {
     const mine = new Set(tags.filter(Boolean).map(family));
     if (mine.size > 0) {
       for (const other of this.engine!.world.modules) {
-        if (other !== cur) other.clearSigns((sg) => !sg.tag || !mine.has(family(sg.tag)));
+        if (other === cur) continue;
+        const hadGuide = other.signs.some((sg) => sg.tag?.startsWith('guide'));
+        other.clearSigns((sg) => !sg.tag || !mine.has(family(sg.tag)));
+        // (Leurs salles récompense et punition n'ont plus lieu d'être.)
+        if (hadGuide && mine.has('guide') && other.exitSpecial) {
+          for (const k of Object.keys(other.exitSpecial)) {
+            const kind = other.exitSpecial[Number(k)]?.kind;
+            if (kind === 'recompense' || kind === 'punition') delete other.exitSpecial[Number(k)];
+          }
+        }
       }
     }
     const num = (prefix: string) => Number(tags.find((t) => t.startsWith(prefix))?.slice(prefix.length) || 0);
+    const gn = num('guide');
+    if (m.guide.stage === 'jeu' && gn === m.guide.round + 1) {
+      // La porte du panneau a été murée (rien ne tenait derrière) : la consigne attendra le
+      // carrefour suivant.
+      const sign = cur.signs.find((sg) => sg.tag === `guide${gn}`)!;
+      if (cur.connectors[sign.connector]?.neighbor?.module.def.kind === 'cap') {
+        cur.clearSigns((sg) => !sg.tag?.startsWith('guide'));
+        return;
+      }
+      return this.say(gn === 1 ? 'J03' : gn === 2 ? 'J08' : 'J15');
+    }
     if (m.atelier.stage === 'quete' && num('atelier') === m.atelier.signs + 1) {
       m.atelier.signs++;
       this.save();
@@ -618,6 +683,15 @@ export class Narrator {
       return this.say(p.rounds === 0 ? 'G01' : 'G11', 0, p.rounds === 0 ? () => this.say('G02') : undefined);
     }
     if (cur.signs.some((s) => s.themeId && !s.tag)) {
+      // Aux visites suivantes, il se souvient du jeu des consignes.
+      const g = m.guide;
+      if (g.stage === 'fin' && !g.left && g.visit !== undefined && g.visit < m.visits && !this.v.guideRappel && Math.random() < 0.35) {
+        const id = g.obeyed >= 2 ? 'J41' : 'J42';
+        if (!this.heard(id)) {
+          this.v.guideRappel = true;
+          return this.say(id);
+        }
+      }
       if (cur.signs.some((s) => s.themeId === FIRST_THEME) && m.sea === 'pris') this.say('M02');
       else this.say('D04');
     }
@@ -669,6 +743,8 @@ export class Narrator {
       }
       return;
     }
+    const gs = prev.signs.find((s) => s.tag === `guide${m.guide.round + 1}`);
+    if (gs && m.guide.stage === 'jeu') return this.guideChoice(m.guide.round + 1, followed === gs);
     // Panneaux des histoires : seulement celui de l'étape en cours (voir enteredSigned).
     const atelierSign = prev.signs.find((s) => s.tag === `atelier${m.atelier.signs}`);
     if (atelierSign && m.atelier.stage === 'quete') return this.atelierChoice(followed === atelierSign, m.atelier.signs);
@@ -761,6 +837,337 @@ export class Narrator {
   private canvasTime = 0;
   private canvasReady = false;
 
+  // --- La visite guidée --------------------------------------------------------------
+  // Première visite, après la mer : trois consignes (respectées ou non), le noir, la lampe,
+  // la lampe qui meurt, une porte sous laquelle passe de la lumière, et derrière, une
+  // terrasse au soleil couchant et un feu d'artifice. Puis retour à la salle ronde.
+
+  /** Déroulé de la scène en cours (cette visite). */
+  private gl = {
+    phase: '' as '' | 'extinction' | 'noir' | 'attente-torche' | 'torche' | 'fin-torche' | 'meurt' | 'noir-total' | 'porte' | 'ouverture' | 'show' | 'salut',
+    t: 0,
+    step: 0,
+    rooms: 0,
+    seaSeen: false,
+    lastLit: null as ArtPiece | null,
+    lastLitAt: 0,
+    vanished: null as { x: number; y: number; z: number } | null,
+    fav: null as ArtPiece | null,
+    stepsDone: false,
+    nextLaunch: 0,
+    lookDown: 0,
+    sun: { x: 0, z: 1 },
+  };
+
+  private guidePhase(phase: Narrator['gl']['phase']): void {
+    this.gl.phase = phase;
+    this.gl.t = 0;
+    this.gl.step = 0;
+  }
+
+  /** Lumières rallumées, lampe rendue à l'ambiance, plus de feu d'artifice. */
+  private guideRestore(): void {
+    const e = this.engine;
+    if (!e) return;
+    e.setLight(1);
+    e.torch = null;
+    e.fireworks.clear();
+    e.world.director.calm = false;
+  }
+
+  /** La scène commence-t-elle ? (Une fois la question de la mer réglée, hors des ailes.) */
+  private guideMaybeStart(cur: WorldModule | null): void {
+    const m = this.m;
+    if (this.v.storyMoment || !cur || cur.def.kind === 'rotonde' || cur.zone.wing || isOpenAir(cur.preset)) return;
+    if (m.sea === 'propose' || m.sea === 'refuse' || m.sea === 'relance') return;
+    if (m.atelier.stage === 'appel' || m.atelier.stage === 'quete' || m.sortie.stage === 'chemin' || m.sortie.stage === 'ignore' || m.autre.stage === 'poursuite') return;
+    const ready = m.visits === 1 ? (this.gl.seaSeen || m.sea === 'retire') && this.visitTime > 20 : this.visitTime > 45;
+    if (!ready) return;
+    m.guide = { stage: 'jeu', round: 0, obeyed: 0, choices: [], visit: m.visits };
+    this.v.storyMoment = true;
+    this.engine!.world.director.calm = true;
+    this.save();
+    this.say(m.sea === 'retire' ? 'J02' : 'J01');
+  }
+
+  /**
+   * Au prochain carrefour : « Par ici » sur une des sorties (derrière, la salle récompense ;
+   * derrière les autres, la salle punition), puis « NE PAS ENTRER ».
+   */
+  private guidePlan(exits: number[]): SignPlan | null {
+    const g = this.m.guide;
+    if (g.round >= 3 || exits.length < 2) return null;
+    const n = g.round + 1;
+    const x = exits[Math.floor(Math.random() * exits.length)]!;
+    if (n === 3) return { signs: [{ connector: x, title: 'NE PAS ENTRER', tag: 'guide3' }] };
+    const specials: NonNullable<SignPlan['specials']> = {};
+    for (const c of exits) specials[c] = c === x ? { kind: 'recompense' } : { kind: 'punition', variant: n === 1 ? 1 : 2, ...(n === 2 ? { art: PUNITION } : {}) };
+    return { signs: [{ connector: x, title: 'Par ici', tag: `guide${n}` }], specials };
+  }
+
+  /** Il a tranché la consigne `n` : `followed`, il a pris la porte du panneau. */
+  private guideChoice(n: number, followed: boolean): void {
+    const g = this.m.guide;
+    // (Manche 3 : obéir, c'est ne pas entrer.)
+    const obey = n === 3 ? !followed : followed;
+    g.choices.push(obey);
+    g.round = n;
+    if (obey) g.obeyed++;
+    this.save();
+    if (n === 1) return this.say(obey ? 'J04' : 'J05');
+    if (n === 2) {
+      const before = g.choices[0];
+      return this.say(obey ? (before ? 'J09' : 'J10') : before ? 'J11' : 'J12');
+    }
+    this.say(followed ? 'J16' : 'J17', 0, () => this.say(g.obeyed >= 2 ? 'J18' : 'J19', 1.2, () => this.say('J20', 0.6, () => this.guideBlackout())));
+  }
+
+  /** Les néons s'éteignent, banc par banc. */
+  private guideBlackout(): void {
+    if (!this.engine || this.m.guide.stage !== 'jeu') return;
+    this.m.guide.stage = 'noir';
+    this.save();
+    this.guidePhase('extinction');
+  }
+
+  /** Passage d'un module à l'autre pendant la scène. */
+  private guideMoved(prev: WorldModule, cur: WorldModule, backward: boolean): void {
+    const g = this.m.guide;
+    if (cur.zone.wing?.theme.id === FIRST_THEME) this.gl.seaSeen = true;
+    if (g.stage === 'jeu') {
+      if (backward && prev.signs.some((s) => s.tag === `guide${g.round + 1}`)) this.say('J44');
+      // La salle derrière la porte qu'il vient de choisir (pas celle d'à côté, visitée ensuite).
+      const chose = g.choices[g.round - 1];
+      if (!backward && cur.special === 'recompense' && chose === true) this.say(g.round <= 1 ? 'J06' : 'J13');
+      if (!backward && cur.special === 'punition' && chose === false && cur.specialVariant === g.round) this.say(g.round === 1 ? 'J07' : 'J14');
+    }
+    if (g.stage === 'noir' && this.gl.phase === 'torche') {
+      this.gl.rooms++;
+      this.say(backward ? 'J28' : 'J23');
+    }
+  }
+
+  private guideTick(cur: WorldModule | null, dt: number): void {
+    const m = this.m;
+    const g = m.guide;
+    const e = this.engine!;
+    if (g.stage === 'attente') return this.guideMaybeStart(cur);
+    // Un panneau de consigne dont la porte a été murée entre-temps : décroché.
+    if (g.stage === 'jeu' && cur) {
+      const sign = cur.signs.find((sg) => sg.tag === `guide${g.round + 1}`);
+      if (sign && cur.connectors[sign.connector]?.neighbor?.module.def.kind === 'cap') cur.clearSigns((sg) => !sg.tag?.startsWith('guide'));
+    }
+    if (g.stage !== 'noir' && g.stage !== 'bouquet') return;
+    const gl = this.gl;
+    gl.t += dt;
+    switch (gl.phase) {
+      case 'extinction': {
+        // Quatre bancs de néons, l'un après l'autre.
+        const at = [0, 0.9, 1.7, 2.4];
+        const level = [0.55, 0.3, 0.12, 0.025];
+        while (gl.step < at.length && gl.t >= at[gl.step]!) {
+          e.setLight(level[gl.step]!);
+          this.audio.clack();
+          gl.step++;
+        }
+        if (gl.step >= at.length) this.guidePhase('noir');
+        break;
+      }
+      case 'noir':
+        if (gl.t >= 3) {
+          this.guidePhase('attente-torche');
+          this.say('J21', 0, () =>
+            this.say('J22', 0.8, () => {
+              if (!this.engine) return;
+              this.engine.torch = 1;
+              this.guidePhase('torche');
+              this.guideFavourite();
+            }),
+          );
+        }
+        break;
+      case 'torche':
+        this.guideVanish();
+        if (gl.fav?.artwork && !this.heard('J26') && e.pickPiece(0, 0) === gl.fav) this.say('J26');
+        if (!gl.stepsDone && gl.t >= 25) {
+          gl.stepsDone = true;
+          this.audio.footsteps();
+          this.say('J25', 2.5);
+        }
+        if ((gl.t >= 45 && gl.rooms >= 2) || gl.t >= 75) {
+          this.guidePhase('fin-torche');
+          this.say('J29', 0, () => {
+            this.engine?.flickerTorch(1.4);
+            this.guidePhase('meurt');
+          });
+        }
+        break;
+      case 'meurt':
+        if (gl.t >= 1.6) {
+          e.setLight(0);
+          this.guidePhase('noir-total');
+        }
+        break;
+      case 'noir-total':
+        // Dans le noir complet, le musée se refait autour de lui : un couloir, un sas, une porte.
+        if (gl.step === 0 && gl.t >= 1) {
+          gl.step = 1;
+          const exit = e.world.director.makeZone('couchant', DEFAULT_AMBIANCE, 'seuil', 40, 'bouquet');
+          this.quietRupture = true;
+          e.rebuildAround({ start: { defId: 'straight-m', preset: DEFAULT_AMBIANCE, exit } });
+          this.quietRupture = false;
+          this.prev = e.world.currentModule;
+          e.torch = 0;
+        }
+        if (gl.t >= 3) {
+          this.guidePhase('porte');
+          this.say('J30');
+        }
+        break;
+      case 'porte': {
+        const door = [...e.world.modules].find((x) => x.special === 'porte');
+        const p = door?.specialPoint;
+        const pos = e.player.position;
+        if (door && p && Math.hypot(p.x - pos.x, p.z - pos.z) < 2.6) {
+          door.openDoor();
+          // Le soleil se couche droit devant, dans l'axe de la porte.
+          const c = applyTransform(door.transform, { x: 0, z: 0 });
+          const l = Math.hypot(p.x - c.x, p.z - c.z) || 1;
+          gl.sun = { x: (p.x - c.x) / l, z: (p.z - c.z) / l };
+          e.setSunDirection(gl.sun.x, gl.sun.z);
+          e.setLight(1, 2.5);
+          e.torch = null;
+          g.stage = 'bouquet';
+          this.save();
+          this.guidePhase('ouverture');
+          this.say('J32', 0.6);
+        } else if (gl.t >= 15) this.say('J31');
+        break;
+      }
+      case 'ouverture':
+        if (gl.t >= 4) {
+          this.guidePhase('show');
+          gl.nextLaunch = 0;
+        }
+        break;
+      case 'show': {
+        const reduce = e.player.reduceMotion;
+        gl.nextLaunch -= dt;
+        // Le final : une salve serrée.
+        const finale = gl.t > 27 && gl.t < 30;
+        if (gl.nextLaunch <= 0 && gl.t < 33) {
+          this.guideRocket(reduce);
+          gl.nextLaunch = finale && !reduce ? 0.25 : reduce ? 2.2 : 0.55 + Math.random() * 0.9;
+        }
+        if (gl.step < 1 && gl.t >= 2) {
+          gl.step = 1;
+          this.say(g.obeyed >= 2 ? 'J33' : 'J34');
+        }
+        if (gl.step < 2 && gl.t >= 13) {
+          gl.step = 2;
+          this.say(m.sea === 'retire' ? 'J36' : 'J35');
+        }
+        gl.lookDown = e.player.pitch < -0.1 ? gl.lookDown + dt : 0;
+        if (gl.lookDown >= 10 && gl.t > 6) this.say('J37');
+        if (gl.step < 3 && gl.t >= 34) {
+          gl.step = 3;
+          this.say('J38', 0, () => this.guideFinish());
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  /** Une fusée, tirée d'en bas (la plage), droit devant, un peu sur les côtés. */
+  private guideRocket(soft: boolean): void {
+    const e = this.engine;
+    if (!e) return;
+    const pos = e.player.position;
+    const s = this.gl.sun;
+    // (Assez près pour rester en deçà du plan lointain de la caméra.)
+    const dist = 30 + Math.random() * 12;
+    const side = (Math.random() - 0.5) * 34;
+    e.fireworks.launch(pos.x + s.x * dist - s.z * side, e.player.floorY - 10, pos.z + s.z * dist + s.x * side, 24 + Math.random() * 12, soft);
+  }
+
+  /** Le bouquet est fini : retour à la salle ronde (« Revenons-en au musée »). */
+  private guideFinish(): void {
+    const e = this.engine;
+    if (!e) return;
+    const g = this.m.guide;
+    g.stage = 'fin';
+    this.save();
+    this.guidePhase('salut');
+    this.quietRupture = true;
+    e.returnToStart();
+    this.quietRupture = false;
+    this.guideRestore();
+    this.prev = e.world.currentModule;
+    this.leftRotonde = false;
+    progress.found('bouquet');
+    this.say('J39', 1.5);
+  }
+
+  /**
+   * À la lampe : un tableau éclairé un instant disparaît dès qu'il n'est plus dans le
+   * faisceau ; quand le visiteur repasse la lampe à sa place, le Conservateur nie tout.
+   */
+  private guideVanish(): void {
+    const e = this.engine!;
+    const gl = this.gl;
+    const piece = e.pickPiece(0, 0);
+    if (piece?.artwork && piece.object.visible) {
+      gl.lastLit = piece;
+      gl.lastLitAt = gl.t;
+    }
+    const { position: cam, forward } = e.eye;
+    const angleTo = (p: { x: number; y: number; z: number }) => {
+      const dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z;
+      const d = Math.hypot(dx, dy, dz) || 1;
+      return { cos: (dx * forward.x + dy * forward.y + dz * forward.z) / d, d };
+    };
+    if (!gl.vanished && gl.lastLit && gl.t > 6 && gl.t - gl.lastLitAt > 2 && gl.lastLit !== gl.fav) {
+      const w = gl.lastLit.object.matrixWorld.elements;
+      const p = { x: w[12]!, y: w[13]! + 1.5, z: w[14]! };
+      if (angleTo(p).cos < 0.4) {
+        gl.lastLit.object.visible = false;
+        gl.vanished = p;
+      }
+    }
+    if (gl.vanished && !this.heard('J24')) {
+      const a = angleTo(gl.vanished);
+      if (a.cos > 0.95 && a.d < 9) this.say('J24');
+    }
+  }
+
+  /** À la lampe : une de ses œuvres favorites, accrochée un peu plus loin. */
+  private guideFavourite(): void {
+    const e = this.engine;
+    const fav = collection.items[0]?.art;
+    if (!e || !fav) return;
+    const { position: cam, forward } = e.eye;
+    let best: ArtPiece | null = null;
+    let bestScore = -Infinity;
+    for (const mod of e.world.modules) {
+      if (mod.graphDistance < 1 || mod.graphDistance > 2) continue;
+      for (const piece of mod.artPieces) {
+        if (!piece.artwork) continue;
+        const w = piece.object.matrixWorld.elements;
+        const dx = w[12]! - cam.x, dz = w[14]! - cam.z;
+        const score = (dx * forward.x + dz * forward.z) / (Math.hypot(dx, dz) || 1) - mod.graphDistance * 0.2;
+        if (score > bestScore) {
+          bestScore = score;
+          best = piece;
+        }
+      }
+    }
+    if (!best) return;
+    best.assignArtwork(fav);
+    this.gl.fav = best;
+  }
+
   // --- Histoires ---------------------------------------------------------------------
 
   /** Où en sont les histoires : ce qui démarre ou se poursuit dans cette visite. */
@@ -769,7 +1176,8 @@ export class Narrator {
     const t = this.visitTime;
     // Histoire 1 : le cadre vide est demandé après un premier arrêt devant une œuvre.
     // (Une seule histoire commence ou se termine par visite.)
-    const free = !this.v.storyMoment;
+    // (La visite guidée d'abord : les histoires attendent qu'elle ait été jouée.)
+    const free = !this.v.storyMoment && m.guide.stage === 'fin';
     if (free && m.story === 1 && m.visits >= 2 && m.sea !== 'propose' && m.atelier.stage === 'attente' && t > 90 && this.roomsSinceDwell === 0 && this.heard('D01')) {
       this.v.storyMoment = true;
       m.atelier.stage = 'appel';
@@ -1195,6 +1603,10 @@ export class Narrator {
     // Le visiteur se tient dans un carrefour d'histoire : on attend son choix avant d'en poser d'autres.
     if (world.currentModule?.signs.some((sg) => sg.tag)) return undefined;
     const rng = () => exits[Math.floor(Math.random() * exits.length)]!;
+    // La visite guidée passe avant tout ; dans le noir et sur la terrasse, aucun panneau.
+    const gs = m.guide.stage;
+    if (gs === 'noir' || gs === 'bouquet') return null;
+    if (gs === 'jeu') return this.guidePlan(exits);
     const sea = resolveTheme(FIRST_THEME);
     // Acte I : la mer, reproposée après un refus.
     if (m.sea === 'refuse' && sea) {
@@ -1309,6 +1721,7 @@ export class Narrator {
       this.storyDone(2);
     }
     if (m.sea === 'retire' && !this.heard('M03')) this.say('M03', 4);
+    if (m.guide.left && !this.heard('J40')) this.say('J40', 4);
     if (m.seaChangedMind && m.sea === 'pris' && !this.heard('M09')) this.say('M09', 30);
     for (const e of m.epilogue.splice(0)) this.say(e, 6);
     if (m.visits >= 6 && collection.items.length === 0) this.say('K11', 40);
@@ -1333,6 +1746,9 @@ export class Narrator {
   /** Demande une réplique, jouée dès que possible (`delay` : au plus tôt dans n secondes). */
   private say(id: LineId, delay = 0, after?: () => void): void {
     if (!this.active || this.silent || !LINES[id]) return;
+    // Dans le noir et sur la terrasse, il n'y a plus que lui et sa visite guidée.
+    const gs = this.m.guide.stage;
+    if ((gs === 'noir' || gs === 'bouquet') && id[0] !== 'J' && lineFamily(id) !== 'texte') return;
     const repeatable = ['R01', 'R02', 'R03', 'R04', 'R05', 'R19', 'R24', 'R25', 'R26', 'R27'].includes(id);
     if (!repeatable && this.heard(id)) return;
     if (this.queue.some((p) => p.id === id) || this.playing?.id === id) return;

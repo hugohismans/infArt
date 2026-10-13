@@ -152,7 +152,19 @@ export interface AmbiancePreset {
   transition?: 'progressive' | 'seuil' | 'rupture';
 
   /** Ciel visible (plafond « ciel ») : dégradé du zénith à l'horizon, étoiles. */
-  sky?: { top: string; horizon: string; stars?: boolean };
+  /** Lieu sans murs mais sans sol continu non plus : terrasse au-dessus du vide. */
+  ground?: false;
+  /** Ambiance réservée à une scène de la voix off : jamais tirée au sort. */
+  scripted?: boolean;
+  sky?: {
+    top: string;
+    horizon: string;
+    stars?: boolean;
+    /** La mer en contrebas (moitié basse du ciel) : à l'horizon, au plus profond. */
+    sea?: { horizon: string; deep: string };
+    /** Soleil bas : couleur, hauteur au-dessus de l'horizon (degrés). */
+    sun?: { color: string; elevation: number };
+  };
 
   lighting: {
     hemiSky: string;

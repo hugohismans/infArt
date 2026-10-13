@@ -5,10 +5,10 @@ import type { Rng } from '../world/random';
 import type { Kit } from './kit';
 
 /** Lisière visible d'un monde à ciel ouvert (là où se tient le mur invisible). */
-export type Boundary = 'lisiere' | 'dunes' | 'muret' | 'nuages' | 'colonnade';
+export type Boundary = 'lisiere' | 'dunes' | 'muret' | 'nuages' | 'colonnade' | 'balustrade';
 
 /** Profondeur (m) de la bande occupée devant le mur : on ne peut pas y marcher. */
-const BAND: Record<Boundary, number> = { lisiere: 0.75, dunes: 0.8, muret: 0.4, nuages: 0.85, colonnade: 0.6 };
+const BAND: Record<Boundary, number> = { lisiere: 0.75, dunes: 0.8, muret: 0.4, nuages: 0.85, colonnade: 0.6, balustrade: 0.45 };
 
 const pal = (...c: string[]) => c.map((x) => new THREE.Color(x));
 const FOLIAGE = pal('#1d3320', '#25402a', '#183020', '#2b4a2c');
@@ -102,6 +102,28 @@ export function buildBoundary(k: Kit, def: ModuleDef, kind: Boundary, rng: Rng, 
           const p = at(t, band - r * 0.8);
           k.place(p.x, 0, p.z, angle);
           k.blob(r, 0, low ? r * 0.4 : rng.range(r * 0.4, r * 1.3), 0, CLOUD, rng.int(0, 999), 0.7);
+        }
+        break;
+      }
+      case 'balustrade': {
+        // Balustrade de pierre au-dessus de la mer : socle, balustres, main courante, et un
+        // pilier tous les quelques mètres.
+        const stone = '#efe3d0', shade = '#dccdb6';
+        const mid = at(len / 2, 0.22);
+        k.place(mid.x, 0, mid.z, angle);
+        k.box(len + 0.06, 0.14, 0.36, 0, 0.07, 0, shade);
+        k.box(len + 0.06, 0.1, 0.34, 0, 1.0, 0, stone);
+        const posts = Math.max(1, Math.round(len / 4.5));
+        for (let t = 0.16; t < len - 0.1; t += 0.3) {
+          const p = at(t, 0.22);
+          k.place(p.x, 0, p.z, angle);
+          k.cyl(0.055, 0.81, 0, 0.545, 0, stone, 8, 0.75);
+        }
+        for (let i = 0; i <= posts; i++) {
+          const p = at((i / posts) * len, 0.22);
+          k.place(p.x, 0, p.z, angle);
+          k.box(0.3, 1.12, 0.38, 0, 0.56, 0, shade);
+          k.box(0.36, 0.06, 0.44, 0, 1.15, 0, stone);
         }
         break;
       }

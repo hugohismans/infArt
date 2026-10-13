@@ -64,6 +64,23 @@ export interface RaconteState {
   done?: boolean;
 }
 
+/**
+ * La visite guidée (première visite, après la mer) : trois consignes, le noir, la lampe,
+ * le bouquet final. Jouée une seule fois.
+ */
+export interface GuideState {
+  stage: 'attente' | 'jeu' | 'noir' | 'bouquet' | 'fin';
+  /** Consignes déjà tranchées (0 à 3), et celles respectées. */
+  round: number;
+  obeyed: number;
+  /** Respectée ou non, manche par manche. */
+  choices: boolean[];
+  /** Le visiteur est parti en plein jeu (il le saura à la visite suivante). */
+  left?: boolean;
+  /** Visite où le jeu s'est joué. */
+  visit?: number;
+}
+
 export interface Memory {
   /** Répliques déjà entendues (chacune n'est jouée qu'une fois, sauf certains retours). */
   heard: string[];
@@ -103,6 +120,7 @@ export interface Memory {
   finaleDone: boolean;
   /** Histoires abandonnées (rappel X18). */
   abandoned: number;
+  guide: GuideState;
 }
 
 export const FRESH: Memory = {
@@ -130,6 +148,7 @@ export const FRESH: Memory = {
   epilogue: [],
   finaleDone: false,
   abandoned: 0,
+  guide: { stage: 'attente', round: 0, obeyed: 0, choices: [] },
 };
 
 /** Mémoire du navigateur, complétée des champs ajoutés depuis (anciens visiteurs). */
@@ -145,6 +164,7 @@ export function loadMemory(reset: boolean): Memory {
     autre: { ...fresh.autre, ...raw.autre },
     portes: { ...fresh.portes, ...raw.portes },
     raconte: { ...fresh.raconte, ...raw.raconte },
+    guide: { ...fresh.guide, ...raw.guide },
     day: { ...fresh.day, ...raw.day },
     worlds: { ...raw.worlds },
     // (Avant la saison 2, les visites n'étaient pas comptées : une visite connue en vaut au moins une.)

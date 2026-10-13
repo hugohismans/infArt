@@ -210,8 +210,9 @@ export class ResourceCache {
             preset.surfaces.ceiling === 'verriere'
               ? new THREE.MeshBasicMaterial({ vertexColors: true, map: makeCeilingTexture(preset) })
               : new THREE.MeshLambertMaterial({ vertexColors: true, map: makeCeilingTexture(preset) }),
-          floor: floorMaterial(preset, isOpenAir(preset) ? { colorWrite: false } : {}),
-          ground: isOpenAir(preset) ? floorMaterial(preset, { depthWrite: false }, true) : null,
+          // (Terrasse au-dessus du vide : pas de sol continu, le sol des modules est visible.)
+          floor: floorMaterial(preset, isOpenAir(preset) && preset.ground !== false ? { colorWrite: false } : {}),
+          ground: isOpenAir(preset) && preset.ground !== false ? floorMaterial(preset, { depthWrite: false }, true) : null,
           lights: new THREE.MeshBasicMaterial({ color: pal.lightStrip }),
           frames: pal.frame.map((c) => new THREE.MeshLambertMaterial({ color: c })),
           frameKinds: frameMaterials(preset.art.frameTint),

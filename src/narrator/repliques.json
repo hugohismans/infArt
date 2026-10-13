@@ -3157,6 +3157,321 @@
    "intention": "Ému, un peu inquiet.",
    "tags": "[moved] [a little worried]",
    "texte": "Vous prenez toujours ce que je propose. La mer, l'étoile… {p} Ça me fait un peu peur. Un peu plaisir aussi. Surtout plaisir."
+  },
+  {
+   "id": "J01",
+   "quand": "Visite 1. À la fin de l'aile de la mer (mer prise), au premier carrefour",
+   "intention": "Satisfait, une idée derrière la tête.",
+   "tags": "[pleased] [mischievous]",
+   "texte": "Bien. {p} Maintenant que vous êtes installé... on va jouer à un petit jeu. C'est très simple : je vous dis où aller, et vous y allez. {p} Simple."
+  },
+  {
+   "id": "J02",
+   "quand": "Visite 1. Trois salles après le refus de la mer, au premier carrefour",
+   "intention": "Un peu piqué, qui fait semblant d'être beau joueur.",
+   "tags": "[slightly piqued] [pretending to be a good sport]",
+   "texte": "Puisque vous n'aimez pas qu'on choisisse pour vous... on va jouer à un jeu. {p} Je vous dis où aller. Et cette fois, vous y allez."
+  },
+  {
+   "id": "J03",
+   "quand": "Manche 1. Le carrefour, un panneau « Par ici » sur une des sorties",
+   "intention": "Maître de jeu, ravi.",
+   "tags": "[game master] [delighted]",
+   "texte": "Première consigne : la porte avec le panneau. {p} Allez-y. Je vous regarde."
+  },
+  {
+   "id": "J04",
+   "quand": "Manche 1. Il a pris la porte du panneau",
+   "intention": "Content, faussement modeste.",
+   "tags": "[satisfied]",
+   "texte": "Parfait. {p} Voilà. Ce n'était pas si difficile."
+  },
+  {
+   "id": "J05",
+   "quand": "Manche 1. Il a pris une autre porte",
+   "intention": "Décontenancé, se reprend.",
+   "tags": "[taken aback] [composing himself]",
+   "texte": "Ah. {p} Bon. {p} Ce n'était pas cette porte-là, mais... bon."
+  },
+  {
+   "id": "J06",
+   "quand": "Manche 1, obéi. Salle récompense : une seule œuvre sous un projecteur, un banc",
+   "intention": "Tendre, un peu trop.",
+   "tags": "[tender] [a bit too much]",
+   "texte": "Tenez. Une salle rien que pour vous. Une seule œuvre, un banc. {p} Asseyez-vous si vous voulez. Enfin... vous ne pouvez pas vous asseoir. Mais l'intention y est."
+  },
+  {
+   "id": "J07",
+   "quand": "Manche 1, désobéi. Salle punition : toutes les toiles tournées face au mur",
+   "intention": "Faussement désolé, boudeur.",
+   "tags": "[mock regret] [sulky]",
+   "texte": "Oh, c'est dommage. Les tableaux se sont tous retournés. {p} Ils sont un peu susceptibles. {p} Comme moi."
+  },
+  {
+   "id": "J08",
+   "quand": "Manche 2. Le carrefour suivant, nouveau panneau",
+   "intention": "Patient, appuyé.",
+   "tags": "[deliberate]",
+   "texte": "Deuxième consigne. {p} Le panneau. Vous connaissez la règle."
+  },
+  {
+   "id": "J09",
+   "quand": "Manche 2. Obéi, après avoir obéi en manche 1",
+   "intention": "Enjoué, flatteur.",
+   "tags": "[cheerful] [flattering]",
+   "texte": "Vous êtes doué. {p} Je ne le dis pas à tout le monde. {p} Je ne le dis à personne, en fait."
+  },
+  {
+   "id": "J10",
+   "quand": "Manche 2. Obéi, après avoir désobéi en manche 1",
+   "intention": "Soulagé, magnanime.",
+   "tags": "[relieved] [magnanimous]",
+   "texte": "Ah ! Vous voyez, quand vous voulez. {p} On repart sur de bonnes bases."
+  },
+  {
+   "id": "J11",
+   "quand": "Manche 2. Désobéi, après avoir obéi en manche 1",
+   "intention": "Blessé, sincèrement.",
+   "tags": "[hurt]",
+   "texte": "Tiens. {p} Je pensais qu'on s'entendait bien, vous et moi."
+  },
+  {
+   "id": "J12",
+   "quand": "Manche 2. Désobéi deux fois de suite",
+   "intention": "Froid, notaire.",
+   "tags": "[cold] [clipped]",
+   "texte": "Très bien. {p} Je note. {p} Je note tout, vous savez."
+  },
+  {
+   "id": "J13",
+   "quand": "Manche 2, obéi. Salle récompense : un projecteur suit le visiteur",
+   "intention": "Charmeur, se reprend.",
+   "tags": "[charming] [catching himself]",
+   "texte": "Je vous ai mis un projecteur. Sur vous. {p} Non. Sur le tableau. {p} Mais j'ai hésité."
+  },
+  {
+   "id": "J14",
+   "quand": "Manche 2, désobéi. Salle punition : un seul cartel, « Vous auriez dû prendre l'autre porte »",
+   "intention": "Mesquin, content de lui.",
+   "tags": "[petty] [smug]",
+   "texte": "Lisez le cartel. {p} Non, vraiment. Lisez-le."
+  },
+  {
+   "id": "J15",
+   "quand": "Manche 3. Le dernier carrefour : un panneau « NE PAS ENTRER » sur une des sorties",
+   "intention": "Trop innocent.",
+   "tags": "[too innocent]",
+   "texte": "Troisième et dernière consigne. {p} Celle-là, elle est facile : n'entrez pas."
+  },
+  {
+   "id": "J16",
+   "quand": "Manche 3. Il est entré",
+   "intention": "Triomphant, ravi d'avoir deviné.",
+   "tags": "[triumphant] [laughing a little]",
+   "texte": "Ha ! Je le savais. {p} Je savais que vous entreriez. Vous êtes tellement... prévisible. {p} C'est pour ça que je vous aime bien."
+  },
+  {
+   "id": "J17",
+   "quand": "Manche 3. Il n'est pas entré",
+   "intention": "Dépité, presque vexé.",
+   "tags": "[deflated] [mildly offended]",
+   "texte": "Oh, alors maintenant vous obéissez. {p} Pour une fois que je voulais que vous désobéissiez."
+  },
+  {
+   "id": "J18",
+   "quand": "Après la manche 3, s'il a obéi au moins deux fois",
+   "intention": "Mal à l'aise, soupçonneux.",
+   "tags": "[uneasy] [suspicious]",
+   "texte": "Bon. Vous avez été parfait. {p} Trop parfait. {p} Ça me met mal à l'aise, en fait."
+  },
+  {
+   "id": "J19",
+   "quand": "Après la manche 3, s'il a obéi une fois ou moins",
+   "intention": "Sec, vexé.",
+   "tags": "[curt] [offended]",
+   "texte": "Bon. Vous n'avez rien écouté. {p} Rien. {p} Très bien."
+  },
+  {
+   "id": "J20",
+   "quand": "Juste après J18 ou J19. Les néons s'éteignent un par un",
+   "intention": "Calme, un peu menaçant.",
+   "tags": "[calm] [quietly menacing]",
+   "texte": "Vous savez quoi ? {p} Voyons comment vous vous débrouillez sans moi."
+  },
+  {
+   "id": "J21",
+   "quand": "Dans le noir presque total, 3 s après la dernière extinction",
+   "intention": "Chuchoté, savoure le silence.",
+   "tags": "[whispers]",
+   "texte": "... C'est calme, comme ça, non ?"
+  },
+  {
+   "id": "J22",
+   "quand": "Une lampe torche s'allume (faisceau devant le visiteur)",
+   "intention": "Bougon, cède.",
+   "tags": "[grudging] [sighs]",
+   "texte": "Bon. {p} Je ne suis pas un monstre. {p} Tenez."
+  },
+  {
+   "id": "J23",
+   "quand": "À la torche, première salle",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "Évitez d'éblouir les œuvres. Elles n'ont pas l'habitude. {p} Je plaisante. Éblouissez-les. Elles s'en remettront."
+  },
+  {
+   "id": "J24",
+   "quand": "À la torche : un tableau a disparu quand il repasse le faisceau dessus",
+   "intention": "Dénégation trop rapide.",
+   "tags": "[too quick] [innocent]",
+   "texte": "Il y avait un tableau, là, non ? {p} Non. Vous vous trompez sûrement."
+  },
+  {
+   "id": "J25",
+   "quand": "À la torche : des pas résonnent derrière lui",
+   "intention": "Rassurant, pas rassurant.",
+   "tags": "[reassuring] [not reassuring at all]",
+   "texte": "Ce n'est rien. C'est le musée qui travaille. {p} Le bois. Les murs. {p} Tout ça."
+  },
+  {
+   "id": "J26",
+   "quand": "À la torche : il retrouve une de ses œuvres favorites accrochée là (s'il en a)",
+   "intention": "Attentionné, un peu inquiétant.",
+   "tags": "[thoughtful] [slightly unsettling]",
+   "texte": "Tiens. Celle-là, vous la connaissez. {p} Je l'ai accrochée ici. Pour que vous ne soyez pas trop dépaysé."
+  },
+  {
+   "id": "J27",
+   "quand": "À la torche : immobile depuis 15 s",
+   "intention": "Encourageant, à moitié.",
+   "tags": "[encouraging] [half-joking]",
+   "texte": "Vous pouvez avancer. Il n'y a rien dans le noir. {p} Enfin... presque rien."
+  },
+  {
+   "id": "J28",
+   "quand": "À la torche : il revient sur ses pas",
+   "intention": "Ferme.",
+   "tags": "[firm]",
+   "texte": "Pas par là. {p} Là-bas, c'est encore plus noir."
+  },
+  {
+   "id": "J29",
+   "quand": "La torche grésille et s'éteint",
+   "intention": "Sec, définitif.",
+   "tags": "[curt]",
+   "texte": "Vous avez assez vu."
+  },
+  {
+   "id": "J30",
+   "quand": "Noir complet, 3 s plus tard : un filet de lumière sous une porte, au loin",
+   "intention": "Chuchoté, complice.",
+   "tags": "[whispers] [conspiratorial]",
+   "texte": "Là. Devant vous. {p} Vous la voyez, la lumière ?"
+  },
+  {
+   "id": "J31",
+   "quand": "Noir complet : il ne s'approche pas de la porte depuis 15 s",
+   "intention": "Insistant, sincère.",
+   "tags": "[insistent] [sincere]",
+   "texte": "La lumière, sous la porte. Allez-y. {p} Je vous promets que ce n'est pas un piège. {p} Pas cette fois."
+  },
+  {
+   "id": "J32",
+   "quand": "La porte s'ouvre sur une terrasse au coucher du soleil, au-dessus de la mer",
+   "intention": "Ému, presque timide.",
+   "tags": "[softly] [moved]",
+   "texte": "Voilà."
+  },
+  {
+   "id": "J33",
+   "quand": "Le feu d'artifice commence. S'il a obéi au moins deux fois",
+   "intention": "Fier, affectueux.",
+   "tags": "[proud] [affectionate]",
+   "texte": "Pour vous. {p} Parce que vous m'avez écouté. {p} Enfin... la plupart du temps."
+  },
+  {
+   "id": "J34",
+   "quand": "Le feu d'artifice commence. S'il a obéi une fois ou moins",
+   "intention": "Digne, blessé, beau joueur.",
+   "tags": "[dignified] [wounded] [gracious]",
+   "texte": "Ce n'était pas pour vous. {p} J'avais tout préparé pour quelqu'un d'obéissant. {p} Mais je n'allais pas tout annuler."
+  },
+  {
+   "id": "J35",
+   "quand": "Pendant le feu d'artifice, s'il avait pris la mer",
+   "intention": "Content de lui.",
+   "tags": "[pleased with himself]",
+   "texte": "Et la mer, en bas. {p} Je savais qu'elle vous plairait."
+  },
+  {
+   "id": "J36",
+   "quand": "Pendant le feu d'artifice, s'il avait refusé la mer",
+   "intention": "Résigné, tendre.",
+   "tags": "[resigned] [tender]",
+   "texte": "La mer, en bas. {p} Je sais. Vous n'aimez pas la mer. {p} Regardez le ciel, alors."
+  },
+  {
+   "id": "J37",
+   "quand": "Pendant le feu d'artifice : il ne regarde pas le ciel depuis 10 s",
+   "intention": "Amusé.",
+   "tags": "[amused]",
+   "texte": "Vous pouvez lever les yeux, hein. {p} C'est là-haut que ça se passe."
+  },
+  {
+   "id": "J38",
+   "quand": "30 s après le début du feu d'artifice",
+   "intention": "Se racle la gorge, redescend sur terre.",
+   "tags": "[clears throat] [back to business]",
+   "texte": "... Enfin. {p} Je vous offre un bouquet final alors qu'on vient à peine de commencer. {p} Revenons-en au musée."
+  },
+  {
+   "id": "J39",
+   "quand": "Arrivée dans la salle ronde, après le fondu",
+   "intention": "Léger, comme si de rien n'était.",
+   "tags": "[light] [as if nothing happened]",
+   "texte": "Voilà. Où en étions-nous ? {p} Ah oui. Le musée. {p} Faites comme chez vous."
+  },
+  {
+   "id": "J40",
+   "quand": "Visite suivante, s'il était parti pendant le jeu (dans le noir ou avant le bouquet)",
+   "intention": "Vexé, rancunier mais poli.",
+   "tags": "[offended] [polite grudge]",
+   "texte": "Vous êtes parti dans le noir, la dernière fois. {p} C'était vexant. {p} J'avais encore un feu d'artifice."
+  },
+  {
+   "id": "J41",
+   "quand": "Une visite suivante, au détour d'un panneau, s'il avait obéi au moins deux fois",
+   "intention": "Taquin.",
+   "tags": "[teasing]",
+   "texte": "Vous allez encore faire tout ce que je dis ? {p} C'est reposant, remarquez."
+  },
+  {
+   "id": "J42",
+   "quand": "Une visite suivante, au détour d'un panneau, s'il avait obéi une fois ou moins",
+   "intention": "Las, taquin.",
+   "tags": "[weary] [teasing]",
+   "texte": "Vous allez encore faire le contraire ? {p} Non. Ne répondez pas."
+  },
+  {
+   "id": "J43",
+   "quand": "Pendant une manche : planté devant le carrefour depuis 20 s",
+   "intention": "Faussement patient.",
+   "tags": "[mock patience]",
+   "texte": "Le panneau. {p} Celui qui brille un peu. {p} Je ne vais pas vous porter."
+  },
+  {
+   "id": "J44",
+   "quand": "Pendant une manche : il fait demi-tour au lieu de choisir",
+   "intention": "Agacé, amusé malgré lui.",
+   "tags": "[annoyed] [amused despite himself]",
+   "texte": "Ah non. On ne fuit pas le jeu. {p} Le jeu vous retrouve toujours."
+  },
+  {
+   "id": "J45",
+   "quand": "Dans le noir : il ouvre le menu (pause), puis revient",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "Vous avez allumé la lumière de votre côté ? {p} Tricheur."
   }
  ]
 }

@@ -33,6 +33,7 @@ import { geant } from './presets/geant';
 import { miniature } from './presets/miniature';
 import { respire } from './presets/respire';
 
+import { couchant } from './presets/couchant';
 /** Registre des ambiances disponibles : ajouter une ambiance = ajouter un preset ici. */
 export const AMBIANCES: Record<string, AmbiancePreset> = Object.fromEntries(
   [
@@ -46,6 +47,8 @@ export const AMBIANCES: Record<string, AmbiancePreset> = Object.fromEntries(
     serre, reve, escher, vaporwave, foret, desert, englouti, station, ruines,
     // Étrange
     miroirs, inverse, neant, geant, miniature, respire, givre,
+    // Scènes de la voix off (jamais tirées au sort)
+    couchant,
   ].map((p) => [p.id, p]),
 );
 

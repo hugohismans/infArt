@@ -21,6 +21,11 @@ export interface HubOptions {
   finale?: boolean;
   /** Appelé avant la construction : panneaux et sorties décidés par la voix off. */
   prepare?: (m: WorldModule, world: World) => void;
+  /**
+   * Départ ailleurs que dans la salle ronde : un module donné (le visiteur à son entrée,
+   * face au fond), et ce qui attend derrière son ouverture du fond.
+   */
+  start?: { defId: string; preset: AmbiancePreset; exit: ZoneState };
 }
 
 export interface WorldStats {
@@ -70,7 +75,13 @@ export interface WorldNet {
 }
 
 /** Salle mise en scène par la voix off, derrière une ouverture fléchée. */
-export type SpecialRoom = { kind: 'atelier' } | { kind: 'favoris'; art: Artwork[] };
+export type SpecialRoom =
+  | { kind: 'atelier' }
+  | { kind: 'favoris'; art: Artwork[] }
+  /** Visite guidée : une seule œuvre sous un projecteur, un banc. */
+  | { kind: 'recompense' }
+  /** Visite guidée : les toiles retournées (1), ou un seul cartel, celui de `art` (2). */
+  | { kind: 'punition'; variant: 1 | 2; art?: Artwork };
 
 /**
  * Ce que la voix off veut au prochain carrefour : ses panneaux, et ce qui attend derrière
@@ -186,6 +197,16 @@ export class World {
   init(hub = false, opts: HubOptions = {}): { position: Vec2; yaw: number } {
     const zone = this.director.initial();
     const firstTheme = opts.firstTheme ?? null;
+    if (opts.start) {
+      const st = opts.start;
+      const def = this.defsFor(st.preset)[st.defId]!;
+      const first = this.createModule(def, { x: 0, z: 0, angle: 0 }, 0, zone, st.preset, null, (m) => {
+        m.exitZones = [];
+        m.exitZones[1] = st.exit;
+      });
+      this.current = first;
+      return { position: applyTransform(first.transform, { x: 0, z: 1.2 }), yaw: Math.PI };
+    }
     if (hub) {
       const def = this.defsFor(this.startPreset)[opts.finale ? 'rotonde-finale' : 'rotonde']!;
       const rotonde = this.createModule(def, { x: 0, z: 0, angle: 0 }, 0, zone, this.startPreset, null, (m) => {
@@ -568,13 +589,17 @@ export class World {
 
     // Transition « seuil » : la zone commence par un sas.
     const forceSas = zone.step === 0 && zone.zone.transition === 'seuil';
+    // La terrasse du bouquet final s'ouvre en grand, droit devant la porte.
+    const forceRoom = zone.step === 1 && zone.zone.special === 'bouquet' && !!defs['room-l'];
 
     // Salle mise en scène par la voix off (si elle tient ; sinon, génération ordinaire).
     const special = forceSas ? null : this.specialDef(parent, connector, zone);
-    if (special && this.overlapping(special.def, special.preset, transform, baseY, parent).every((m) => this.canEvict(m, parent))) {
-      for (const m of this.overlapping(special.def, special.preset, transform, baseY, parent)) this.destroyModule(m);
+    // (Plusieurs formes possibles pour une salle de la voix off : la première qui tient.)
+    for (const def of special ? [special.def, ...(special.fallbacks ?? [])] : []) {
+      if (!this.overlapping(def, special!.preset, transform, baseY, parent).every((m) => this.canEvict(m, parent))) continue;
+      for (const m of this.overlapping(def, special!.preset, transform, baseY, parent)) this.destroyModule(m);
       if (!parent.alive) return;
-      place(this.createModule(special.def, transform, baseY, { ...zone, oddity: undefined, wing: undefined }, special.preset, null, special.prepare));
+      place(this.createModule(def, transform, baseY, { ...zone, oddity: undefined, wing: undefined }, special!.preset, null, special!.prepare));
       return;
     }
 
@@ -592,6 +617,7 @@ export class World {
     for (let attempt = 0; attempt < 7; attempt++) {
       let id: string;
       if (attempt === 0 && forceSas) id = 'sas';
+      else if (attempt === 0 && forceRoom) id = 'room-l';
       else {
         const ids = Object.keys(weights).filter((k) => (weights[k] ?? 0) > 0 && defs[k]);
         if (ids.length === 0) break;
@@ -762,7 +788,7 @@ export class World {
   }
 
   /** Salle spéciale derrière une ouverture (voix off) : le type de module et sa préparation. */
-  private specialDef(parent: WorldModule, connector: number, zone: ZoneState): { def: ModuleDef; preset: AmbiancePreset; prepare: (m: WorldModule) => void } | null {
+  private specialDef(parent: WorldModule, connector: number, zone: ZoneState): { def: ModuleDef; fallbacks?: ModuleDef[]; preset: AmbiancePreset; prepare: (m: WorldModule) => void } | null {
     if (this.net) return null;
     // Le bout du chemin de la sortie : l'encadrement seul, dans une impasse du néant.
     if (zone.zone.special === 'sortie' && zone.step > 0) {
@@ -777,6 +803,24 @@ export class World {
     if (sp.kind === 'atelier') {
       const def = defs['deadend'];
       return def ? { def, preset, prepare: (m) => (m.special = 'atelier') } : null;
+    }
+    if (sp.kind === 'recompense' || sp.kind === 'punition') {
+      const def = defs['room-s'] ?? defs['room-l'];
+      return def
+        ? {
+            def,
+            // Pas la place pour une salle : un couloir fera l'affaire.
+            fallbacks: [defs['straight-m'], defs['straight-s']].filter((d): d is ModuleDef => !!d),
+            preset,
+            prepare: (m) => {
+              m.special = sp.kind;
+              if (sp.kind === 'punition') {
+                m.specialVariant = sp.variant;
+                if (sp.art) m.forcedArt = [sp.art];
+              }
+            },
+          }
+        : null;
     }
     const def = defs['room-l'] ?? defs['room-s'];
     return def ? { def, preset, prepare: (m) => ((m.special = 'favoris'), (m.forcedArt = sp.art.slice())) } : null;

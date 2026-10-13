@@ -22,7 +22,7 @@ export interface ModuleSign extends SignLook {
 import type { ArtSlotDef } from './modules/defs';
 import type { Artwork } from '../../shared/artwork';
 import type { SpecialRoom } from './World';
-import { buildDoorFrame, buildEasel } from './specialProps';
+import { buildBench, buildDoorFrame, buildEasel, buildLitDoor, buildSpotBeam } from './specialProps';
 
 /**
  * Œuvres d'un module venu d'un autre visiteur (visite à deux) : celles qu'il a accrochées,
@@ -119,7 +119,11 @@ export class WorldModule {
   /** Salles mises en scène derrière certaines ouvertures (voix off). */
   exitSpecial: Record<number, SpecialRoom> | null = null;
   /** Ce module est une salle mise en scène (à fixer avant `build`). */
-  special: 'atelier' | 'sortie' | 'favoris' | null = null;
+  special: 'atelier' | 'sortie' | 'favoris' | 'recompense' | 'punition' | 'porte' | null = null;
+  /** Salle punition : 1, les toiles retournées ; 2, un seul cartel. */
+  specialVariant = 0;
+  /** La porte lumineuse du sas (visite guidée) : 0 fermée, 1 ouverte. */
+  private door: { prop: ReturnType<typeof buildLitDoor>; t: number; opening: boolean } | null = null;
   /** Salle des favoris : les œuvres à accrocher, dans l'ordre des emplacements. */
   forcedArt: Artwork[] | null = null;
   /** Point d'intérêt de la salle mise en scène (toile, encadrement), repère du module. */
@@ -301,6 +305,17 @@ export class WorldModule {
       this.group.add(built.object);
       this.signObjects.push(built);
     }
+    // Le sas de la visite guidée : une porte fermée, de la lumière dessous.
+    if (this.def.kind === 'sas' && this.zone.zone.special === 'bouquet') this.special = 'porte';
+    const extraWalls: Segment[] = [];
+    if (this.special === 'porte') {
+      const c = this.def.connectors[1]!;
+      const prop = buildLitDoor(c.pos.z, c.width, c.top ?? 2.5);
+      this.group.add(prop.object);
+      this.signParts.push(prop);
+      this.door = { prop, t: 0, opening: false };
+      this.specialLocal = { x: 0, z: c.pos.z };
+    }
     // Salles mises en scène : le chevalet de l'atelier, l'encadrement au bout de la sortie.
     if (this.special === 'atelier' || this.special === 'sortie') {
       const far = this.def.navPoints[0]?.z ?? 3;
@@ -326,6 +341,7 @@ export class WorldModule {
       index++;
       const opts: ArtOptions = { ...(this.zone.wing ? { themeId: this.zone.wing.theme.id } : {}) };
       if (odd === 'cartel-illisible') opts.scrambled = true;
+      if (this.special === 'punition' && this.specialVariant === 1) opts.reversed = true;
       if (odd === 'oeuvre-changeante' && index === oddIndex) opts.changeling = true;
       if (odd === 'a-l-envers' && index === oddIndex) opts.upsideDown = true;
       if (odd === 'oeuvre-plafond' && index === oddIndex && !slot.hangY) {
@@ -352,10 +368,33 @@ export class WorldModule {
       this.group.add(art.object);
     };
     // L'atelier et le bout de la sortie n'ont pas d'œuvre au mur : leur objet suffit.
-    const bare = emptied || this.special === 'atelier' || this.special === 'sortie';
-    for (const slot of bare ? [] : this.def.artSlots.filter((sl) => !spots.some((sp) => slotHitsSign(sl, sp)))) {
-      // Une impasse (ou un bouchon) expose toujours son œuvre unique.
-      const always = this.def.kind === 'cap' || this.def.kind === 'deadend';
+    const bare = emptied || this.special === 'atelier' || this.special === 'sortie' || this.special === 'porte';
+    let slots = bare ? [] : this.def.artSlots.filter((sl) => !spots.some((sp) => slotHitsSign(sl, sp)));
+    // Salle récompense, ou punition au cartel unique : une seule œuvre, sur le plus grand mur.
+    const single = this.special === 'recompense' || (this.special === 'punition' && this.specialVariant === 2);
+    if (single && slots.length > 0) {
+      const best = slots.reduce((a, b) => (b.maxWidth > a.maxWidth ? b : a));
+      slots = [best];
+      if (this.special === 'recompense') {
+        const ceil = this.preset.geometry.ceilingHeight * this.def.ceilingScale;
+        const beam = buildSpotBeam({ x: best.pos.x + best.normal.x * 1.2, y: ceil - 0.05, z: best.pos.z + best.normal.z * 1.2 }, { x: best.pos.x + best.normal.x * 0.1, y: 1.3, z: best.pos.z + best.normal.z * 0.1 });
+        this.group.add(beam.object);
+        this.signParts.push(beam);
+        // Le banc, face à l'œuvre.
+        const reach = Math.min(2.4, this.preset.geometry.corridorWidth - 1.2);
+        const bx = best.pos.x + best.normal.x * reach, bz = best.pos.z + best.normal.z * reach;
+        const bench = buildBench(bx, bz, Math.atan2(best.normal.x, best.normal.z));
+        this.group.add(bench.object);
+        this.signParts.push(bench);
+        const t = { x: -best.normal.z, z: best.normal.x };
+        const corner = (u: number, v: number) => ({ x: bx + t.x * u + best.normal.x * v, z: bz + t.z * u + best.normal.z * v });
+        const c = [corner(-0.85, -0.3), corner(0.85, -0.3), corner(0.85, 0.3), corner(-0.85, 0.3)];
+        for (let i = 0; i < 4; i++) extraWalls.push({ a: c[i]!, b: c[(i + 1) % 4]! });
+      }
+    }
+    for (const slot of slots) {
+      // Une impasse (ou un bouchon) expose toujours son œuvre unique ; les salles de la voix off aussi.
+      const always = ((this.def.kind === 'cap' || this.def.kind === 'deadend') && this.preset.art.density > 0) || this.special === 'recompense' || this.special === 'punition';
       if (!always && !this.forcedArt?.length && !rng.chance(density)) continue;
       const wallHeight = slot.wallHeight ?? this.preset.geometry.ceilingHeight * this.def.ceilingScale;
       hung.push(slot);
@@ -442,7 +481,7 @@ export class WorldModule {
     own(decor.solid, mats.trims);
     own(decor.glow, mats.decorGlow);
     own(decor.shafts, mats.shaft, 2);
-    this.decorWalls = [...decor.collisions, ...pedestalWalls].map((w) => ({ a: applyTransform(this.transform, w.a), b: applyTransform(this.transform, w.b) }));
+    this.decorWalls = [...decor.collisions, ...pedestalWalls, ...extraWalls].map((w) => ({ a: applyTransform(this.transform, w.a), b: applyTransform(this.transform, w.b) }));
     const dripRng = new Rng(this.seed, 'drip');
     for (const d of decor.drips) {
       const mesh = new THREE.Mesh(mats.unitSphere, mats.water);
@@ -469,8 +508,21 @@ export class WorldModule {
     });
   }
 
+  /** La porte lumineuse s'ouvre (visite guidée). */
+  openDoor(): void {
+    if (this.door) this.door.opening = true;
+  }
+
+  get doorOpen(): boolean {
+    return !!this.door && this.door.t >= 1;
+  }
+
   /** Décor animé : gouttes qui tombent. `onDrip` reçoit le point d'impact (monde). */
   animateDecor(dt: number, onDrip: (x: number, y: number, z: number) => void): void {
+    if (this.door?.opening && this.door.t < 1) {
+      this.door.t = Math.min(1, this.door.t + dt / 1.6);
+      this.door.prop.open(this.door.t);
+    }
     if (this.steam) {
       // Fumée du café : des bouffées qui montent, grossissent et s'évanouissent.
       this.steamTime += dt;
@@ -501,7 +553,7 @@ export class WorldModule {
   }
 
   get hasAnimatedDecor(): boolean {
-    return this.drips.length > 0 || this.steam !== null;
+    return this.drips.length > 0 || this.steam !== null || this.door !== null;
   }
 
   get alive(): boolean {
