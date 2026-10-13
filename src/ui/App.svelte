@@ -79,7 +79,9 @@
   let collectionOpen = $state(false);
   let aimed = $state<Artwork | null>(null);
   let locked = $state(false);
-  let themeTitle = $state<string | null>(null);
+  let themeTitle = $state<{ name: string; phase: 'entree' | 'sortie' } | null>(null);
+  /** L'aile où l'on se trouve (étiquette discrète à côté des boutons). */
+  let wingName = $state<string | null>(null);
   let titleKey = $state(0);
   let titleTimer = 0;
   let rupture = $state<'noir' | 'glitch' | null>(null);
@@ -247,12 +249,9 @@
       library.noteInterest(art, CONFIG.interest.strength.regard);
       narrator.dwell(art);
     };
-    e.onThemeTitle = (name) => {
-      if (!name) {
-        themeTitle = null;
-        return;
-      }
-      themeTitle = name;
+    e.onWing = (name) => (wingName = name);
+    e.onThemeTitle = (name, phase) => {
+      themeTitle = { name, phase };
       titleKey++;
       clearTimeout(titleTimer);
       titleTimer = window.setTimeout(() => (themeTitle = null), CONFIG.director.titleDuration * 1000);
@@ -480,6 +479,7 @@
         </svg>
       </button>
     {/if}
+    {#if wingName && !menuOpen}<span class="wing-tag" title={t('hud.wing')}>{wingName}</span>{/if}
   </div>
 
   {#if showLookHint && !menuOpen && !locked}
@@ -495,7 +495,11 @@
     {#key narrator.current.id}<p class="narration" role="status" aria-live="polite"><span>{narrator.current.text}</span></p>{/key}
   {/if}
   {#if themeTitle && !menuOpen && !sheetArtwork}
-    {#key titleKey}<div class="theme-title" role="status" aria-live="polite" style="animation-duration: {CONFIG.director.titleDuration}s">{themeTitle}</div>{/key}
+    {#key titleKey}
+      <div class="theme-title" class:out={themeTitle.phase === 'sortie'} role="status" aria-live="polite" style="animation-duration: {(themeTitle.phase === 'sortie' ? 0.7 : 1) * CONFIG.director.titleDuration}s">
+        <span class="theme-kicker">{t(themeTitle.phase === 'sortie' ? 'hud.wingEnd' : 'hud.wing')}</span>{themeTitle.name}
+      </div>
+    {/key}
   {/if}
 
   {#if rupture}<div class="rupture {rupture}" aria-hidden="true"></div>{/if}
@@ -738,6 +742,34 @@
     animation-name: title;
     animation-timing-function: ease-in-out;
     animation-fill-mode: forwards;
+  }
+  .theme-kicker {
+    display: block;
+    margin-bottom: 0.5em;
+    font-family: var(--sans);
+    font-size: max(0.66rem, 0.42em);
+    letter-spacing: 0.35em;
+    opacity: 0.75;
+  }
+  .theme-title.out {
+    font-size: clamp(0.95rem, 3vw, 1.4rem);
+    color: rgba(255, 252, 244, 0.75);
+  }
+  .wing-tag {
+    align-self: center;
+    max-width: 46vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(10, 8, 7, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.82rem;
+    color: rgba(255, 252, 244, 0.82);
+    pointer-events: none;
   }
   @keyframes title {
     0% { opacity: 0; letter-spacing: 0.4em; }

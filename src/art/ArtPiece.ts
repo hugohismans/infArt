@@ -164,9 +164,16 @@ export class ArtPiece {
       this.hangPlaceholder();
       const cb = (r: ReadyArt) => this.arrive(r);
       // Aile thématique encore en chargement : on attend une œuvre du thème.
-      this.cancelWait = (opts.themeId ? ctx.library.requestTheme(opts.themeId, cb) : null) ?? ctx.library.request(cb);
+      this.cancelWait = (opts.themeId ? ctx.library.requestTheme(opts.themeId, cb, () => this.vacate()) : null) ?? ctx.library.request(cb);
     }
   }
+
+  /** Le thème de l'aile n'a plus rien à offrir : l'emplacement restera nu (hors de la vue). */
+  private vacate(): void {
+    this.cancelWait = null;
+    this.vacant = true;
+  }
+  private vacant = false;
 
   /** Charge l'image d'une œuvre donnée, puis l'accroche. */
   private loadArtwork(art: Artwork): void {
@@ -203,7 +210,7 @@ export class ArtPiece {
     if (ready) this.arrive(ready);
     else {
       const cb = (r: ReadyArt) => this.arrive(r);
-      this.cancelWait = (this.opts.themeId ? ctx.library.requestTheme(this.opts.themeId, cb) : null) ?? ctx.library.request(cb);
+      this.cancelWait = (this.opts.themeId ? ctx.library.requestTheme(this.opts.themeId, cb, () => this.vacate()) : null) ?? ctx.library.request(cb);
     }
   }
 
@@ -256,6 +263,12 @@ export class ArtPiece {
     }
 
     if (this.opts.changeling) this.changeWhenUnseen(d);
+    if (this.vacant && !(d < 14 && (this.ctx?.viewer?.watching(this.object) ?? false))) {
+      // On décroche la toile d'attente quand personne ne regarde.
+      this.vacant = false;
+      this.clear();
+      this.object.updateMatrixWorld(true);
+    }
 
     // Haute résolution (sources IIIF).
     const ctx = this.ctx;
@@ -300,7 +313,7 @@ export class ArtPiece {
     }
     // Le visiteur doit être encore tout près : il verra le changement en se retournant.
     if (!this.seen || d > 9 || ++this.unseenTicks < 5) return;
-    const next = ctx.library.take(this.preset.art.prefer);
+    const next = ctx.library.take(this.preset.art.prefer, this.opts.themeId);
     if (!next) return;
     this.clear();
     this.hang(next);

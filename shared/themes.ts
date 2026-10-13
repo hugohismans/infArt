@@ -193,6 +193,13 @@ export const THEMES: ArtTheme[] = [
   { id: 'bibliotheque', title: 'La bibliothèque', q: '', match: /./, types: ['couverture-livre'] },
 ];
 
+/**
+ * Un thème de sujet montre ce qu'il dit : des images (peinture, dessin, photo…), pas un
+ * album, un jeu, un livre ou un film qui aurait seulement le mot dans son titre.
+ */
+const SUBJECT_TYPES: ArtType[] = ['peinture', 'dessin', 'estampe', 'photographie', 'affiche', 'objet', 'textile'];
+for (const t of THEMES) if (t.q && !t.types) t.types = SUBJECT_TYPES;
+
 export const THEMES_BY_ID: Record<string, ArtTheme> = Object.fromEntries(THEMES.map((t) => [t.id, t]));
 
 /** L'œuvre correspond-elle au thème (titre et étiquettes, artiste, source) ? */

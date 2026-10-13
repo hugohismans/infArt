@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { AmbiancePreset } from '../ambiances/types';
+import type { Wing } from '../director/Director';
 import { CONFIG } from '../config';
 import { pointSegmentDistance, type Segment } from '../world/math2d';
 import type { WorldModule } from '../world/WorldModule';
@@ -111,6 +112,8 @@ export class Engine {
   /** Zones déjà annoncées (nom affiché) et dernière zone traversée. */
   private readonly announced = new Set<number>();
   private lastWingId = -1;
+  private lastWing: Wing | null = null;
+  private readonly leftWings = new Set<number>();
   private lastZoneId = -1;
   private readonly frustum = new THREE.Frustum();
   private readonly projView = new THREE.Matrix4();
@@ -143,7 +146,10 @@ export class Engine {
   /** Le visiteur s'est arrêté devant une œuvre (au centre de l'écran, presque immobile). */
   onDwell: ((artwork: Artwork) => void) | null = null;
   /** Titre d'une aile thématique (chaîne vide : on l'efface). */
-  onThemeTitle: ((title: string) => void) | null = null;
+  /** Entrée dans une aile à thème, ou sortie (chacune annoncée une fois). */
+  onThemeTitle: ((title: string, phase: 'entree' | 'sortie') => void) | null = null;
+  /** L'aile où se trouve le visiteur (null : hors des ailes). */
+  onWing: ((title: string | null) => void) | null = null;
   /** Transition « rupture » : fondu au noir ou faux glitch. */
   onRupture: ((style: 'noir' | 'glitch') => void) | null = null;
 
@@ -293,11 +299,16 @@ export class Engine {
     const wing = m.zone.wing;
     const wingId = wing?.id ?? -1;
     if (wingId !== this.lastWingId) {
-      if (this.lastWingId >= 0) this.onThemeTitle?.('');
+      const left = this.lastWing;
       this.lastWingId = wingId;
+      this.lastWing = wing ?? null;
+      this.onWing?.(wing?.theme.title ?? null);
       if (wing && !this.announced.has(wing.id)) {
         this.announced.add(wing.id);
-        this.onThemeTitle?.(wing.theme.title);
+        this.onThemeTitle?.(wing.theme.title, 'entree');
+      } else if (!wing && left && !this.leftWings.has(left.id)) {
+        this.leftWings.add(left.id);
+        this.onThemeTitle?.(left.theme.title, 'sortie');
       }
     }
     const p = m.preset;

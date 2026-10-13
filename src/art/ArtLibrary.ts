@@ -158,9 +158,8 @@ export class ArtLibrary {
         this.pump();
         return art;
       }
-      // Le thème a encore des œuvres à venir : l'emplacement les attend (requestTheme)
-      // plutôt que d'accrocher une œuvre étrangère au thème.
-      if (pool && !this.poolDone(pool)) return null;
+      // Jamais d'œuvre étrangère au thème : l'emplacement attend (requestTheme), ou reste nu.
+      if (pool) return null;
     }
     let index = this.ready.findIndex((r) => !onPedestal(r));
     if (index < 0) return null;
@@ -292,18 +291,38 @@ export class ArtLibrary {
    * Un emplacement d'aile attend une œuvre du thème, encore en chargement : il patiente
    * dans la file du thème (null si le thème n'a plus rien à offrir).
    */
-  requestTheme(themeId: string, cb: Waiter): (() => void) | null {
+  requestTheme(themeId: string, cb: Waiter, onEmpty: () => void): (() => void) | null {
     const p = this.activePools.find((x) => x.theme.id === themeId);
-    if (!p || this.poolDone(p)) return null;
+    if (!p) return null;
+    if (this.poolDone(p)) {
+      onEmpty();
+      return () => undefined;
+    }
     p.waiters.push(cb);
+    this.giveUps.set(cb, onEmpty);
     p.lastTake = performance.now();
     this.pump();
     return () => {
+      this.giveUps.delete(cb);
       const i = p.waiters.indexOf(cb);
       if (i >= 0) p.waiters.splice(i, 1);
       const j = this.waiters.indexOf(cb);
       if (j >= 0) this.waiters.splice(j, 1);
     };
+  }
+  /** Emplacements d'aile qui préfèrent rester nus si leur thème n'a plus rien à offrir. */
+  private readonly giveUps = new Map<Waiter, () => void>();
+
+  /** Les emplacements qui attendaient un thème épuisé (ou abandonné) : mur nu. */
+  private releaseWaiters(p: ThemePool): void {
+    const waiters = p.waiters;
+    p.waiters = [];
+    for (const w of waiters) {
+      const giveUp = this.giveUps.get(w);
+      this.giveUps.delete(w);
+      if (giveUp) giveUp();
+      else this.waiters.push(w);
+    }
   }
 
   /**
@@ -428,11 +447,8 @@ export class ArtLibrary {
       if (!p.fetching && !p.exhausted && p.queued.length === 0 && p.ready.length + p.loading < target) {
         void this.fetchThemeBatch(p);
       }
-      // Plus rien à charger pour ce thème : les emplacements qui l'attendaient prennent autre chose.
-      if (p.exhausted && p.queued.length === 0 && p.loading === 0 && p.waiters.length > 0) {
-        this.waiters.push(...p.waiters);
-        p.waiters = [];
-      }
+      // Plus rien à charger pour ce thème : les emplacements qui l'attendaient restent nus.
+      if (this.poolDone(p) && p.waiters.length > 0) this.releaseWaiters(p);
     }
   }
 
@@ -457,9 +473,7 @@ export class ArtLibrary {
 
   private dropPool(p: ThemePool): void {
     p.dropped = true;
-    // Ce qui attendait une œuvre du thème se rabat sur la réserve générale.
-    this.waiters.push(...p.waiters);
-    p.waiters = [];
+    this.releaseWaiters(p);
     for (const r of p.ready) r.texture.dispose();
     p.ready = [];
     p.queued = [];
@@ -595,6 +609,7 @@ export class ArtLibrary {
         const ready: ReadyArt = { artwork: art, texture: img.texture, aspect };
         if (pool) {
           const w = !onPedestal(ready) ? pool.waiters.shift() : undefined;
+          if (w) this.giveUps.delete(w);
           if (w) w(ready);
           else pool.ready.push(ready);
           return;

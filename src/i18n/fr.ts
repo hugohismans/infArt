@@ -2,6 +2,8 @@ export const fr = {
   'app.title': 'Ailleurs',
   'app.subtitle': 'Un musée sans fin, qui se construit devant vous et s’efface derrière. On vous attendait.',
   'home.enter': 'Entrer',
+  'hud.wing': 'Aile thématique',
+  'hud.wingEnd': 'Fin de l’aile',
   'home.collection': 'Ma collection',
   'home.kicker': 'Un musée qui n’existe pas',
   'home.kickerAside': 'Quelqu’un le garde quand même.',
