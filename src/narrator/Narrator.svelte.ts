@@ -188,6 +188,8 @@ export class Narrator {
     storyMoment: false,
     /** Rappel du jeu des consignes déjà fait cette visite. */
     guideRappel: false,
+    /** Il s'est arrêté devant une œuvre pendant cette visite. */
+    dwelled: false,
   };
   private readonly onVisibility = () => this.visibility();
   private readonly onResize = () => this.resized();
@@ -328,6 +330,7 @@ export class Narrator {
   dwell(art: Artwork): void {
     if (!this.live) return;
     this.roomsSinceDwell = 0;
+    this.v.dwelled = true;
     const m = this.m;
     const cur = this.engine?.world.currentModule;
     const sea = themesFor(art).some((t) => t.theme.id === FIRST_THEME);
@@ -1073,6 +1076,8 @@ export class Narrator {
           gl.step = 3;
           this.say('J38', 0, () => this.guideFinish());
         }
+        // (Filet de sécurité : si la réplique n'a pas pu être jouée, le bouquet finit quand même.)
+        if (gl.t >= 70) this.guideFinish();
         break;
       }
       default:
@@ -1095,8 +1100,8 @@ export class Narrator {
   /** Le bouquet est fini : retour à la salle ronde (« Revenons-en au musée »). */
   private guideFinish(): void {
     const e = this.engine;
-    if (!e) return;
     const g = this.m.guide;
+    if (!e || g.stage !== 'bouquet') return;
     g.stage = 'fin';
     this.save();
     this.guidePhase('salut');
@@ -1178,7 +1183,10 @@ export class Narrator {
     // (Une seule histoire commence ou se termine par visite.)
     // (La visite guidée d'abord : les histoires attendent qu'elle ait été jouée.)
     const free = !this.v.storyMoment && m.guide.stage === 'fin';
-    if (free && m.story === 1 && m.visits >= 2 && m.sea !== 'propose' && m.atelier.stage === 'attente' && t > 90 && this.roomsSinceDwell === 0 && this.heard('D01')) {
+    // (Juste après un arrêt devant une œuvre ; sinon, au bout de quatre minutes quand même :
+    // un visiteur qui ne s'arrête jamais n'en reste pas à l'histoire 1 pour toujours.)
+    const afterDwell = this.v.dwelled && this.roomsSinceDwell === 0;
+    if (free && m.story === 1 && m.visits >= 2 && m.sea !== 'propose' && m.atelier.stage === 'attente' && t > 90 && (afterDwell || t > 240)) {
       this.v.storyMoment = true;
       m.atelier.stage = 'appel';
       this.save();
