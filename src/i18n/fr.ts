@@ -5,6 +5,8 @@ export const fr = {
   'hud.wing': 'Aile thématique',
   'hud.wingEnd': 'Fin de l’aile',
   'home.collection': 'Ma collection',
+  'home.install': 'Installer l’application',
+  'home.installIos': 'Dans Safari : touchez le bouton Partager, puis « Sur l’écran d’accueil ».',
   'home.kicker': 'Un musée qui n’existe pas',
   'home.kickerAside': 'Quelqu’un le garde quand même.',
   'home.achievements': '{n} succès sur {total}',

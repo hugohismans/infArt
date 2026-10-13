@@ -7,6 +7,7 @@
   import type { ArtClient } from '../art/ArtClient';
   import { collection } from '../progress/collection.svelte';
   import { ACHIEVEMENTS, progress } from '../progress/achievements.svelte';
+  import { install } from './install.svelte';
 
   interface Props {
     onEnter: (pseudo: string | null) => void;
@@ -31,6 +32,11 @@
   }
 
   const touch = isTouchDevice();
+  /** iPhone : le mode d'emploi de l'installation, affiché au toucher du lien. */
+  let installHint = $state(false);
+  async function installApp() {
+    if (!(await install.prompt())) installHint = !installHint;
+  }
   let readyCount = $state(0);
   const unlocked = $derived(ACHIEVEMENTS.filter((a) => progress.unlocked[a.id]).length);
 
@@ -186,7 +192,9 @@
         {t('home.collection')}{#if collection.items.length > 0}<span class="count">{collection.items.length}</span>{/if}
       </button>
       {#if unlocked > 0}<span class="dot">·</span><button class="link" type="button" onclick={onCollection}>{t('home.achievements', { n: unlocked, total: ACHIEVEMENTS.length })}</button>{/if}
+      {#if install.available}<span class="dot">·</span><button class="link" type="button" onclick={installApp}>{t('home.install')}</button>{/if}
     </div>
+    {#if installHint}<p class="install-hint">{t('home.installIos')}</p>{/if}
 
     <p class="controls">{touch ? t('home.controlsMobile') : t('home.controlsDesktop')}</p>
   </form>
@@ -195,6 +203,13 @@
 </div>
 
 <style>
+  .install-hint {
+    margin: 10px auto 0;
+    max-width: 320px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--ink-dim);
+  }
   .home {
     position: fixed;
     inset: 0;
