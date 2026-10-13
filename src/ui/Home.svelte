@@ -161,7 +161,7 @@
   <div class="veil" aria-hidden="true"></div>
 
   <form class="card" onsubmit={submit}>
-    <p class="kicker">{t('home.kicker')}</p>
+    <p class="kicker">{t('home.kicker')}<span class="aside">{t('home.kickerAside')}</span></p>
     <h1>{t('app.title')}</h1>
     <p class="subtitle">{t('app.subtitle')}</p>
 
@@ -299,6 +299,16 @@
     text-transform: uppercase;
     color: var(--accent);
     animation: rise 1.4s ease-out both;
+  }
+  .kicker .aside {
+    display: block;
+    margin-top: 0.5em;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    opacity: 0.6;
   }
   h1 {
     font-family: var(--serif);

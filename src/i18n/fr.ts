@@ -1,9 +1,10 @@
 export const fr = {
   'app.title': 'Ailleurs',
-  'app.subtitle': 'Un musée sans fin, qui se construit devant vous et s’efface derrière.',
+  'app.subtitle': 'Un musée sans fin, qui se construit devant vous et s’efface derrière. On vous attendait.',
   'home.enter': 'Entrer',
   'home.collection': 'Ma collection',
   'home.kicker': 'Un musée qui n’existe pas',
+  'home.kickerAside': 'Quelqu’un le garde quand même.',
   'home.achievements': '{n} succès sur {total}',
   'home.credits': 'Œuvres et données issues de collections ouvertes : Art Institute of Chicago, The Met, Cleveland Museum of Art, SMK, V&A, Wikimedia, TMDB, IGDB, MusicBrainz, Open Library…',
   'home.controlsDesktop': 'ZQSD / flèches pour marcher · souris pour regarder · Maj pour accélérer · Échap pour le menu',
