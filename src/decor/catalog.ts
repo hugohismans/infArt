@@ -135,14 +135,14 @@ export const CATALOG: Record<DecorKind, DecorItem> = {
     build(k, rng) {
       const ply = rng.pick(['#b08a5a', '#c29b66', '#9c7a4c']);
       const batten = '#7d6040';
+      // (Aucune face de tasseau dans le plan d'une autre : elles se disputeraient l'écran.)
       const crate = (w: number, h: number, d: number, y0: number, x: number) => {
         k.box(w, h, d, x, y0 + h / 2, 0.36, ply);
-        for (const y of [y0 + 0.03, y0 + h - 0.03]) k.box(w + 0.02, 0.06, d + 0.02, x, y, 0.36, batten);
-        k.box(0.06, h, d + 0.02, x - w / 2 + 0.03, y0 + h / 2, 0.36, batten);
-        k.box(0.06, h, d + 0.02, x + w / 2 - 0.03, y0 + h / 2, 0.36, batten);
+        for (const y of [y0 + 0.035, y0 + h - 0.035]) k.box(w + 0.02, 0.06, d + 0.02, x, y, 0.36, batten);
+        for (const sx of [-1, 1]) k.box(0.06, h - 0.02, d + 0.04, x + sx * (w / 2 - 0.025), y0 + h / 2, 0.36, batten);
       };
       crate(0.92, 0.62, 0.62, 0, 0);
-      if (rng.chance(0.4)) crate(0.6, 0.45, 0.5, 0.62, rng.range(-0.1, 0.1));
+      if (rng.chance(0.4)) crate(0.6, 0.45, 0.5, 0.625, rng.range(-0.1, 0.1));
     },
   },
 
@@ -151,9 +151,11 @@ export const CATALOG: Record<DecorKind, DecorItem> = {
     width: 0.95, depth: 0.55, height: 0.46, low: true, flat: false,
     build(k, rng) {
       const kraft = ['#b98f5e', '#a9814f', '#c49c6a'];
-      k.box(0.5, 0.42, 0.42, -0.2, 0.21, 0.27, rng.pick(kraft), { y: rng.range(-0.15, 0.15) });
+      const turn = rng.range(-0.15, 0.15);
+      k.box(0.5, 0.42, 0.42, -0.2, 0.21, 0.27, rng.pick(kraft), { y: turn });
       k.box(0.4, 0.34, 0.36, 0.26, 0.17, 0.26, rng.pick(kraft), { y: rng.range(-0.25, 0.25) });
-      k.box(0.06, 0.005, 0.43, -0.2, 0.422, 0.27, '#d9c9a0');
+      // Adhésif sur le dessus (tourné avec le carton).
+      k.box(0.06, 0.006, 0.43, -0.2, 0.423, 0.27, '#d9c9a0', { y: turn });
     },
   },
 
@@ -178,11 +180,12 @@ export const CATALOG: Record<DecorKind, DecorItem> = {
     build(k, rng) {
       const wood = rng.pick(['#4a3020', '#5c3b25', '#3a2818']);
       const spines = ['#7a2a24', '#2d4a6b', '#3d5a35', '#8a6a2c', '#5a3a5c', '#2a2a2a', '#9c8a6a', '#6b2f2f'];
-      k.box(1.2, 2.4, 0.04, 0, 1.2, 0.02, wood);
+      // Fond entre les montants (pas dans leur plan).
+      k.box(1.16, 2.38, 0.04, 0, 1.19, 0.025, wood);
       for (const x of [-0.58, 0.58]) k.box(0.04, 2.4, 0.36, x, 1.2, 0.18, wood);
       for (let r = 0; r < 6; r++) {
         const y = 0.06 + r * 0.42;
-        k.box(1.16, 0.03, 0.34, 0, y, 0.18, wood);
+        k.box(1.14, 0.03, 0.34, 0, y, 0.18, wood);
         if (r === 5) break;
         let x = -0.55;
         while (x < 0.52) {
@@ -246,7 +249,9 @@ export const CATALOG: Record<DecorKind, DecorItem> = {
       const n = rng.int(1, 3);
       for (let i = 0; i < n; i++) {
         const x = (i - (n - 1) / 2) * 0.22;
-        k.box(0.36, 0.03, 0.36, x, 0.015, 0.3, '#2a2a2a');
+        // Socles qui se chevauchent : chacun à sa hauteur.
+        const base = 0.03 + i * 0.006;
+        k.box(0.36, base, 0.36 + i * 0.012, x, base / 2, 0.3, '#2a2a2a');
         k.cyl(0.16, 0.5, x, 0.28, 0.3, '#e8641e', 10, 0.18);
         k.cyl(0.11, 0.07, x, 0.32, 0.3, '#f2f2f2', 10, 0.75);
       }
@@ -391,7 +396,7 @@ export const CATALOG: Record<DecorKind, DecorItem> = {
     build(k, rng) {
       const wood = rng.pick(['#3a2414', '#4a2c18', '#2e1c10']);
       k.box(1.1, 0.8, 0.55, 0, 0.4, 0.3, wood);
-      for (const x of [-0.53, 0.53]) for (const z of [0.05, 0.55]) k.box(0.04, 1.05, 0.04, x, 1.32, z, wood);
+      for (const x of [-0.525, 0.525]) for (const z of [0.05, 0.55]) k.box(0.04, 1.05, 0.04, x, 1.32, z, wood);
       k.box(1.1, 0.06, 0.55, 0, 1.87, 0.3, wood);
       // Objets : boules nacrées, crâne, cristaux.
       const shells = [new THREE.Color('#e8dcc6'), new THREE.Color('#d6c2a0'), new THREE.Color('#f2ece0')];
@@ -423,7 +428,7 @@ export const CATALOG: Record<DecorKind, DecorItem> = {
       k.box(0.7, 1.85, 0.7, 0, 0.925, 0.4, body);
       k.box(0.72, 0.16, 0.06, 0, 1.75, 0.76, rng.pick(['#ff3fd0', '#3fd0ff', '#ffd23f']));
       k.glowBox(0.55, 0.42, 0.02, 0, 1.32, 0.76, rng.pick(['#3a6aff', '#22c88a', '#ff5a3a', '#c83aff']), { x: -0.25 });
-      k.box(0.7, 0.06, 0.3, 0, 0.98, 0.86, '#222230');
+      k.box(0.72, 0.06, 0.3, 0, 0.98, 0.86, '#222230');
       k.cyl(0.02, 0.08, -0.12, 1.04, 0.88, '#d8d8d8', 6);
       k.glowBox(0.05, 0.02, 0.05, 0.08, 1.02, 0.9, '#ff2a2a');
       k.glowBox(0.05, 0.02, 0.05, 0.18, 1.02, 0.88, '#2aff6a');
@@ -438,7 +443,7 @@ export const CATALOG: Record<DecorKind, DecorItem> = {
       for (let i = 0; i < 4; i++) {
         const x = -0.83 + i * 0.55;
         k.box(0.5, 0.12, 0.5, x, 0.45, 0.45, velvet, { x: rng.chance(0.3) ? -0.9 : 0 });
-        k.box(0.5, 0.55, 0.1, x, 0.75, 0.2, velvet);
+        k.box(0.48, 0.55, 0.1, x, 0.75, 0.2, velvet);
         k.box(0.05, 0.6, 0.55, x + 0.27, 0.3, 0.42, '#2a2420');
       }
     },
