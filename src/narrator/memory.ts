@@ -81,6 +81,17 @@ export interface GuideState {
   visit?: number;
 }
 
+/** La récréation (entre l'atelier et la sortie) : 1, 2, 3, soleil dans la galerie des plâtres. */
+export interface RecreState {
+  stage: 'attente' | 'invite' | 'jeu' | 'fin';
+  /** Retours au début. */
+  fails: number;
+  won?: 'honnete' | 'triche';
+  /** Parti en pleine partie. */
+  left?: boolean;
+  visit?: number;
+}
+
 export interface Memory {
   /** Répliques déjà entendues (chacune n'est jouée qu'une fois, sauf certains retours). */
   heard: string[];
@@ -121,6 +132,7 @@ export interface Memory {
   /** Histoires abandonnées (rappel X18). */
   abandoned: number;
   guide: GuideState;
+  recre: RecreState;
 }
 
 export const FRESH: Memory = {
@@ -149,6 +161,7 @@ export const FRESH: Memory = {
   finaleDone: false,
   abandoned: 0,
   guide: { stage: 'attente', round: 0, obeyed: 0, choices: [] },
+  recre: { stage: 'attente', fails: 0 },
 };
 
 /** Mémoire du navigateur, complétée des champs ajoutés depuis (anciens visiteurs). */
@@ -165,6 +178,7 @@ export function loadMemory(reset: boolean): Memory {
     portes: { ...fresh.portes, ...raw.portes },
     raconte: { ...fresh.raconte, ...raw.raconte },
     guide: { ...fresh.guide, ...raw.guide },
+    recre: { ...fresh.recre, ...raw.recre },
     day: { ...fresh.day, ...raw.day },
     worlds: { ...raw.worlds },
     // (Avant la saison 2, les visites n'étaient pas comptées : une visite connue en vaut au moins une.)

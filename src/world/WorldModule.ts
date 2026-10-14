@@ -23,6 +23,7 @@ import type { ArtSlotDef } from './modules/defs';
 import type { Artwork } from '../../shared/artwork';
 import type { SpecialRoom } from './World';
 import { buildBench, buildDoorFrame, buildEasel, buildLitDoor, buildSpotBeam } from './specialProps';
+import { Gallery } from './gallery';
 
 /**
  * Œuvres d'un module venu d'un autre visiteur (visite à deux) : celles qu'il a accrochées,
@@ -119,7 +120,11 @@ export class WorldModule {
   /** Salles mises en scène derrière certaines ouvertures (voix off). */
   exitSpecial: Record<number, SpecialRoom> | null = null;
   /** Ce module est une salle mise en scène (à fixer avant `build`). */
-  special: 'atelier' | 'sortie' | 'favoris' | 'recompense' | 'punition' | 'porte' | null = null;
+  special: 'atelier' | 'sortie' | 'favoris' | 'recompense' | 'punition' | 'porte' | 'galerie' | null = null;
+  /** La galerie des plâtres (la récréation) : statues, portes, ligne d'arrivée. */
+  gallery: Gallery | null = null;
+  /** Murs des portes de la galerie, quand elles sont fermées (monde). */
+  private gateWalls: Segment[] = [];
   /** Salle punition : 1, les toiles retournées ; 2, un seul cartel. */
   specialVariant = 0;
   /** La porte lumineuse du sas (visite guidée) : 0 fermée, 1 ouverte. */
@@ -308,6 +313,10 @@ export class WorldModule {
     // Le sas de la visite guidée : une porte fermée, de la lumière dessous.
     if (this.def.kind === 'sas' && this.zone.zone.special === 'bouquet') this.special = 'porte';
     const extraWalls: Segment[] = [];
+    if (this.special === 'galerie') {
+      this.gallery = new Gallery(this.def, this.preset.geometry.ceilingHeight * this.def.ceilingScale, this.seed);
+      this.group.add(this.gallery.group);
+    }
     if (this.special === 'porte') {
       const c = this.def.connectors[1]!;
       const prop = buildLitDoor(c.pos.z, c.width, c.top ?? 2.5);
@@ -368,7 +377,7 @@ export class WorldModule {
       this.group.add(art.object);
     };
     // L'atelier et le bout de la sortie n'ont pas d'œuvre au mur : leur objet suffit.
-    const bare = emptied || this.special === 'atelier' || this.special === 'sortie' || this.special === 'porte';
+    const bare = emptied || this.special === 'atelier' || this.special === 'sortie' || this.special === 'porte' || this.special === 'galerie';
     let slots = bare ? [] : this.def.artSlots.filter((sl) => !spots.some((sp) => slotHitsSign(sl, sp)));
     // Salle récompense, ou punition au cartel unique : une seule œuvre, sur le plus grand mur.
     const single = this.special === 'recompense' || (this.special === 'punition' && this.specialVariant === 2);
@@ -416,7 +425,7 @@ export class WorldModule {
     const placed: Array<{ p: number; opts: ArtOptions }> = [];
     if (remote) {
       for (const r of remote.pedestals) placed.push({ p: r.p, opts: { artwork: r.art, pedestal: true } });
-    } else if (artCtx && !emptied && !this.loopFrom) {
+    } else if (artCtx && !emptied && !this.loopFrom && this.special !== 'galerie') {
       const prng = new Rng(this.seed, 'socles');
       for (let i = 0; i < this.def.pedestals.length; i++) {
         if (!prng.chance(CONFIG.art.pedestalChance)) continue;
@@ -508,6 +517,32 @@ export class WorldModule {
     });
   }
 
+  /** Les portes de la galerie se ferment (on ne sort plus avant la fin de la partie), ou se rouvrent. */
+  setGalleryGates(closed: boolean): void {
+    if (!this.gallery) return;
+    this.gallery.setGates(closed);
+    this.decorWalls = this.decorWalls.filter((w) => !this.gateWalls.includes(w));
+    this.gateWalls = [];
+    if (!closed) return;
+    for (const c of this.def.connectors) {
+      const t = { x: -c.normal.z, z: c.normal.x };
+      const a = { x: c.pos.x - (t.x * c.width) / 2, z: c.pos.z - (t.z * c.width) / 2 };
+      const b = { x: c.pos.x + (t.x * c.width) / 2, z: c.pos.z + (t.z * c.width) / 2 };
+      this.gateWalls.push({ a: applyTransform(this.transform, a), b: applyTransform(this.transform, b) });
+    }
+    this.decorWalls.push(...this.gateWalls);
+  }
+
+  /** Un point (monde) dans le repère du module. */
+  toLocal(p: Vec2): Vec2 {
+    return inverseTransform(this.transform, p);
+  }
+
+  /** Un point du module dans le monde. */
+  toWorld(p: Vec2): Vec2 {
+    return applyTransform(this.transform, p);
+  }
+
   /** La porte lumineuse s'ouvre (visite guidée). */
   openDoor(): void {
     if (this.door) this.door.opening = true;
@@ -519,6 +554,7 @@ export class WorldModule {
 
   /** Décor animé : gouttes qui tombent. `onDrip` reçoit le point d'impact (monde). */
   animateDecor(dt: number, onDrip: (x: number, y: number, z: number) => void): void {
+    this.gallery?.update(dt);
     if (this.door?.opening && this.door.t < 1) {
       this.door.t = Math.min(1, this.door.t + dt / 1.6);
       this.door.prop.open(this.door.t);
@@ -553,7 +589,7 @@ export class WorldModule {
   }
 
   get hasAnimatedDecor(): boolean {
-    return this.drips.length > 0 || this.steam !== null || this.door !== null;
+    return this.drips.length > 0 || this.steam !== null || this.door !== null || this.gallery !== null;
   }
 
   get alive(): boolean {
@@ -717,6 +753,8 @@ export class WorldModule {
     this.ownedGeometries = [];
     for (const p of this.signParts) p.dispose();
     this.signParts = [];
+    this.gallery?.dispose();
+    this.gallery = null;
     for (const p of this.signObjects) p.dispose();
     this.signObjects = [];
     this.drips = [];

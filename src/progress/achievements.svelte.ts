@@ -53,6 +53,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'ca-alors', title: 'Ça alors', description: 'Remarquer une première étrangeté.', target: 1, progress: (s) => s.oddities.length, secret: true },
   { id: 'chasseur', title: 'Chasseur d’étrangetés', description: 'Croiser 5 étrangetés différentes.', target: 5, progress: (s) => s.oddities.length, secret: true },
   { id: 'la-sortie', title: 'La sortie', description: 'Trouver la sortie du musée.', target: 1, progress: (s) => ((s.found ?? []).includes('sortie') ? 1 : 0), secret: true },
+  { id: 'recreation', title: 'Récréation', description: 'Gagner au 1, 2, 3, soleil du Conservateur.', target: 1, progress: (s) => ((s.found ?? []).includes('recre') ? 1 : 0), secret: true },
   { id: 'bouquet-final', title: 'Bouquet final', description: 'Assister au feu d’artifice du Conservateur.', target: 1, progress: (s) => ((s.found ?? []).includes('bouquet') ? 1 : 0), secret: true },
   { id: 'promeneur', title: 'Promeneur', description: 'Marcher 1 km dans la galerie.', target: 1000, progress: (s) => s.distance },
   { id: 'infini', title: 'L’infini à pied', description: 'Marcher 10 km dans la galerie.', target: 10000, progress: (s) => s.distance },

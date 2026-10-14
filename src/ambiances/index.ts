@@ -34,6 +34,7 @@ import { miniature } from './presets/miniature';
 import { respire } from './presets/respire';
 
 import { couchant } from './presets/couchant';
+import { platres } from './presets/platres';
 /** Registre des ambiances disponibles : ajouter une ambiance = ajouter un preset ici. */
 export const AMBIANCES: Record<string, AmbiancePreset> = Object.fromEntries(
   [
@@ -48,7 +49,7 @@ export const AMBIANCES: Record<string, AmbiancePreset> = Object.fromEntries(
     // Étrange
     miroirs, inverse, neant, geant, miniature, respire, givre,
     // Scènes de la voix off (jamais tirées au sort)
-    couchant,
+    couchant, platres,
   ].map((p) => [p.id, p]),
 );
 

@@ -3472,6 +3472,293 @@
    "intention": "Pince-sans-rire.",
    "tags": "[deadpan]",
    "texte": "Vous avez allumé la lumière de votre côté ? {p} Tricheur."
+  },
+  {
+   "id": "L01",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Comptage, morceau seul. Début d'une manche, rythme normal",
+   "intention": "Posé, joueur, voix de cour de récré mais adulte.",
+   "tags": "[playful] [measured]",
+   "texte": "Un..."
+  },
+  {
+   "id": "L02",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Comptage, morceau seul. Après « Un »",
+   "intention": "Même ton, un poil plus haut.",
+   "tags": "[playful]",
+   "texte": "deux..."
+  },
+  {
+   "id": "L03",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Comptage, morceau seul. Après « deux »",
+   "intention": "En suspens, on sent qu'il va se retourner.",
+   "tags": "[playful] [building suspense]",
+   "texte": "trois..."
+  },
+  {
+   "id": "L04",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Comptage, morceau seul. Le mot qui fige tout (version sèche)",
+   "intention": "Vif, sec, il se retourne d'un coup.",
+   "tags": "[sharp] [sudden]",
+   "texte": "Soleil !"
+  },
+  {
+   "id": "L05",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Comptage, morceau seul. Variante triomphante de « Soleil ! »",
+   "intention": "Crié, ravi, comme un enfant.",
+   "tags": "[shouting] [gleeful]",
+   "texte": "SOLEIL !"
+  },
+  {
+   "id": "L06",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Comptage, morceau seul. Variante piège : chuchoté, presque inaudible",
+   "intention": "Chuchoté, perfide.",
+   "tags": "[whispers] [sly]",
+   "texte": "soleil."
+  },
+  {
+   "id": "L07",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Comptage d'un seul tenant, très rapide (manche accélérée)",
+   "intention": "Débité à toute vitesse, sans respirer.",
+   "tags": "[very fast] [mischievous]",
+   "texte": "Undeuxtroissoleil !"
+  },
+  {
+   "id": "L08",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Comptage, morceau seul. « Un » très étiré (manche lente, pour endormir le visiteur)",
+   "intention": "Étiré, paresseux, faussement endormi.",
+   "tags": "[slow] [drawn out] [lazy]",
+   "texte": "Uuuuuun..."
+  },
+  {
+   "id": "L09",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Faux départ : il commence à dire soleil et s'arrête",
+   "intention": "Il se reprend, très content de sa farce.",
+   "tags": "[mischievous] [stops himself]",
+   "texte": "Un, deux, trois... sol... {p} Non. Rien. {p} Continuez."
+  },
+  {
+   "id": "L10",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Gag de comptage : il traîne entre deux et trois",
+   "intention": "Pinailleur, ravi.",
+   "tags": "[teasing]",
+   "texte": "Un... deux... {p} deux et demi..."
+  },
+  {
+   "id": "L11",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Déclencheur : visite suivante après la fin de l'atelier, une minute après le début, au calme",
+   "intention": "Désœuvré, puis l'idée lui vient.",
+   "tags": "[bored] [sighs] [then perks up]",
+   "texte": "Je m'ennuie. {p} Vous savez ce qui me manque ? Les récréations. {p} Vous connaissez 1, 2, 3, soleil ?"
+  },
+  {
+   "id": "L12",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Juste après L11 : un panneau « Récréation » apparaît au prochain carrefour",
+   "intention": "Enthousiaste, déjà parti.",
+   "tags": "[excited]",
+   "texte": "Suivez le panneau « Récréation ». J'ai une galerie parfaite pour ça."
+  },
+  {
+   "id": "L13",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Il entre dans la galerie des plâtres (longue salle blanche, statues, ligne d'arrivée au fond)",
+   "intention": "Fier de son terrain de jeu.",
+   "tags": "[proud] [delighted]",
+   "texte": "La galerie des plâtres. {p} Personne ne vient jamais ici. Les statues s'ennuient autant que moi."
+  },
+  {
+   "id": "L14",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Les portes de la galerie se ferment derrière lui (toutes)",
+   "intention": "Faussement anodin.",
+   "tags": "[casual] [slightly ominous]",
+   "texte": "Je ferme, pour qu'on ne soit pas dérangés. {p} Ça ne rouvrira qu'à la fin de la partie."
+  },
+  {
+   "id": "L15",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Les règles, juste après L14",
+   "intention": "Maître de jeu, clair et joueur.",
+   "tags": "[game master] [playful]",
+   "texte": "Les règles, alors. Moi je compte, vous avancez. Quand je dis « soleil », vous ne bougez plus. Plus du tout. {p} Si je vous vois bouger, retour au début. Le premier arrivé au fond a gagné."
+  },
+  {
+   "id": "L16",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Juste après L15 (les statues aussi jouent)",
+   "intention": "Complice, petite voix.",
+   "tags": "[conspiratorial]",
+   "texte": "Ah, et elles jouent aussi. Ne vous laissez pas distancer."
+  },
+  {
+   "id": "L17",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Première manche, juste avant de compter",
+   "intention": "Il s'installe, se retourne contre le mur.",
+   "tags": "[playful]",
+   "texte": "Je me retourne. {p} C'est parti."
+  },
+  {
+   "id": "L18",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Vu en train de bouger après « Soleil ! » (1re fois). Retour au début de la galerie",
+   "intention": "Ravi de l'avoir eu.",
+   "tags": "[gleeful] [pointing]",
+   "texte": "Je vous ai vu ! {p} Retour au début."
+  },
+  {
+   "id": "L19",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Vu en train de bouger (2e fois)",
+   "intention": "Faussement sévère.",
+   "tags": "[mock stern]",
+   "texte": "Vu. Encore. {p} Au début, s'il vous plaît."
+  },
+  {
+   "id": "L20",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Vu en train de bouger (3e fois)",
+   "intention": "Faussement navré, ravi au fond.",
+   "tags": "[mock sympathy]",
+   "texte": "Oh là là. {p} Ça bougeait de partout. Au début."
+  },
+  {
+   "id": "L21",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Vu en train de bouger, variante (tourner la tête ne compte pas ; c'est un déplacement)",
+   "intention": "Pointilleux.",
+   "tags": "[pedantic]",
+   "texte": "Un pas. J'ai vu un pas. {p} Je les compte, les pas."
+  },
+  {
+   "id": "L22",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Vu en train de bouger, variante (il courait au moment du soleil)",
+   "intention": "Amusé.",
+   "tags": "[amused]",
+   "texte": "Vous couriez. Au moment du soleil. {p} C'était ambitieux."
+  },
+  {
+   "id": "L23",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Gag : une statue bouge pendant le « Soleil ! », mais c'est le visiteur qu'il gronde",
+   "intention": "Mauvaise foi totale.",
+   "tags": "[unfair] [stern]",
+   "texte": "Ce n'est pas elle que je surveille. {p} C'est vous."
+  },
+  {
+   "id": "L24",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Gag : les statues sont nettement en avance sur lui",
+   "intention": "Moqueur.",
+   "tags": "[teasing]",
+   "texte": "Elles vont plus vite que vous. {p} Elles sont en plâtre."
+  },
+  {
+   "id": "L25",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Gag : il ne regarde que le visiteur (une statue fait un grand pas pendant « soleil »)",
+   "intention": "Il ne voit rien, exprès.",
+   "tags": "[innocent]",
+   "texte": "Quoi ? {p} Je n'ai rien vu. Elles sont parfaitement immobiles."
+  },
+  {
+   "id": "L26",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Le visiteur n'avance pas pendant le comptage (reste sur place)",
+   "intention": "Taquin, impatient.",
+   "tags": "[impatient] [teasing]",
+   "texte": "Il faut avancer, hein. {p} Sinon ce n'est pas un jeu, c'est de la sculpture."
+  },
+  {
+   "id": "L27",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Bien immobile au soleil (après une manche réussie, une fois)",
+   "intention": "Impressionné, à contrecœur.",
+   "tags": "[grudgingly impressed]",
+   "texte": "Pas mal. {p} On dirait une des leurs."
+  },
+  {
+   "id": "L28",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Il est à mi-chemin",
+   "intention": "Il sent le danger, accélère.",
+   "tags": "[slightly worried]",
+   "texte": "Vous approchez. {p} Je vais devoir compter plus vite."
+  },
+  {
+   "id": "L29",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Il est tout près de l'arrivée",
+   "intention": "Nerveux, joueur.",
+   "tags": "[nervous] [playful]",
+   "texte": "Non, non, non. {p} Pas si vite."
+  },
+  {
+   "id": "L30",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Il revient vers l'entrée fermée pendant le jeu",
+   "intention": "Ferme, amusé.",
+   "tags": "[firm] [amused]",
+   "texte": "C'est fermé. {p} On ne quitte pas une récréation en plein milieu."
+  },
+  {
+   "id": "L31",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Il ouvre le menu (pause) pendant le jeu, puis revient",
+   "intention": "Pince-sans-rire.",
+   "tags": "[deadpan]",
+   "texte": "Une pause ? {p} Dans un 1, 2, 3, soleil ? {p} Je n'ai jamais vu ça."
+  },
+  {
+   "id": "L32",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Après trois retours au début : il change de méthode",
+   "intention": "Vexé, mais il veut que ça avance.",
+   "tags": "[sighs] [resigned]",
+   "texte": "Bon. {p} Je vais compter... plus lentement. {p} Beaucoup plus lentement."
+  },
+  {
+   "id": "L33",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Après cinq retours au début : il ferme les yeux pour de bon",
+   "intention": "Lassé, généreux malgré lui.",
+   "tags": "[weary] [generous]",
+   "texte": "Je ferme les yeux. {p} Je ne regarde plus. {p} Allez-y, je ne veux pas le savoir."
+  },
+  {
+   "id": "L34",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Il franchit la ligne d'arrivée (victoire honnête)",
+   "intention": "Mauvais perdant, beau joueur quand même.",
+   "tags": "[sore loser] [then gracious]",
+   "texte": "Bon. {p} Vous avez gagné. {p} Je n'aime pas perdre, mais je n'aime pas perdre contre quelqu'un de bon."
+  },
+  {
+   "id": "L35",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Il franchit la ligne après que le Conservateur a triché pour lui (L33)",
+   "intention": "Il assume, complice.",
+   "tags": "[conspiratorial]",
+   "texte": "Vous avez gagné. {p} Je n'ai rien vu. Ne le dites à personne."
+  },
+  {
+   "id": "L36",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Juste après la victoire : il se retourne, toutes les statues sont juste derrière lui",
+   "intention": "Chuchoté, inquiétant, ravi.",
+   "tags": "[whispers] [unsettling]",
+   "texte": "Ne vous retournez pas trop vite. {p} Elles ne savent pas encore que c'est fini."
+  },
+  {
+   "id": "L37",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Les portes de la galerie se rouvrent",
+   "intention": "Léger, la récré est finie.",
+   "tags": "[light]",
+   "texte": "Voilà. C'est rouvert. {p} Fin de la récréation."
+  },
+  {
+   "id": "L38",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Quelques salles plus loin, après la récréation",
+   "intention": "Rêveur, un peu nostalgique.",
+   "tags": "[wistful]",
+   "texte": "C'était bien. {p} On refera ça. Peut-être. Quand elles seront reposées."
+  },
+  {
+   "id": "L39",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Visite suivante, s'il était parti en plein jeu (galerie fermée)",
+   "intention": "Rancunier, malicieux.",
+   "tags": "[playful grudge]",
+   "texte": "Vous êtes parti en pleine partie, la dernière fois. {p} Les statues vous attendent encore. Elles n'ont pas bougé. {p} Enfin. Je crois."
+  },
+  {
+   "id": "L40",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Une visite suivante, en passant devant une sculpture sur socle",
+   "intention": "Soupçonneux.",
+   "tags": "[suspicious]",
+   "texte": "Celle-là. {p} Je suis sûr qu'elle a bougé."
+  },
+  {
+   "id": "L41",
+   "quand": "Histoire « La récréation » (entre l'atelier et la sortie). Une visite suivante, si le visiteur s'immobilise longtemps",
+   "intention": "Réflexe de jeu.",
+   "tags": "[amused]",
+   "texte": "Vous faites encore la statue ? {p} La récréation est finie, vous savez."
   }
  ]
 }

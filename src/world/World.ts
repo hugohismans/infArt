@@ -81,7 +81,9 @@ export type SpecialRoom =
   /** Visite guidée : une seule œuvre sous un projecteur, un banc. */
   | { kind: 'recompense' }
   /** Visite guidée : les toiles retournées (1), ou un seul cartel, celui de `art` (2). */
-  | { kind: 'punition'; variant: 1 | 2; art?: Artwork };
+  | { kind: 'punition'; variant: 1 | 2; art?: Artwork }
+  /** La récréation : la galerie des plâtres (1, 2, 3, soleil). */
+  | { kind: 'galerie' };
 
 /**
  * Ce que la voix off veut au prochain carrefour : ses panneaux, et ce qui attend derrière
@@ -803,6 +805,21 @@ export class World {
     if (sp.kind === 'atelier') {
       const def = defs['deadend'];
       return def ? { def, preset, prepare: (m) => (m.special = 'atelier') } : null;
+    }
+    if (sp.kind === 'galerie') {
+      const def = defs['galerie'] ?? defs['room-l'];
+      return def
+        ? {
+            def,
+            fallbacks: [defs['room-l'], defs['straight-l']].filter((d): d is ModuleDef => !!d && d !== def),
+            preset,
+            prepare: (m) => {
+              m.special = 'galerie';
+              // « Arrivée », au-dessus de la sortie du fond.
+              if (m.def.connectors[1]) m.signs = [{ connector: 1, title: 'Arrivée', tag: 'arrivee' }];
+            },
+          }
+        : null;
     }
     if (sp.kind === 'recompense' || sp.kind === 'punition') {
       const def = defs['room-s'] ?? defs['room-l'];

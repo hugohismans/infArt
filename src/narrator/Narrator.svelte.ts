@@ -114,7 +114,17 @@ interface Pending {
   id: LineId;
   at: number;
   after?: () => void;
+  /** Au moment où elle commence (le « soleil ! » fige tout). */
+  onStart?: () => void;
+  /** Demandée par la fin de la réplique précédente : c'est la suite, elle passe avant le reste. */
+  chained?: boolean;
 }
+
+/** La récréation : les morceaux du comptage (rejoués à chaque manche) et les « je vous ai vu ». */
+const COUNT_LINES = new Set(['L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L07', 'L08', 'L09', 'L10']);
+const CAUGHT_LINES = ['L18', 'L19', 'L20', 'L21', 'L22'];
+/** Durées des morceaux de comptage sans voix enregistrée (sous-titres seuls), en secondes. */
+const COUNT_FALLBACK: Record<string, number> = { L01: 0.6, L02: 0.6, L03: 0.7, L04: 0.5, L05: 0.6, L06: 0.5, L07: 1.3, L08: 1.4, L09: 3.2, L10: 1.8 };
 
 /**
  * La voix off : le Conservateur. Il commente la visite en solo (jamais à deux), d'après
@@ -248,6 +258,9 @@ export class Narrator {
       g.stage = 'fin';
       g.left = true;
     }
+    // Récréation laissée en pleine partie : finie (il le fera savoir) ; pas encore commencée : à refaire.
+    if (m.recre.stage === 'jeu') m.recre = { ...m.recre, stage: 'fin', left: true };
+    else if (m.recre.stage === 'invite') m.recre = { stage: 'attente', fails: 0 };
     engine.world.signPlanner = (mod, exits) => this.plan(mod, exits);
     engine.world.avoidDeadEnds = () => {
       const m = this.m;
@@ -286,6 +299,7 @@ export class Narrator {
     document.removeEventListener('fullscreenchange', this.onFullscreen);
     this.silence();
     this.guideRestore();
+    this.recreRestore();
     this.engine = null;
   }
 
@@ -299,6 +313,11 @@ export class Narrator {
       if (g.stage === 'jeu' || g.stage === 'noir' || g.stage === 'bouquet') {
         this.m.guide = { stage: 'attente', round: 0, obeyed: 0, choices: [] };
         this.guideRestore();
+      }
+      // Pas de récréation à deux non plus : on rouvre, elle attendra.
+      if (this.m.recre.stage === 'invite' || this.m.recre.stage === 'jeu') {
+        this.m.recre = { stage: 'attente', fails: 0 };
+        this.recreRestore();
       }
       this.m.lastWasDuo = true;
       this.save();
@@ -410,6 +429,7 @@ export class Narrator {
   resumed(): void {
     if (!this.live) return;
     if (this.m.guide.stage === 'noir') return this.say('J45', 0.5);
+    if (this.m.recre.stage === 'jeu') return this.say('L31', 0.5);
     this.v.pauses++;
     if (this.v.pauses === 5) this.say('E74', 1);
     else if (this.v.pauses === 1) this.say('E73', 1);
@@ -434,7 +454,7 @@ export class Narrator {
   achievement(id: string): void {
     if (!this.live || id === 'premier-pas') return;
     if (id === 'la-sortie') this.say('S34', 4);
-    else if (id === 'bouquet-final') return;
+    else if (id === 'bouquet-final' || id === 'recreation') return;
     else this.sayEvent('E15');
   }
 
@@ -516,6 +536,7 @@ export class Narrator {
 
     this.specialRooms(cur);
     this.guideTick(cur, dt);
+    this.recreTick();
     this.storyTick(cur);
   }
 
@@ -533,7 +554,9 @@ export class Narrator {
     const g = m.guide;
     if (g.stage === 'jeu' && this.idle >= 20 && cur?.signs.some((s) => s.tag === `guide${g.round + 1}`)) this.say('J43');
     if (g.stage === 'noir' && this.gl.phase === 'torche' && this.idle >= 15) this.say('J27');
-    if (g.stage === 'noir' || g.stage === 'bouquet') return;
+    if (g.stage === 'noir' || g.stage === 'bouquet' || m.recre.stage === 'jeu') return;
+    // Aux visites suivantes, immobile longtemps : « Vous faites encore la statue ? »
+    if (m.recre.stage === 'fin' && m.recre.visit !== undefined && m.recre.visit < m.visits && this.idle >= 25) this.say('L41');
     if (this.idle < 6) return;
     const tags = new Set(cur?.signs.map((s) => s.tag ?? ''));
     if (tags.has('sortie1')) this.say(this.heard('S02') ? 'S03' : 'S02');
@@ -560,6 +583,7 @@ export class Narrator {
     if (prev.def.kind === 'rotonde') this.leftRotonde = true;
     if (!backward && cur.signs.length > 0) this.enteredSigned(cur);
     this.guideMoved(prev, cur, backward);
+    this.recreMoved(cur, backward);
 
     // Demi-tours.
     this.backCount = backward ? this.backCount + 1 : 0;
@@ -644,13 +668,13 @@ export class Narrator {
     if (mine.size > 0) {
       for (const other of this.engine!.world.modules) {
         if (other === cur) continue;
-        const hadGuide = other.signs.some((sg) => sg.tag?.startsWith('guide'));
+        const hadGuide = other.signs.some((sg) => sg.tag?.startsWith('guide') || sg.tag === 'recre');
         other.clearSigns((sg) => !sg.tag || !mine.has(family(sg.tag)));
         // (Leurs salles récompense et punition n'ont plus lieu d'être.)
-        if (hadGuide && mine.has('guide') && other.exitSpecial) {
+        if (hadGuide && (mine.has('guide') || mine.has('recre')) && other.exitSpecial) {
           for (const k of Object.keys(other.exitSpecial)) {
             const kind = other.exitSpecial[Number(k)]?.kind;
-            if (kind === 'recompense' || kind === 'punition') delete other.exitSpecial[Number(k)];
+            if (kind === 'recompense' || kind === 'punition' || kind === 'galerie') delete other.exitSpecial[Number(k)];
           }
         }
       }
@@ -1173,6 +1197,304 @@ export class Narrator {
     this.gl.fav = best;
   }
 
+  // --- La récréation -----------------------------------------------------------------
+  // Entre l'atelier et la sortie : 1, 2, 3, soleil dans la galerie des plâtres. Il compte,
+  // le visiteur avance ; au « soleil », plus un pas, sinon retour au début. Les portes de la
+  // galerie restent fermées jusqu'à la fin de la partie.
+
+  /** Déroulé de la partie en cours (cette visite). */
+  private rc = {
+    state: '' as '' | 'entree' | 'regles' | 'pause' | 'compte' | 'controle' | 'pris' | 'libre' | 'fin',
+    t: 0,
+    /** Change à chaque manche annulée : les suites de comptage en attente s'arrêtent. */
+    token: 0,
+    round: 0,
+    pauseLen: 1,
+    /** Il compte plus lentement (après trois échecs), il ne regarde plus (après cinq). */
+    slow: 1,
+    eyesClosed: false,
+    soleilAt: 0,
+    countStartZ: 0,
+    gag: '' as string,
+    falseStart: false,
+    half: false,
+    roomsAfter: -1,
+    module: null as WorldModule | null,
+    /** Position au tick précédent (pour voir s'il avance vraiment, ou pousse contre un mur). */
+    last: { x: 0, z: 0 },
+  };
+
+  private recreState(state: Narrator['rc']['state']): void {
+    this.rc.state = state;
+    this.rc.t = 0;
+  }
+
+  /** La galerie se rouvre (fin, visite à deux, arrêt). */
+  private recreRestore(): void {
+    this.rc.token++;
+    this.rc.module?.setGalleryGates(false);
+    if (this.rc.module?.gallery) this.rc.module.gallery.phase = 'fin';
+  }
+
+  /** Le visiteur, au départ de la galerie, face au fond. */
+  private recreToStart(): void {
+    const e = this.engine;
+    const mod = this.rc.module;
+    if (!e || !mod?.gallery) return;
+    this.quietRupture = true;
+    e.onRupture?.('noir');
+    this.quietRupture = false;
+    const p = mod.toWorld({ x: 0, z: mod.gallery.startZ });
+    const ahead = mod.toWorld({ x: 0, z: mod.gallery.startZ + 1 });
+    e.player.position = p;
+    e.player.yaw = Math.atan2(-(ahead.x - p.x), -(ahead.z - p.z));
+    e.player.pitch = 0;
+  }
+
+  /** Il entre dans la galerie : quand il est bien dedans, les portes se ferment. */
+  private recreEnter(cur: WorldModule): void {
+    Object.assign(this.rc, { round: 0, slow: 1, eyesClosed: false, gag: '', falseStart: false, half: false, roomsAfter: -1 });
+    this.rc.module = cur;
+    this.recreState('entree');
+    this.say('L13');
+  }
+
+  private recreTick(): void {
+    const m = this.m;
+    const r = m.recre;
+    const rc = this.rc;
+    const e = this.engine!;
+    const mod = rc.module;
+    const g = mod?.gallery;
+    if (!mod || !g || (r.stage !== 'invite' && r.stage !== 'jeu')) return;
+    if (!mod.alive) {
+      // (La galerie a disparu : on n'enferme personne, et le panneau pourra revenir.)
+      rc.module = null;
+      if (rc.state === 'entree') this.recreState('');
+      return;
+    }
+    rc.t += 0.25;
+    const local = mod.toLocal(e.player.position);
+    const now = performance.now() / 1000;
+
+    if (rc.state === 'entree') {
+      // (Bien dedans : ni sur le seuil, ni déjà ressorti.)
+      if (e.world.currentModule !== mod || local.z < g.startZ + 1.2 || local.z > g.startZ + 8) return;
+      mod.setGalleryGates(true);
+      r.stage = 'jeu';
+      // (Les commentaires qui attendaient encore n'ont plus leur place : il n'y a plus que le jeu.)
+      this.queue = this.queue.filter((q) => q.id[0] === 'L' || lineFamily(q.id) === 'texte');
+      r.visit = m.visits;
+      this.save();
+      if (e.autoWalkActive) {
+        e.setAutoWalk(false);
+        e.onAutoWalkChange?.(false);
+      }
+      this.recreState('regles');
+      const token = rc.token;
+      this.say('L14', 0.4, () =>
+        this.say('L15', 0.3, () =>
+          this.say('L16', 0.3, () =>
+            this.say('L17', 0.4, () => {
+              if (token === rc.token) this.recreCount();
+            }),
+          ),
+        ),
+      );
+      return;
+    }
+    if (r.stage !== 'jeu' || rc.state === 'fin') return;
+    // Il pousse contre la porte d'entrée, fermée.
+    const p = e.player.position;
+    const stuck = Math.hypot(p.x - rc.last.x, p.z - rc.last.z) < 0.05;
+    rc.last = { x: p.x, z: p.z };
+    if (local.z < 1.4 && e.input.hasMoveIntent && stuck) this.say('L30');
+    // Pendant les règles, on ne part pas en avance : retour sur la ligne de départ.
+    if (rc.state === 'regles') {
+      if (local.z > g.startZ + 3) this.recreToStart();
+      return;
+    }
+
+    // Pendant un « je vous ai vu », rien ne compte : il retourne au début d'abord.
+    if (rc.state === 'pris') return;
+    // Arrivé au fond : gagné.
+    if (local.z >= g.finishZ) return this.recreWin(local);
+
+    // Commentaires selon l'avancée (une fois chacun).
+    const progress = (local.z - g.startZ) / (g.finishZ - g.startZ);
+    if (progress > 0.8) this.say('L29');
+    else if (progress > 0.5 && !this.heard('L28')) {
+      // « Je vais devoir compter plus vite » : et il le fait.
+      this.say('L28');
+      rc.slow *= 0.7;
+    }
+
+    switch (rc.state) {
+      case 'pause':
+        // (Il recompte quand il a fini de parler.)
+        if (rc.t >= rc.pauseLen && !this.playing && !this.queue.length) this.recreCount();
+        break;
+      case 'controle': {
+        const since = now - rc.soleilAt;
+        // Un peu de marge après « soleil » (le temps de s'arrêter), puis plus un pas.
+        if (since > 0.55 && since < 2.1 && e.player.speed > 0.3) return this.recreCaught();
+        if (since >= 2.1) {
+          // Manche réussie : un mot, parfois.
+          if (rc.gag) this.say(rc.gag);
+          else if (rc.round >= 2 && Math.abs(local.z - rc.countStartZ) < 0.8) this.say('L26');
+          else this.say('L27');
+          rc.gag = '';
+          this.recreState('pause');
+          rc.pauseLen = (0.8 + Math.random() * 1.4) * rc.slow;
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  /** Une manche : « un… deux… trois… soleil ! », à un rythme chaque fois différent. */
+  private recreCount(): void {
+    const rc = this.rc;
+    const g = rc.module?.gallery;
+    const e = this.engine;
+    if (!g || !e) return;
+    const token = ++rc.token;
+    rc.round++;
+    this.recreState(rc.eyesClosed ? 'libre' : 'compte');
+    g.phase = 'compte';
+    rc.countStartZ = rc.module!.toLocal(e.player.position).z;
+    // Les yeux fermés : il ne compte plus, les statues filent, le visiteur aussi.
+    if (rc.eyesClosed) return;
+    const gap = () => (0.25 + Math.random() * 0.5) * rc.slow;
+    const roll = Math.random();
+    let seq: LineId[] = ['L01', 'L02', 'L03'];
+    let pattern: 'normal' | 'rapide' | 'faux' = 'normal';
+    if (rc.round >= 2 && rc.slow <= 1) {
+      if (!rc.falseStart && roll < 0.15) pattern = 'faux';
+      else if (roll < 0.35) pattern = 'rapide';
+      else if (!rc.half && roll < 0.5) {
+        seq = ['L01', 'L10', 'L03'];
+        rc.half = true;
+      } else if (roll < 0.65) seq = ['L08', 'L02', 'L03'];
+    }
+    if (pattern === 'faux') {
+      rc.falseStart = true;
+      this.say('L09', 0, () => {
+        if (token !== rc.token) return;
+        this.recreState('pause');
+        rc.pauseLen = 0.4;
+      });
+      return;
+    }
+    if (pattern === 'rapide') {
+      // D'un seul tenant : le « soleil » est à la fin.
+      this.say('L07', 0, () => this.recreSoleil(token));
+      return;
+    }
+    const soleil: LineId = Math.random() < 0.7 ? 'L04' : Math.random() < 0.65 ? 'L05' : 'L06';
+    const next = (i: number) => {
+      if (token !== rc.token) return;
+      if (i < seq.length) this.say(seq[i]!, i === 0 ? 0 : gap(), () => next(i + 1));
+      else this.say(soleil, gap() * 1.3, undefined, () => this.recreSoleil(token));
+    };
+    next(0);
+  }
+
+  /** « Soleil ! » : tout se fige. (Parfois, une statue triche.) */
+  private recreSoleil(token: number): void {
+    const rc = this.rc;
+    const g = rc.module?.gallery;
+    if (token !== rc.token || !g) return;
+    rc.soleilAt = performance.now() / 1000;
+    g.phase = 'soleil';
+    this.recreState('controle');
+    if (rc.round === 2 || rc.round === 5) {
+      g.cheat();
+      rc.gag = rc.round === 2 ? 'L23' : 'L25';
+    }
+  }
+
+  /** Vu ! Retour au début. */
+  private recreCaught(): void {
+    const m = this.m;
+    const r = m.recre;
+    const rc = this.rc;
+    const e = this.engine!;
+    const g = rc.module!.gallery!;
+    rc.token++;
+    this.queue = this.queue.filter((q) => !COUNT_LINES.has(q.id));
+    r.fails++;
+    this.save();
+    this.recreState('pris');
+    const running = e.player.speed > CONFIG.player.walkSpeed * 1.2;
+    const line = r.fails <= 3 ? CAUGHT_LINES[r.fails - 1]! : running ? 'L22' : r.fails % 2 ? 'L21' : 'L20';
+    rc.gag = '';
+    this.say(line, 0, () => {
+      if (rc.state !== 'pris') return;
+      this.recreToStart();
+      const local = rc.module!.toLocal(e.player.position);
+      let extra: LineId | null = null;
+      if (r.fails === 1 && g.meanZ > local.z + 3) extra = 'L24';
+      if (r.fails === 3) {
+        rc.slow = 1.8;
+        extra = 'L32';
+      }
+      if (r.fails >= 5 && !rc.eyesClosed) {
+        rc.eyesClosed = true;
+        extra = 'L33';
+      }
+      const resume = () => {
+        if (rc.state !== 'pris') return;
+        this.recreState('pause');
+        rc.pauseLen = 1.2;
+      };
+      if (extra) this.say(extra, 0.8, resume);
+      else resume();
+    });
+  }
+
+  /** Arrivé au fond : gagné. Les statues sont toutes juste derrière lui. */
+  private recreWin(local: { x: number; z: number }): void {
+    const m = this.m;
+    const r = m.recre;
+    const rc = this.rc;
+    const mod = rc.module!;
+    const g = mod.gallery!;
+    rc.token++;
+    // (Plus de comptage ni de commentaire de partie en attente : c'est fini.)
+    this.queue = this.queue.filter((q) => q.id[0] !== 'L');
+    this.recreState('fin');
+    g.phase = 'soleil';
+    r.won = rc.eyesClosed ? 'triche' : 'honnete';
+    this.save();
+    this.say(rc.eyesClosed ? 'L35' : 'L34', 0.3, () => {
+      g.gatherBehind(local.x, local.z);
+      this.say('L36', 0.8, () => {
+        mod.setGalleryGates(false);
+        r.stage = 'fin';
+        this.save();
+        progress.found('recre');
+        rc.roomsAfter = 0;
+        this.say('L37', 0.6);
+      });
+    });
+  }
+
+  /** Passage d'un module à l'autre : l'entrée dans la galerie, le souvenir de la partie. */
+  private recreMoved(cur: WorldModule, backward: boolean): void {
+    const m = this.m;
+    const r = m.recre;
+    if (r.stage === 'invite' && cur.special === 'galerie' && !backward && this.rc.state !== 'entree') this.recreEnter(cur);
+    if (r.stage === 'fin' && this.rc.roomsAfter >= 0 && ++this.rc.roomsAfter >= 3) {
+      this.rc.roomsAfter = -1;
+      this.say('L38');
+    }
+    // Aux visites suivantes : une sculpture sur socle, l'air de rien.
+    if (r.stage === 'fin' && r.visit !== undefined && r.visit < m.visits && cur.pedestalPieces.length > 0 && Math.random() < 0.3) this.say('L40', 1.5);
+  }
+
   // --- Histoires ---------------------------------------------------------------------
 
   /** Où en sont les histoires : ce qui démarre ou se poursuit dans cette visite. */
@@ -1201,8 +1523,15 @@ export class Narrator {
     // Après l'abandon de la quête, il insiste encore un peu.
     if (m.atelier.result === 'abandon' && m.atelier.stage === 'fin' && t - this.abandonAt > 120) this.say(this.heard('P28') ? 'P29' : 'P28');
 
+    // La récréation (après l'atelier, avant la sortie) : une minute après le début, au calme.
+    if (free && m.story === 2 && m.visits >= 3 && m.recre.stage === 'attente' && t > 60 && cur && cur.def.kind !== 'rotonde' && !cur.zone.wing) {
+      this.v.storyMoment = true;
+      m.recre = { stage: 'invite', fails: 0 };
+      this.save();
+      this.say('L11', 0, () => this.say('L12', 0.4));
+    }
     // Histoire 2 : le panneau de la sortie apparaît une minute après le début.
-    if (free && m.story === 2 && m.visits >= 3 && m.sortie.stage === 'attente' && t > 60) {
+    if (free && m.story === 2 && m.visits >= 3 && m.recre.stage === 'fin' && m.sortie.stage === 'attente' && t > 60) {
       this.v.storyMoment = true;
       m.sortie.stage = 'chemin';
       m.sortie.step = 0;
@@ -1615,6 +1944,16 @@ export class Narrator {
     const gs = m.guide.stage;
     if (gs === 'noir' || gs === 'bouquet') return null;
     if (gs === 'jeu') return this.guidePlan(exits);
+    // La récréation : le panneau qui mène à la galerie des plâtres ; pendant la partie, rien.
+    if (m.recre.stage === 'jeu') return null;
+    if (m.recre.stage === 'invite' && this.rc.state !== 'entree') {
+      const x = rng();
+      return {
+        signs: [{ connector: x, title: 'Récréation', tag: 'recre' }],
+        specials: { [x]: { kind: 'galerie' } },
+        zones: { [x]: world.director.makeZone('platres', mod.preset, 'progressive', 1) },
+      };
+    }
     const sea = resolveTheme(FIRST_THEME);
     // Acte I : la mer, reproposée après un refus.
     if (m.sea === 'refuse' && sea) {
@@ -1730,6 +2069,7 @@ export class Narrator {
     }
     if (m.sea === 'retire' && !this.heard('M03')) this.say('M03', 4);
     if (m.guide.left && !this.heard('J40')) this.say('J40', 4);
+    if (m.recre.left && !this.heard('L39')) this.say('L39', 5);
     if (m.seaChangedMind && m.sea === 'pris' && !this.heard('M09')) this.say('M09', 30);
     for (const e of m.epilogue.splice(0)) this.say(e, 6);
     if (m.visits >= 6 && collection.items.length === 0) this.say('K11', 40);
@@ -1752,12 +2092,14 @@ export class Narrator {
   }
 
   /** Demande une réplique, jouée dès que possible (`delay` : au plus tôt dans n secondes). */
-  private say(id: LineId, delay = 0, after?: () => void): void {
+  private say(id: LineId, delay = 0, after?: () => void, onStart?: () => void): void {
     if (!this.active || this.silent || !LINES[id]) return;
     // Dans le noir et sur la terrasse, il n'y a plus que lui et sa visite guidée.
     const gs = this.m.guide.stage;
     if ((gs === 'noir' || gs === 'bouquet') && id[0] !== 'J' && lineFamily(id) !== 'texte') return;
-    const repeatable = ['R01', 'R02', 'R03', 'R04', 'R05', 'R19', 'R24', 'R25', 'R26', 'R27'].includes(id);
+    // Pendant la récréation, il ne parle que du jeu.
+    if (this.m.recre.stage === 'jeu' && id[0] !== 'L' && lineFamily(id) !== 'texte') return;
+    const repeatable = ['R01', 'R02', 'R03', 'R04', 'R05', 'R19', 'R24', 'R25', 'R26', 'R27'].includes(id) || COUNT_LINES.has(id) || CAUGHT_LINES.includes(id);
     if (!repeatable && this.heard(id)) return;
     if (this.queue.some((p) => p.id === id) || this.playing?.id === id) return;
     const now = performance.now() / 1000;
@@ -1769,7 +2111,7 @@ export class Narrator {
     if (fam === 'evenement') this.lastEvent = now;
     if (fam === 'debut') this.lastDebut = now;
     if (fam === 'monde') this.lastMonde = now;
-    this.queue.push({ id, at: now + delay, ...(after ? { after } : {}) });
+    this.queue.push({ id, at: now + delay, ...(after ? { after } : {}), ...(onStart ? { onStart } : {}), ...(this.chaining ? { chained: true } : {}) });
     // Marquée tout de suite : une réplique ne revient jamais, même si on quitte au milieu.
     if (!repeatable) this.memory.heard.push(id);
     this.save();
@@ -1797,7 +2139,10 @@ export class Narrator {
     // L'histoire d'abord : un commentaire ne s'intercale pas dans une suite de répliques
     // (ni juste avant une réplique d'histoire attendue sous peu).
     const storyNext = this.queue.some((q) => story(q) && q.at <= now + CONFIG.narrator.storyHold);
-    const next = this.queue.find((q) => q.at <= now && (story(q) || (!storyNext && now - this.storyEnd >= CONFIG.narrator.storyHold)));
+    // La suite d'une réplique qui vient de finir passe avant tout ce qui attendait déjà.
+    const chained = this.queue.find((q) => q.chained);
+    if (chained && chained.at > now) return;
+    const next = chained ?? this.queue.find((q) => q.at <= now && (story(q) || (!storyNext && now - this.storyEnd >= CONFIG.narrator.storyHold)));
     if (!next) return;
     this.queue.splice(this.queue.indexOf(next), 1);
     this.play(next, now);
@@ -1807,10 +2152,11 @@ export class Narrator {
     const id = next.id;
     const text = LINES[id] ?? '';
     this.current = { id, text };
-    const estimate = estimatedDuration(text);
+    const estimate = COUNT_FALLBACK[id] ?? estimatedDuration(text);
     const ctx = this.audio.externalInputs()?.ctx;
     const audio = this.sound && ctx && lineFamily(id) !== 'texte' && this.available?.has(id) ? this.startClip(ctx, id, estimate) : null;
     this.playing = { id, until: now + estimate, audio, ...(next.after ? { after: next.after } : {}) };
+    next.onStart?.();
   }
 
   /**
@@ -1854,6 +2200,9 @@ export class Narrator {
     return clip;
   }
 
+  /** Vrai pendant le rappel de fin d'une réplique : ce qu'il demande est sa suite. */
+  private chaining = false;
+
   private readonly buffers = new Map<string, Promise<AudioBuffer>>();
   private buffer(ctx: AudioContext, id: LineId): Promise<AudioBuffer> {
     let b = this.buffers.get(id);
@@ -1861,8 +2210,10 @@ export class Narrator {
       b = fetch(`${import.meta.env.BASE_URL}voix/${id}.mp3`)
         .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
         .then((data) => ctx.decodeAudioData(data));
-      // (Chaque réplique n'est jouée qu'une fois : pas besoin de garder le son décodé.)
-      b.catch(() => undefined).finally(() => this.buffers.delete(id));
+      // (Chaque réplique n'est jouée qu'une fois : pas besoin de garder le son décodé. Sauf le
+      // comptage de la récréation, rejoué à chaque manche, au rythme près.)
+      if (!COUNT_LINES.has(id)) b.catch(() => undefined).finally(() => this.buffers.delete(id));
+      else b.catch(() => this.buffers.delete(id));
       this.buffers.set(id, b);
     }
     return b;
@@ -1874,7 +2225,12 @@ export class Narrator {
     this.playing = null;
     this.current = null;
     this.audio.duck(false);
-    after?.();
+    this.chaining = true;
+    try {
+      after?.();
+    } finally {
+      this.chaining = false;
+    }
   }
 
   private silence(): void {

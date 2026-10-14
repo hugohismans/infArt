@@ -475,6 +475,8 @@ export function makeModuleDefs(corridorWidth: number, furniture: { small: RoomFu
     deadend('deadend', w, 5.4),
     sas('sas', 3.2),
     cap('cap', w),
+    // La galerie des plâtres (voix off) : longue salle, une sortie au fond. Jamais tirée au sort.
+    room('galerie', w, 2 * w, 6 * w, ['N'], 'aucun'),
     rotonde('rotonde', w),
     rotonde('rotonde-finale', w, true),
   ];
