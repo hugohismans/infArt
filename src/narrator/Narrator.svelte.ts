@@ -124,6 +124,8 @@ interface Pending {
 /** La récréation : les morceaux du comptage (rejoués à chaque manche) et les « je vous ai vu ». */
 const COUNT_LINES = new Set(['L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L07', 'L08', 'L09', 'L10']);
 const CAUGHT_LINES = ['L18', 'L19', 'L20', 'L21', 'L22'];
+/** Ses commentaires de partie : périmés dès qu'il vous voit bouger (ou que vous gagnez). */
+const RECRE_COMMENTS = new Set(['L26', 'L27', 'L28', 'L29', 'L30']);
 /** Durées des morceaux de comptage sans voix enregistrée (sous-titres seuls), en secondes. */
 const COUNT_FALLBACK: Record<string, number> = { L01: 0.6, L02: 0.6, L03: 0.7, L04: 0.5, L05: 0.6, L06: 0.5, L07: 1.3, L08: 1.4, L09: 3.2, L10: 1.8 };
 
@@ -1310,7 +1312,8 @@ export class Narrator {
     const p = e.player.position;
     const stuck = Math.hypot(p.x - rc.last.x, p.z - rc.last.z) < 0.05;
     rc.last = { x: p.x, z: p.z };
-    if (local.z < 1.4 && e.input.hasMoveIntent && stuck) this.say('L30');
+    // (Seulement s'il ne parle pas déjà : dit en retard, ça n'aurait plus de sens.)
+    if (local.z < 1.4 && e.input.hasMoveIntent && stuck && !this.playing && !this.queue.length) this.say('L30');
     // Pendant les règles, on ne part pas en avance : retour sur la ligne de départ.
     if (rc.state === 'regles') {
       if (local.z > g.startZ + 3) this.recreToStart();
@@ -1322,10 +1325,12 @@ export class Narrator {
     // Arrivé au fond : gagné.
     if (local.z >= g.finishZ) return this.recreWin(local);
 
-    // Commentaires selon l'avancée (une fois chacun).
+    // Commentaires selon l'avancée (une fois chacun), entre deux manches : jamais pendant
+    // qu'il regarde, sinon le « je vous ai vu » arriverait après.
     const progress = (local.z - g.startZ) / (g.finishZ - g.startZ);
-    if (progress > 0.8) this.say('L29');
-    else if (progress > 0.5 && !this.heard('L28')) {
+    const between = rc.state === 'pause';
+    if (between && progress > 0.8) this.say('L29');
+    else if (between && progress > 0.5 && !this.heard('L28')) {
       // « Je vais devoir compter plus vite » : et il le fait.
       this.say('L28');
       rc.slow *= 0.7;
@@ -1339,8 +1344,9 @@ export class Narrator {
       case 'controle': {
         const since = now - rc.soleilAt;
         // Un peu de marge après « soleil » (le temps de s'arrêter), puis plus un pas.
-        if (since > 0.55 && since < 2.1 && e.player.speed > 0.3) return this.recreCaught();
-        if (since >= 2.1) {
+        const { soleilGrace, soleilWatch, soleilSpeed } = CONFIG.narrator;
+        if (since > soleilGrace && since < soleilWatch && e.player.speed > soleilSpeed) return this.recreCaught();
+        if (since >= soleilWatch) {
           // Manche réussie : un mot, parfois.
           if (rc.gag) this.say(rc.gag);
           else if (rc.round >= 2 && Math.abs(local.z - rc.countStartZ) < 0.8) this.say('L26');
@@ -1426,14 +1432,14 @@ export class Narrator {
     const e = this.engine!;
     const g = rc.module!.gallery!;
     rc.token++;
-    this.queue = this.queue.filter((q) => !COUNT_LINES.has(q.id));
+    this.queue = this.queue.filter((q) => !COUNT_LINES.has(q.id) && !RECRE_COMMENTS.has(q.id));
     r.fails++;
     this.save();
     this.recreState('pris');
     const running = e.player.speed > CONFIG.player.walkSpeed * 1.2;
     const line = r.fails <= 3 ? CAUGHT_LINES[r.fails - 1]! : running ? 'L22' : r.fails % 2 ? 'L21' : 'L20';
     rc.gag = '';
-    this.say(line, 0, () => {
+    this.sayFirst(line, () => {
       if (rc.state !== 'pris') return;
       this.recreToStart();
       const local = rc.module!.toLocal(e.player.position);
@@ -1471,7 +1477,7 @@ export class Narrator {
     g.phase = 'soleil';
     r.won = rc.eyesClosed ? 'triche' : 'honnete';
     this.save();
-    this.say(rc.eyesClosed ? 'L35' : 'L34', 0.3, () => {
+    this.sayFirst(rc.eyesClosed ? 'L35' : 'L34', () => {
       g.gatherBehind(local.x, local.z);
       this.say('L36', 0.8, () => {
         mod.setGalleryGates(false);
@@ -2117,6 +2123,15 @@ export class Narrator {
     // Marquée tout de suite : une réplique ne revient jamais, même si on quitte au milieu.
     if (!repeatable) this.memory.heard.push(id);
     this.save();
+  }
+
+  /** Comme say, mais avant tout ce qui attend déjà (la réplique en cours va jusqu'au bout). */
+  private sayFirst(id: LineId, after?: () => void): void {
+    this.say(id, 0, after);
+    const i = this.queue.findIndex((q) => q.id === id);
+    if (i < 0) return;
+    const [p] = this.queue.splice(i, 1);
+    this.queue.unshift({ ...p!, chained: true });
   }
 
   /** Abandonne l'accueil (A01–A04) en attente ; celui en cours va jusqu'au bout. */

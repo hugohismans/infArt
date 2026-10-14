@@ -285,6 +285,13 @@ export const CONFIG = {
     staleAfter: 12,
     /** Après une réplique d'histoire (ou juste avant), les commentaires attendent (s). */
     storyHold: 4,
+    /**
+     * La récréation : après le début de « soleil ! », le temps de s'arrêter (réaction et
+     * freinage, ~0,6 s), puis jusqu'à quand il regarde (s) ; au-delà de cette vitesse (m/s), il a bougé.
+     */
+    soleilGrace: 0.85,
+    soleilWatch: 2.4,
+    soleilSpeed: 0.3,
   },
 
   director: {
