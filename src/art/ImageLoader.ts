@@ -81,8 +81,12 @@ export class ImageLoader {
     for (const url of job.urls) {
       if (job.cancelled) break;
       try {
-        const img = await loadImage(url, CONFIG.art.loadTimeoutMs);
-        if (job.cancelled) break;
+        // Décodage et réduction hors du fil principal quand le navigateur le permet (téléphones).
+        const img = BITMAPS ? await loadBitmap(url, job.maxSize, CONFIG.art.loadTimeoutMs) : await loadImage(url, CONFIG.art.loadTimeoutMs);
+        if (job.cancelled) {
+          if ('close' in img.source) img.source.close();
+          break;
+        }
         job.resolve(this.toTexture(img, job.maxSize));
         return;
       } catch (e) {
@@ -93,7 +97,7 @@ export class ImageLoader {
     job.reject(job.cancelled ? new Error('annulé') : lastError);
   }
 
-  private toTexture(img: HTMLImageElement, maxSize: number): LoadedImage {
+  private toTexture(img: Decoded, maxSize: number): LoadedImage {
     const nw = img.naturalWidth, nh = img.naturalHeight;
     const scale = Math.min(1, maxSize / Math.max(nw, nh));
     const w = Math.max(1, Math.round(nw * scale));
@@ -103,7 +107,8 @@ export class ImageLoader {
     canvas.height = h;
     const ctx = canvas.getContext('2d')!;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, 0, 0, w, h);
+    ctx.drawImage(img.source, 0, 0, w, h);
+    if ('close' in img.source) img.source.close();
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -126,7 +131,47 @@ export class ImageLoader {
   }
 }
 
-function loadImage(url: string, timeoutMs: number): Promise<HTMLImageElement> {
+/** Image décodée : la source à dessiner (déjà réduite si possible) et ses dimensions d'origine. */
+interface Decoded {
+  source: HTMLImageElement | ImageBitmap;
+  naturalWidth: number;
+  naturalHeight: number;
+}
+
+const BITMAPS = typeof createImageBitmap === 'function' && typeof AbortController === 'function';
+
+/**
+ * Téléchargement, puis décodage et réduction par le navigateur en tâche de fond
+ * (createImageBitmap) : le fil principal ne fait plus que poser une petite image.
+ */
+async function loadBitmap(url: string, maxSize: number, timeoutMs: number): Promise<Decoded> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { mode: 'cors', signal: ctl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    if (!blob.type.startsWith('image/') && blob.type !== '' && blob.type !== 'application/octet-stream') throw new Error(`pas une image (${blob.type})`);
+    const full = await createImageBitmap(blob);
+    const nw = full.width, nh = full.height;
+    const scale = Math.min(1, maxSize / Math.max(nw, nh));
+    if (scale >= 1) return { source: full, naturalWidth: nw, naturalHeight: nh };
+    try {
+      const small = await createImageBitmap(full, { resizeWidth: Math.max(1, Math.round(nw * scale)), resizeHeight: Math.max(1, Math.round(nh * scale)), resizeQuality: 'high' });
+      full.close();
+      return { source: small, naturalWidth: nw, naturalHeight: nh };
+    } catch {
+      // (Réduction non prise en charge : la toile la fera.)
+      return { source: full, naturalWidth: nw, naturalHeight: nh };
+    }
+  } catch (e) {
+    throw new Error(`chargement impossible : ${url} (${(e as Error).message})`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function loadImage(url: string, timeoutMs: number): Promise<Decoded> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -138,10 +183,8 @@ function loadImage(url: string, timeoutMs: number): Promise<HTMLImageElement> {
     img.onload = () => {
       clearTimeout(timer);
       // decode() évite un décodage synchrone au moment de l'envoi au GPU.
-      img.decode().then(
-        () => resolve(img),
-        () => resolve(img),
-      );
+      const done = () => resolve({ source: img, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
+      img.decode().then(done, done);
     };
     img.onerror = () => {
       clearTimeout(timer);

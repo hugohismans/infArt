@@ -163,7 +163,7 @@ export class ArtPiece {
     if (ready) this.hang(ready);
     else if (!ctx || ctx.library.offline) this.hangProcedural();
     else {
-      this.hangPlaceholder();
+      // Rien de prêt : le mur reste nu (pas de toile d'attente), l'œuvre viendra hors de la vue.
       const cb = this.waiter();
       // Aile thématique encore en chargement : on attend une œuvre du thème.
       this.cancelWait = (opts.themeId ? ctx.library.requestTheme(opts.themeId, cb, () => this.vacate()) : null) ?? ctx.library.request(cb);
@@ -177,7 +177,24 @@ export class ArtPiece {
       const e = this.object.matrixWorld.elements;
       return { x: e[12]!, z: e[14]! };
     };
+    cb.inView = () => this.watched();
     return cb;
+  }
+
+  /** Sous les yeux du visiteur (module visible, dans le champ, assez près). */
+  private watched(): boolean {
+    return this.isVisible() && (this.ctx?.viewer?.watching(this.object) ?? false);
+  }
+
+  /** Œuvre arrivée alors que le visiteur regardait cet emplacement vide : accrochée dès qu'il détourne les yeux. */
+  private deferred: ReadyArt | null = null;
+  private hangDeferred(): void {
+    const r = this.deferred;
+    if (!r || this.watched()) return;
+    this.deferred = null;
+    this.clear();
+    this.hang(r);
+    this.object.updateMatrixWorld(true);
   }
 
   /** Le thème de l'aile n'a plus rien à offrir : l'emplacement restera nu (hors de la vue). */
@@ -275,6 +292,7 @@ export class ArtPiece {
   /** Niveaux de détail selon la distance du visiteur (cartel, haute résolution). */
   updateLod(px: number, pz: number): void {
     if (this.disposed) return;
+    if (this.deferred) this.hangDeferred();
     const e = this.object.matrixWorld.elements;
     const d = Math.hypot(e[12]! - px, e[14]! - pz);
 
@@ -355,6 +373,8 @@ export class ArtPiece {
     this.disposed = true;
     this.cancelWait?.();
     this.cancelWait = null;
+    this.deferred?.texture.dispose();
+    this.deferred = null;
     this.releaseHigh();
     this.releaseCartel();
     if (!this.opts.borrowed) this.baseTexture?.dispose();
@@ -404,6 +424,12 @@ export class ArtPiece {
       return;
     }
     const watched = this.isVisible() && (this.ctx?.viewer?.watching(this.object) ?? true);
+    // Mur nu sous les yeux du visiteur : pas d'apparition, on attend qu'il regarde ailleurs.
+    if (watched && !this.layout) {
+      this.deferred?.texture.dispose();
+      this.deferred = ready;
+      return;
+    }
     // (Une œuvre déjà accrochée qu'on remplace : on raccroche, sans garder l'ancienne texture.)
     if (!watched || !this.layout || this.artwork) {
       // Personne ne regarde : on raccroche à la bonne taille.

@@ -36,8 +36,12 @@ export interface LibraryStats {
   themeReady: number;
 }
 
-/** Emplacement en attente d'une œuvre ; `pos` : où il est (monde), pour servir d'abord les plus proches. */
-export type Waiter = ((art: ReadyArt) => void) & { pos?: () => { x: number; z: number } };
+/**
+ * Emplacement en attente d'une œuvre. `pos` : où il est (monde) ; `inView` : sous les yeux du
+ * visiteur (il ne pourrait pas l'accrocher tout de suite). On sert d'abord les emplacements
+ * proches qu'il ne regarde pas : ils seront garnis quand il y arrivera.
+ */
+export type Waiter = ((art: ReadyArt) => void) & { pos?: () => { x: number; z: number }; inView?: () => boolean };
 
 /** Réserve d'une aile thématique, préparée avant que le Directeur ne l'ouvre. */
 interface ThemePool {
@@ -552,8 +556,8 @@ export class ArtLibrary {
   }
 
   /**
-   * Retire et renvoie l'emplacement à servir : le plus proche du visiteur (celui qu'il va
-   * voir), pas le plus ancien (souvent déjà derrière lui quand il avance vite).
+   * Retire et renvoie l'emplacement à servir : le plus proche du visiteur hors de sa vue
+   * (celui qu'il va voir), pas le plus ancien (souvent déjà derrière lui quand il avance vite).
    */
   private nearestWaiter(list: Waiter[]): Waiter | undefined {
     const f = this.focus;
@@ -562,7 +566,7 @@ export class ArtLibrary {
       let bestD = Infinity;
       list.forEach((w, i) => {
         const p = w.pos?.();
-        const d = p ? (p.x - f.x) ** 2 + (p.z - f.z) ** 2 : Infinity;
+        const d = (p ? (p.x - f.x) ** 2 + (p.z - f.z) ** 2 : 1e9) + (w.inView?.() ? 1e6 : 0);
         if (d < bestD) {
           bestD = d;
           best = i;
