@@ -61,10 +61,11 @@ function json(data: unknown, status = 200, maxAge = 0): Response {
 }
 
 /**
- * Quota de sous-requêtes par appel : 50 sur le plan gratuit, Cache API comprise.
- * On garde une marge pour la mise en cache de la réponse finale.
+ * Sous-requêtes par appel, Cache API comprise : 1 000 sur le plan Workers Paid (50 sur le
+ * plan gratuit). On s'en tient bien en dessous : un lot n'en a jamais besoin d'autant, et
+ * on ménage les musées. Une marge reste pour la mise en cache de la réponse finale.
  */
-const SUBREQUEST_BUDGET = 44;
+const SUBREQUEST_BUDGET = 200;
 
 /** Mémoire locale à l'isolat (gratuite, contrairement à la Cache API) : les « têtes » de requêtes reviennent souvent. */
 const memory = new Map<string, { data: unknown; expires: number }>();
