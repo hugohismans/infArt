@@ -56,14 +56,15 @@ export class Gallery {
     this.owned.push(plaster, shade, cyl, cone, ball, box);
 
     // Les statues : en rangs serrés près de l'entrée, prêtes à jouer.
-    const n = 9;
+    const n = 12;
     for (let i = 0; i < n; i++) {
       const g = new THREE.Group();
       g.userData.animated = true;
       this.buildStatue(g, rng, plaster, shade, { cyl, cone, ball, box });
-      const x = (((i % 5) + 0.5) / 5 - 0.5) * (this.halfWidth * 2 - 2.4) + rng.range(-0.3, 0.3);
-      const z = 3 + Math.floor(i / 5) * 1.8 + rng.range(-0.3, 0.3);
-      const s: Statue = { object: g, x, z, speed: rng.range(0.55, 1.05), phase: rng.range(0, Math.PI * 2), cheat: null };
+      const x = (((i % 4) + 0.5) / 4 - 0.5) * (this.halfWidth * 2 - 2.4) + rng.range(-0.3, 0.3);
+      const z = 3 + Math.floor(i / 4) * 1.8 + rng.range(-0.3, 0.3);
+      // (Presque aussi vite que vous en marchant : elles vous distancent si vous traînez.)
+      const s: Statue = { object: g, x, z, speed: rng.range(0.9, 1.7), phase: rng.range(0, Math.PI * 2), cheat: null };
       this.statues.push(s);
       this.group.add(g);
       this.place(s);
@@ -119,7 +120,7 @@ export class Gallery {
   cheat(): void {
     const free = this.statues.filter((s) => !s.cheat && s.z < this.finishZ - 4);
     const s = free[Math.floor(Math.random() * free.length)];
-    if (s) s.cheat = { from: s.z, to: s.z + 0.9, t: 0 };
+    if (s) s.cheat = { from: s.z, to: s.z + 1.6, t: 0 };
   }
 
   /** Avance moyenne des statues (repère du module). */

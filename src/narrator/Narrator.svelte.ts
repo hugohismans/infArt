@@ -1240,6 +1240,8 @@ export class Narrator {
     falseStart: false,
     half: false,
     roomsAfter: -1,
+    /** Il a couru pendant le dernier comptage : le suivant sera souvent express. */
+    ran: false,
     module: null as WorldModule | null,
     /** Position au tick précédent (pour voir s'il avance vraiment, ou pousse contre un mur). */
     last: { x: 0, z: 0 },
@@ -1274,7 +1276,7 @@ export class Narrator {
 
   /** Il entre dans la galerie : quand il est bien dedans, les portes se ferment. */
   private recreEnter(cur: WorldModule): void {
-    Object.assign(this.rc, { round: 0, slow: 1, eyesClosed: false, gag: '', falseStart: false, half: false, roomsAfter: -1 });
+    Object.assign(this.rc, { round: 0, slow: 1, eyesClosed: false, gag: '', falseStart: false, half: false, roomsAfter: -1, ran: false });
     this.rc.module = cur;
     this.recreState('entree');
     this.say('L13');
@@ -1353,6 +1355,8 @@ export class Narrator {
       rc.slow *= 0.7;
     }
 
+    if (rc.state === 'compte' && e.player.speed > CONFIG.player.walkSpeed * 1.2) rc.ran = true;
+
     switch (rc.state) {
       case 'pause':
         // (Il recompte quand il a fini de parler.)
@@ -1396,7 +1400,11 @@ export class Narrator {
     const roll = Math.random();
     let seq: LineId[] = ['L01', 'L02', 'L03'];
     let pattern: 'normal' | 'rapide' | 'faux' = 'normal';
-    if (rc.round >= 2 && rc.slow <= 1) {
+    const ran = rc.ran;
+    rc.ran = false;
+    // Vous courez ? Il compte d'une traite.
+    if (ran && rc.round >= 2 && rc.slow <= 1 && Math.random() < 0.6) pattern = 'rapide';
+    else if (rc.round >= 2 && rc.slow <= 1) {
       if (!rc.falseStart && roll < 0.15) pattern = 'faux';
       else if (roll < 0.35) pattern = 'rapide';
       else if (!rc.half && roll < 0.5) {
@@ -1435,7 +1443,7 @@ export class Narrator {
     rc.soleilAt = performance.now() / 1000;
     g.phase = 'soleil';
     this.recreState('controle');
-    if (rc.round === 2 || rc.round === 5) {
+    if (rc.round === 2 || rc.round === 4) {
       g.cheat();
       rc.gag = rc.round === 2 ? 'L23' : 'L25';
     }

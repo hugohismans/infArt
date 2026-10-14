@@ -814,11 +814,12 @@ export class World {
       return def ? { def, fallbacks: [defs['room-s'], defs['straight-m']].filter((d): d is ModuleDef => !!d), preset, prepare: (m) => (m.special = 'atelier') } : null;
     }
     if (sp.kind === 'galerie') {
-      const def = defs['galerie'] ?? defs['room-l'];
+      // (Pas de forme de repli : trop courte, la partie serait gagnée d'avance. Si la galerie
+      // ne tient pas, le panneau est décroché et un autre carrefour la proposera.)
+      const def = defs['galerie'];
       return def
         ? {
             def,
-            fallbacks: [defs['room-l'], defs['straight-l']].filter((d): d is ModuleDef => !!d && d !== def),
             preset,
             prepare: (m) => {
               m.special = 'galerie';
