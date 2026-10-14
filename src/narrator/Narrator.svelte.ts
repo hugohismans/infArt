@@ -126,6 +126,26 @@ const COUNT_LINES = new Set(['L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L07', 'L
 const CAUGHT_LINES = ['L18', 'L19', 'L20', 'L21', 'L22'];
 /** Ses commentaires de partie : périmés dès qu'il vous voit bouger (ou que vous gagnez). */
 const RECRE_COMMENTS = new Set(['L26', 'L27', 'L28', 'L29', 'L30']);
+
+/**
+ * Le chemin qui passe par `m` mène-t-il quelque part ? Non : un bouchon, une impasse, ou
+ * une salle dont toutes les sorties (déjà construites) finissent ainsi, sur `depth` salles
+ * (au-delà, le carrefour suivant aura son panneau).
+ * Une salle mise en scène (atelier, encadrement de la sortie…) est une destination.
+ */
+function leadsOn(m: WorldModule, depth: number): boolean {
+  if (m.special) return true;
+  if (m.def.kind === 'cap' || m.def.kind === 'deadend') return false;
+  // (La terrasse du bouquet est fermée exprès.)
+  if (depth <= 1 || m.zone.zone.special === 'bouquet') return true;
+  return m.connectors.some((c, i) => {
+    if (i === 0) return false;
+    const n = c.neighbor?.module;
+    // (Pas encore construite, ou murée par une étrangeté : on ne sait pas encore / pas comptée.)
+    if (!n) return !c.sealed;
+    return leadsOn(n, depth - 1);
+  });
+}
 /** Durées des morceaux de comptage sans voix enregistrée (sous-titres seuls), en secondes. */
 const COUNT_FALLBACK: Record<string, number> = { L01: 0.6, L02: 0.6, L03: 0.7, L04: 0.5, L05: 0.6, L06: 0.5, L07: 1.3, L08: 1.4, L09: 3.2, L10: 1.8 };
 
@@ -829,9 +849,9 @@ export class Narrator {
         if (!sg.tag || sg.tag === 'finale' || sg.tag === 'arrivee') return false;
         const n = mod.connectors[sg.connector]?.neighbor?.module;
         if (!n) return false;
-        if (n.def.kind === 'cap' || (n.def.kind === 'deadend' && !n.special)) return true;
         const want = mod.exitSpecial?.[sg.connector]?.kind;
-        return (want === 'atelier' || want === 'favoris' || want === 'galerie') && n.special !== want;
+        if ((want === 'atelier' || want === 'favoris' || want === 'galerie') && n.special !== want) return true;
+        return !leadsOn(n, 5);
       };
       if (mod.signs.some(dead)) mod.clearSigns((sg) => !dead(sg));
     }

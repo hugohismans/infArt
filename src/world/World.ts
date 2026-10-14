@@ -799,10 +799,13 @@ export class World {
   private specialDef(parent: WorldModule, connector: number, zone: ZoneState): { def: ModuleDef; fallbacks?: ModuleDef[]; preset: AmbiancePreset; prepare: (m: WorldModule) => void } | null {
     if (this.net) return null;
     // Le bout du chemin de la sortie : l'encadrement seul, dans une impasse du néant.
-    if (zone.zone.special === 'sortie' && zone.step > 0) {
+    // (Un seul encadrement : derrière une forme de repli qui a des sorties, le néant continue.)
+    if (zone.zone.special === 'sortie' && zone.step > 0 && parent.special !== 'sortie') {
       const preset = this.director.presetFor(zone);
-      const def = this.defsFor(preset)['deadend'];
-      return def ? { def, preset, prepare: (m) => (m.special = 'sortie') } : null;
+      const defs = this.defsFor(preset);
+      const def = defs['deadend'];
+      // (Pas la place pour l'impasse : une petite salle ou un couloir portera l'encadrement.)
+      return def ? { def, fallbacks: [defs['room-s'], defs['straight-m'], defs['straight-s']].filter((d): d is ModuleDef => !!d), preset, prepare: (m) => (m.special = 'sortie') } : null;
     }
     const sp = parent.exitSpecial?.[connector];
     if (!sp) return null;
