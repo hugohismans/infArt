@@ -36,7 +36,8 @@ export interface LibraryStats {
   themeReady: number;
 }
 
-type Waiter = (art: ReadyArt) => void;
+/** Emplacement en attente d'une œuvre ; `pos` : où il est (monde), pour servir d'abord les plus proches. */
+export type Waiter = ((art: ReadyArt) => void) & { pos?: () => { x: number; z: number } };
 
 /** Réserve d'une aile thématique, préparée avant que le Directeur ne l'ouvre. */
 interface ThemePool {
@@ -111,6 +112,8 @@ export class ArtLibrary {
   filterSensitive = true;
   /** Réserve visée avant l'entrée dans la visite (écran de chargement), 0 ensuite. */
   startTarget = 0;
+  /** Position du visiteur (mise à jour par le moteur) : les emplacements proches sont servis d'abord. */
+  focus: { x: number; z: number } | null = null;
   /** Mode mélange : part de chaque type (paramètre d'URL `mix` pour les essais). */
   mix: TypeWeights = CONFIG.art.mix;
 
@@ -548,6 +551,27 @@ export class ArtLibrary {
     this.dropAllPools();
   }
 
+  /**
+   * Retire et renvoie l'emplacement à servir : le plus proche du visiteur (celui qu'il va
+   * voir), pas le plus ancien (souvent déjà derrière lui quand il avance vite).
+   */
+  private nearestWaiter(list: Waiter[]): Waiter | undefined {
+    const f = this.focus;
+    let best = 0;
+    if (f && list.length > 1) {
+      let bestD = Infinity;
+      list.forEach((w, i) => {
+        const p = w.pos?.();
+        const d = p ? (p.x - f.x) ** 2 + (p.z - f.z) ** 2 : Infinity;
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      });
+    }
+    return list.splice(best, 1)[0];
+  }
+
   private health(source: string): { ok: number; fail: number } {
     let h = this.sourceHealth.get(source);
     if (!h) {
@@ -609,7 +633,7 @@ export class ArtLibrary {
         this.health(art.source).ok++;
         const ready: ReadyArt = { artwork: art, texture: img.texture, aspect };
         if (pool) {
-          const w = !onPedestal(ready) ? pool.waiters.shift() : undefined;
+          const w = !onPedestal(ready) ? this.nearestWaiter(pool.waiters) : undefined;
           if (w) this.giveUps.delete(w);
           if (w) w(ready);
           else pool.ready.push(ready);
@@ -621,7 +645,7 @@ export class ArtLibrary {
           else this.ready.push(ready);
           return;
         }
-        const waiter = this.waiters.shift();
+        const waiter = this.nearestWaiter(this.waiters);
         if (waiter) waiter(ready);
         else this.ready.push(ready);
       })

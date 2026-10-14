@@ -137,7 +137,7 @@ export const CONFIG = {
     bufferTarget: 18,
     /** Nombre d'œuvres demandées par lot à l'API. */
     batchSize: 24,
-    maxConcurrentLoads: 4,
+    maxConcurrentLoads: 8,
     /** Délai max de chargement d'une image (ms). */
     loadTimeoutMs: 20000,
     /** Images trop petites ou trop allongées ignorées. */

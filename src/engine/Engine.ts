@@ -740,7 +740,11 @@ export class Engine {
     this.pumpTimer -= dt;
     if (this.pumpTimer <= 0) {
       this.pumpTimer = 0.25;
-      this.options.art?.library.pump();
+      const lib = this.options.art?.library;
+      if (lib) {
+        lib.focus = this.player.position;
+        lib.pump();
+      }
     }
     // Viseur : quelle œuvre est au centre de l'écran ?
     this.aimTimer -= dt;

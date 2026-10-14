@@ -6,7 +6,7 @@ import type { ArtSlotDef } from '../world/modules/defs';
 import type { Rng } from '../world/random';
 import type { PresetMaterials } from '../world/resources';
 import type { ArtClient } from './ArtClient';
-import type { ArtLibrary, ReadyArt } from './ArtLibrary';
+import type { ArtLibrary, ReadyArt, Waiter } from './ArtLibrary';
 import { CARTEL_H, CARTEL_W, makeCartelTexture } from './cartel';
 import { chooseFrame, type FrameStyle } from './frames';
 import type { ImageLoader } from './ImageLoader';
@@ -164,10 +164,20 @@ export class ArtPiece {
     else if (!ctx || ctx.library.offline) this.hangProcedural();
     else {
       this.hangPlaceholder();
-      const cb = (r: ReadyArt) => this.arrive(r);
+      const cb = this.waiter();
       // Aile thématique encore en chargement : on attend une œuvre du thème.
       this.cancelWait = (opts.themeId ? ctx.library.requestTheme(opts.themeId, cb, () => this.vacate()) : null) ?? ctx.library.request(cb);
     }
+  }
+
+  /** Inscription en attente d'une œuvre, avec la position de l'emplacement (servi d'abord s'il est proche). */
+  private waiter(): Waiter {
+    const cb: Waiter = (r: ReadyArt) => this.arrive(r);
+    cb.pos = () => {
+      const e = this.object.matrixWorld.elements;
+      return { x: e[12]!, z: e[14]! };
+    };
+    return cb;
   }
 
   /** Le thème de l'aile n'a plus rien à offrir : l'emplacement restera nu (hors de la vue). */
@@ -211,7 +221,7 @@ export class ArtPiece {
     const ready = ctx.library.take(this.preset.art.prefer, this.opts.themeId);
     if (ready) this.arrive(ready);
     else {
-      const cb = (r: ReadyArt) => this.arrive(r);
+      const cb = this.waiter();
       this.cancelWait = (this.opts.themeId ? ctx.library.requestTheme(this.opts.themeId, cb, () => this.vacate()) : null) ?? ctx.library.request(cb);
     }
   }
