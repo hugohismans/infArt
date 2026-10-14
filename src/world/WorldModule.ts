@@ -128,7 +128,7 @@ export class WorldModule {
   /** Salle punition : 1, les toiles retournées ; 2, un seul cartel. */
   specialVariant = 0;
   /** La porte lumineuse du sas (visite guidée) : 0 fermée, 1 ouverte. */
-  private door: { prop: ReturnType<typeof buildLitDoor>; t: number; opening: boolean } | null = null;
+  private door: { prop: ReturnType<typeof buildLitDoor>; t: number; opening: boolean; wall: Segment | null } | null = null;
   /** Salle des favoris : les œuvres à accrocher, dans l'ordre des emplacements. */
   forcedArt: Artwork[] | null = null;
   /** Point d'intérêt de la salle mise en scène (toile, encadrement), repère du module. */
@@ -322,7 +322,7 @@ export class WorldModule {
       const prop = buildLitDoor(c.pos.z, c.width, c.top ?? 2.5);
       this.group.add(prop.object);
       this.signParts.push(prop);
-      this.door = { prop, t: 0, opening: false };
+      this.door = { prop, t: 0, opening: false, wall: null };
       this.specialLocal = { x: 0, z: c.pos.z };
     }
     // Salles mises en scène : le chevalet de l'atelier, l'encadrement au bout de la sortie.
@@ -524,13 +524,17 @@ export class WorldModule {
     this.decorWalls = this.decorWalls.filter((w) => !this.gateWalls.includes(w));
     this.gateWalls = [];
     if (!closed) return;
-    for (const c of this.def.connectors) {
-      const t = { x: -c.normal.z, z: c.normal.x };
-      const a = { x: c.pos.x - (t.x * c.width) / 2, z: c.pos.z - (t.z * c.width) / 2 };
-      const b = { x: c.pos.x + (t.x * c.width) / 2, z: c.pos.z + (t.z * c.width) / 2 };
-      this.gateWalls.push({ a: applyTransform(this.transform, a), b: applyTransform(this.transform, b) });
-    }
+    for (let i = 0; i < this.def.connectors.length; i++) this.gateWalls.push(this.across(i));
     this.decorWalls.push(...this.gateWalls);
+  }
+
+  /** Un mur (monde) en travers de l'ouverture `index`. */
+  private across(index: number): Segment {
+    const c = this.def.connectors[index]!;
+    const t = { x: -c.normal.z, z: c.normal.x };
+    const a = { x: c.pos.x - (t.x * c.width) / 2, z: c.pos.z - (t.z * c.width) / 2 };
+    const b = { x: c.pos.x + (t.x * c.width) / 2, z: c.pos.z + (t.z * c.width) / 2 };
+    return { a: applyTransform(this.transform, a), b: applyTransform(this.transform, b) };
   }
 
   /** Un point (monde) dans le repère du module. */
@@ -548,6 +552,15 @@ export class WorldModule {
     if (this.door) this.door.opening = true;
   }
 
+  /** La porte se referme (et on ne repasse plus). */
+  closeDoor(): void {
+    const d = this.door;
+    if (!d || d.wall) return;
+    d.opening = false;
+    d.wall = this.across(1);
+    this.decorWalls.push(d.wall);
+  }
+
   get doorOpen(): boolean {
     return !!this.door && this.door.t >= 1;
   }
@@ -555,9 +568,10 @@ export class WorldModule {
   /** Décor animé : gouttes qui tombent. `onDrip` reçoit le point d'impact (monde). */
   animateDecor(dt: number, onDrip: (x: number, y: number, z: number) => void): void {
     this.gallery?.update(dt);
-    if (this.door?.opening && this.door.t < 1) {
-      this.door.t = Math.min(1, this.door.t + dt / 1.6);
-      this.door.prop.open(this.door.t);
+    const d = this.door;
+    if (d && (d.opening ? d.t < 1 : d.t > 0)) {
+      d.t = d.opening ? Math.min(1, d.t + dt / 1.6) : Math.max(0, d.t - dt / 1.6);
+      d.prop.open(d.t);
     }
     if (this.steam) {
       // Fumée du café : des bouffées qui montent, grossissent et s'évanouissent.

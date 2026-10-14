@@ -972,6 +972,8 @@ export class Narrator {
       if (!backward && cur.special === 'recompense' && chose === true) this.say(g.round <= 1 ? 'J06' : 'J13');
       if (!backward && cur.special === 'punition' && chose === false && cur.specialVariant === g.round) this.say(g.round === 1 ? 'J07' : 'J14');
     }
+    // Sur la terrasse, la porte se referme derrière lui : c'est le Conservateur qui le ramènera.
+    if (g.stage === 'bouquet' && prev.special === 'porte' && !backward) prev.closeDoor();
     if (g.stage === 'noir' && this.gl.phase === 'torche') {
       this.gl.rooms++;
       this.say(backward ? 'J28' : 'J23');

@@ -570,6 +570,12 @@ export class World {
     const baseY = c.y;
     const rng = new Rng(this.seed, 'pick', this.nextId);
 
+    // La terrasse du bouquet final : on n'en sort pas (seul le Conservateur vous ramène).
+    if (parent.zone.zone.special === 'bouquet' && parent.def.kind !== 'sas') {
+      place(this.createModule(this.defsFor(parent.preset)['cap']!, transform, baseY, parent.zone, parent.preset));
+      return;
+    }
+
     // Le Directeur décide de la zone (et donc de l'ambiance) du nouveau module.
     const branch = parent.connectors.length >= 3 && connector >= 2;
     const zone = parent.exitZones?.[connector] ?? this.director.next(parent.zone, `${parent.id}:${connector}`, branch);
