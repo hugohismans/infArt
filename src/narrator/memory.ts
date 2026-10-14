@@ -1,6 +1,7 @@
 import { readJson, writeJson } from '../progress/storage';
 
-const KEY = 'galerie-infinie:narrateur';
+export const MEMORY_KEY = 'galerie-infinie:narrateur';
+const KEY = MEMORY_KEY;
 
 /**
  * Où en est le visiteur avec la mer : proposée (porte fléchée de la rotonde), prise,

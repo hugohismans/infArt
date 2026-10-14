@@ -13,7 +13,8 @@ import { applyTransform } from '../world/math2d';
 import { isOpenAir } from '../world/resources';
 import type { HubOptions, SignPlan, World } from '../world/World';
 import type { ModuleSign, WorldModule } from '../world/WorldModule';
-import { loadMemory, saveMemory, type Memory, type SeaState } from './memory';
+import { loadMemory, MEMORY_KEY, saveMemory, type Memory, type SeaState } from './memory';
+import { applyEssai } from './essais'; // TESTS : à retirer
 import { estimatedDuration, LINES, lineFamily, type LineId } from './script';
 
 /** Le thème proposé à la première visite. */
@@ -212,6 +213,7 @@ export class Narrator {
   ) {
     const q = new URLSearchParams(window.location.search).get('narrateur');
     this.disabled = q === '0';
+    this.visitTime = applyEssai(MEMORY_KEY); // TESTS : à retirer
     this.memory = loadMemory(q === 'reset');
     if (this.memory.sea === 'retire') library.banTheme(FIRST_THEME);
     void this.loadManifest();
