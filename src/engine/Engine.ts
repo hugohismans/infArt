@@ -557,6 +557,11 @@ export class Engine {
     this.gyro.setEnabled(enabled);
   }
 
+  /** Sensibilité de la souris (multiplicateur, réglage du visiteur). */
+  setMouseSensitivity(k: number): void {
+    this.mouse.sensitivity = k;
+  }
+
   setReduceMotion(enabled: boolean): void {
     this.player.reduceMotion = enabled;
   }

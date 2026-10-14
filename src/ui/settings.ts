@@ -12,6 +12,10 @@ export interface Settings {
   gyro: boolean;
   /** Interface en plus grands caractères. */
   largeText: boolean;
+  /** Volume général (0 à 1), voix off comprise. */
+  volume: number;
+  /** Sensibilité de la souris (multiplie le réglage de base). */
+  mouseSensitivity: number;
 }
 
 const KEY = 'galerie-infinie:settings';
@@ -24,6 +28,8 @@ export function loadSettings(): Settings {
     quality: 'auto',
     gyro: false,
     largeText: false,
+    volume: 1,
+    mouseSensitivity: 1,
   };
   try {
     const raw = localStorage.getItem(KEY);

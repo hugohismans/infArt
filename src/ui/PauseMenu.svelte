@@ -17,6 +17,8 @@
     quality: QualitySetting;
     gyro: boolean;
     largeText: boolean;
+    volume: number;
+    mouseSensitivity: number;
     onResume: () => void;
     onNewVisit: () => void;
     onCollection: () => void;
@@ -34,6 +36,8 @@
     quality = $bindable(),
     gyro = $bindable(),
     largeText = $bindable(),
+    volume = $bindable(),
+    mouseSensitivity = $bindable(),
     onResume,
     onNewVisit,
     onCollection,
@@ -104,6 +108,18 @@
       <label class="toggle">
         <input type="checkbox" checked={gyro} onchange={toggleGyro} />
         <span>{t('menu.gyro')}{#if gyroDenied}<em class="note"> · {t('menu.gyroDenied')}</em>{/if}</span>
+      </label>
+    {/if}
+    <label class="range">
+      <span>{t('menu.volume')}</span>
+      <input type="range" min="0" max="1" step="0.05" bind:value={volume} aria-valuetext={`${Math.round(volume * 100)} %`} />
+      <output>{Math.round(volume * 100)} %</output>
+    </label>
+    {#if !touch}
+      <label class="range">
+        <span>{t('menu.mouse')}</span>
+        <input type="range" min="0.25" max="3" step="0.05" bind:value={mouseSensitivity} aria-valuetext={`× ${mouseSensitivity.toFixed(2)}`} />
+        <output>× {mouseSensitivity.toFixed(2)}</output>
       </label>
     {/if}
     <label class="select">
@@ -202,6 +218,23 @@
     background: rgba(255, 255, 255, 0.06);
     color: var(--ink);
     border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 3.6em;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.92rem;
+  }
+  .range input {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+  .range output {
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-dim);
+    font-size: 0.85rem;
+    text-align: right;
   }
   .note {
     color: var(--ink-dim);

@@ -8,6 +8,8 @@ import type { InputState } from './InputState';
 export class MouseInput {
   private dragging = false;
   enabled = true;
+  /** Réglage du visiteur : multiplie la sensibilité de base. */
+  sensitivity = 1;
   /** Appelé quand le verrouillage est perdu (Échap) : le jeu ouvre le menu. */
   onUnlock: (() => void) | null = null;
   /** Clic alors que la souris est capturée (viser une œuvre au centre de l'écran). */
@@ -16,7 +18,7 @@ export class MouseInput {
   private readonly onMove = (e: MouseEvent) => {
     if (!this.enabled) return;
     if (document.pointerLockElement === this.element || this.dragging) {
-      const s = CONFIG.look.mouseSensitivity;
+      const s = CONFIG.look.mouseSensitivity * this.sensitivity;
       this.state.lookYaw -= e.movementX * s;
       this.state.lookPitch -= e.movementY * s * (CONFIG.look.invertY ? -1 : 1);
     }

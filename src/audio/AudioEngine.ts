@@ -46,6 +46,9 @@ const STEP_KIND: Record<FloorPattern, keyof typeof STEP_SPECS> = {
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
+  /** Sortie de la voix off (hors ambiance, mais soumise au volume du visiteur). */
+  private voice!: GainNode;
+  private userVolume = 1;
   private dry!: GainNode;
   private wet!: GainNode;
   private reverb!: ConvolverNode;
@@ -80,6 +83,17 @@ export class AudioEngine {
     this.applyVolume();
   }
 
+  /** Volume réglé par le visiteur (0 à 1) : ambiance, voix off et voix de l'ami. */
+  setVolume(v: number): void {
+    this.userVolume = Math.max(0, Math.min(1, v));
+    this.applyVolume();
+  }
+
+  /** Où brancher la voix off (null tant que le son n'est pas démarré). */
+  voiceOutput(): AudioNode | null {
+    return this.ctx ? this.voice : null;
+  }
+
   /** La voix off parle : l'ambiance baisse un peu. */
   duck(on: boolean): void {
     this.ducked = on;
@@ -89,8 +103,9 @@ export class AudioEngine {
 
   private applyVolume(): void {
     if (!this.ctx) return;
-    const v = this.muted ? 0 : CONFIG.audio.volume * (this.ducked ? 0.4 : 1);
+    const v = this.muted ? 0 : CONFIG.audio.volume * this.userVolume * (this.ducked ? 0.4 : 1);
     this.master.gain.setTargetAtTime(v, this.ctx.currentTime, this.ducked ? 0.25 : 0.6);
+    this.voice.gain.setTargetAtTime(this.userVolume, this.ctx.currentTime, 0.1);
   }
 
   /**
@@ -216,7 +231,10 @@ export class AudioEngine {
 
   private build(ctx: AudioContext): void {
     this.master = ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : CONFIG.audio.volume;
+    this.master.gain.value = this.muted ? 0 : CONFIG.audio.volume * this.userVolume;
+    this.voice = ctx.createGain();
+    this.voice.gain.value = this.userVolume;
+    this.voice.connect(ctx.destination);
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -18;
     comp.ratio.value = 4;

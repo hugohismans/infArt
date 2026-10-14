@@ -75,6 +75,8 @@
   let quality = $state(settings.quality);
   let gyro = $state(settings.gyro);
   let largeText = $state(settings.largeText);
+  let volume = $state(settings.volume);
+  let mouseSensitivity = $state(settings.mouseSensitivity);
   let sheetArtwork = $state<Artwork | null>(null);
   let collectionOpen = $state(false);
   let aimed = $state<Artwork | null>(null);
@@ -380,6 +382,9 @@
       openSheet(aimed);
     } else if (e.code === 'KeyC' && !menuOpen && !sheetArtwork && !collectionOpen) {
       openCollection();
+    } else if (e.code === 'KeyM' && !e.repeat && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+      // (Sur ordinateur, les boutons du coin sont cachés : le son se coupe au clavier.)
+      sound = !sound;
     } else if (e.code === 'Escape') {
       // Avec le pointer lock, c'est sa perte qui ouvre le menu (voir onMenuRequest).
       if (document.pointerLockElement) return;
@@ -406,13 +411,17 @@
     engine?.setGyro(gyro);
   });
   $effect(() => {
+    engine?.setMouseSensitivity(mouseSensitivity);
+  });
+  $effect(() => {
     document.documentElement.style.fontSize = largeText ? '19px' : '';
   });
   $effect(() => {
     library.filterSensitive = filterSensitive;
     audio.setMuted(!sound);
+    audio.setVolume(volume);
     narrator.setSound(sound);
-    saveSettings({ reduceMotion, filterSensitive, sound, quality, gyro, largeText });
+    saveSettings({ reduceMotion, filterSensitive, sound, quality, gyro, largeText, volume, mouseSensitivity });
   });
 
   function onLockChange() {
@@ -452,6 +461,8 @@
   <Home onEnter={enter} onCollection={openCollection} {library} {client} {loading} {reduceMotion} duo={duoAvailable} />
 {:else}
   <div class="hud">
+    <!-- (Boutons tactiles : sur ordinateur, Échap, C et M font la même chose.) -->
+    {#if mobile}
     <button class="hud-btn" aria-label={t('hud.menu')} onclick={openMenu}>
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
         <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
@@ -470,6 +481,7 @@
         {/if}
       </svg>
     </button>
+    {/if}
     {#if duoState === 'active'}
       <button class="hud-btn mic" class:on={micOn} class:talking={meSpeaking} aria-label={micOn ? t('duo.micOn') : t('duo.micOff')} aria-pressed={micOn} onclick={toggleMic}>
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -505,7 +517,7 @@
   {#if rupture}<div class="rupture {rupture}" aria-hidden="true"></div>{/if}
 
   {#if menuOpen}
-    <PauseMenu {seed} bind:autoWalk bind:reduceMotion bind:debugVisible bind:filterSensitive bind:quality bind:gyro bind:largeText onResume={resume} onNewVisit={newVisit} onCollection={openCollection} duo={duoAvailable && lobby.connected} duoJoining={duoState === 'joining'} onLeaveDuo={leaveDuo} />
+    <PauseMenu {seed} bind:autoWalk bind:reduceMotion bind:debugVisible bind:filterSensitive bind:quality bind:gyro bind:largeText bind:volume bind:mouseSensitivity onResume={resume} onNewVisit={newVisit} onCollection={openCollection} duo={duoAvailable && lobby.connected} duoJoining={duoState === 'joining'} onLeaveDuo={leaveDuo} />
   {/if}
 
   {#if debugVisible && engine}

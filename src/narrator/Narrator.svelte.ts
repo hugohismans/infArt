@@ -2229,7 +2229,7 @@ export class Narrator {
         if (clip.ended || this.playing?.audio !== clip) return;
         source = ctx.createBufferSource();
         source.buffer = buf;
-        source.connect(ctx.destination);
+        source.connect(this.audio.voiceOutput() ?? ctx.destination);
         source.onended = () => (clip.ended = true);
         source.start();
       },
