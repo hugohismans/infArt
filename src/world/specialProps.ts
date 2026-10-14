@@ -35,15 +35,16 @@ export function buildEasel(x: number, z: number): Prop {
   const wood = k.mat('#7a5534', 0.05);
   const canvas = k.mat('#f3efe6', 0.18);
   const frame = k.mat('#d9cfbd', 0.08);
-  // Trois pieds : deux devant, un derrière.
-  k.box(0.05, 2.0, 0.05, wood, x - 0.42, 1.0, z - 0.08, -0.08, -0.12);
-  k.box(0.05, 2.0, 0.05, wood, x + 0.42, 1.0, z - 0.08, -0.08, 0.12);
-  k.box(0.05, 2.05, 0.05, wood, x, 1.0, z + 0.42, 0.32, 0);
+  // Trois pieds : deux devant, légèrement penchés vers l'arrière ; un derrière, qui part du
+  // sommet et s'écarte vers le fond (le visiteur arrive par -Z).
+  k.box(0.05, 2.0, 0.05, wood, x - 0.42, 1.0, z - 0.08, 0.08, -0.12);
+  k.box(0.05, 2.0, 0.05, wood, x + 0.42, 1.0, z - 0.08, 0.08, 0.12);
+  k.box(0.05, 2.05, 0.05, wood, x, 1.0, z + 0.42, -0.32, 0);
   // Traverse qui porte la toile.
   k.box(1.0, 0.05, 0.12, wood, x, 0.86, z - 0.12);
-  // La toile : châssis et surface, légèrement inclinée.
-  k.box(0.92, 1.18, 0.05, frame, x, 1.5, z - 0.06, -0.08, 0);
-  k.box(0.88, 1.14, 0.02, canvas, x, 1.5, z - 0.095, -0.08, 0);
+  // La toile : châssis et surface, inclinées comme les pieds de devant.
+  k.box(0.92, 1.18, 0.05, frame, x, 1.5, z - 0.06, 0.08, 0);
+  k.box(0.88, 1.14, 0.02, canvas, x, 1.5, z - 0.095, 0.08, 0);
   // Une petite palette oubliée au pied du chevalet.
   k.box(0.32, 0.02, 0.22, wood, x + 0.55, 0.01, z - 0.4, 0, 0);
   return k.prop();

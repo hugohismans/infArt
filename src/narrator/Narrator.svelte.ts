@@ -268,7 +268,7 @@ export class Narrator {
     engine.world.signPlanner = (mod, exits) => this.plan(mod, exits);
     engine.world.avoidDeadEnds = () => {
       const m = this.m;
-      return this.active && (m.sortie.stage === 'chemin' || m.sortie.stage === 'ignore' || m.atelier.stage === 'quete' || m.autre.stage === 'poursuite');
+      return this.active && (m.sortie.stage === 'chemin' || m.sortie.stage === 'ignore' || m.atelier.stage === 'quete' || m.autre.stage === 'poursuite' || m.recre.stage === 'invite');
     };
     this.walkedAtStart = m.walked;
     if (this.active) {
@@ -539,6 +539,7 @@ export class Narrator {
     if (this.visitTime >= 45 && this.m.visits >= 2) this.say(this.m.device === 'mobile' ? 'E84' : 'E85');
 
     this.specialRooms(cur);
+    this.dropDeadSigns();
     this.guideTick(cur, dt);
     this.recreTick();
     this.storyTick(cur);
@@ -817,6 +818,25 @@ export class Narrator {
     this.save();
   }
 
+  /**
+   * Un panneau d'histoire dont la porte ne mène nulle part (bouchée faute de place, impasse,
+   * ou la salle mise en scène n'a pas tenu) : décroché. Le carrefour suivant le recevra.
+   */
+  private dropDeadSigns(): void {
+    for (const mod of this.engine!.world.modules) {
+      if (!mod.signs.some((sg) => sg.tag)) continue;
+      const dead = (sg: ModuleSign) => {
+        if (!sg.tag || sg.tag === 'finale' || sg.tag === 'arrivee') return false;
+        const n = mod.connectors[sg.connector]?.neighbor?.module;
+        if (!n) return false;
+        if (n.def.kind === 'cap' || (n.def.kind === 'deadend' && !n.special)) return true;
+        const want = mod.exitSpecial?.[sg.connector]?.kind;
+        return (want === 'atelier' || want === 'favoris' || want === 'galerie') && n.special !== want;
+      };
+      if (mod.signs.some(dead)) mod.clearSigns((sg) => !dead(sg));
+    }
+  }
+
   /** Salles mises en scène : la toile de l'atelier, l'encadrement au bout de la sortie. */
   private specialRooms(cur: WorldModule | null): void {
     const e = this.engine!;
@@ -985,11 +1005,6 @@ export class Narrator {
     const g = m.guide;
     const e = this.engine!;
     if (g.stage === 'attente') return this.guideMaybeStart(cur);
-    // Un panneau de consigne dont la porte a été murée entre-temps : décroché.
-    if (g.stage === 'jeu' && cur) {
-      const sign = cur.signs.find((sg) => sg.tag === `guide${g.round + 1}`);
-      if (sign && cur.connectors[sign.connector]?.neighbor?.module.def.kind === 'cap') cur.clearSigns((sg) => !sg.tag?.startsWith('guide'));
-    }
     if (g.stage !== 'noir' && g.stage !== 'bouquet') return;
     const gl = this.gl;
     gl.t += dt;

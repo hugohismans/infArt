@@ -810,7 +810,8 @@ export class World {
     const defs = this.defsFor(preset);
     if (sp.kind === 'atelier') {
       const def = defs['deadend'];
-      return def ? { def, preset, prepare: (m) => (m.special = 'atelier') } : null;
+      // (Pas la place pour l'impasse : une petite salle, ou un couloir, fera l'atelier.)
+      return def ? { def, fallbacks: [defs['room-s'], defs['straight-m']].filter((d): d is ModuleDef => !!d), preset, prepare: (m) => (m.special = 'atelier') } : null;
     }
     if (sp.kind === 'galerie') {
       const def = defs['galerie'] ?? defs['room-l'];
