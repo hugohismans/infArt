@@ -413,10 +413,11 @@ export class ArtLibrary {
     while (this.queued.length > 0 && this.ready.length + this.loading < target) {
       this.loadNext();
     }
-    // Lots : on en redemande avant d'être à court.
-    // Un lot à la fois ; deux si des emplacements attendent déjà (lot lent, réserve vide).
-    const maxInFlight = this.waiters.length > 0 && this.consecutiveFailures === 0 ? 2 : 1;
-    if (this.fetching < maxInFlight && this.queued.length < CONFIG.art.batchSize / 2 && this.ready.length + this.loading < target && performance.now() >= this.retryAt) {
+    // Lots : on en redemande avant d'être à court (un lot d'avance en file).
+    // Un lot à la fois ; deux si la réserve baisse ou que des emplacements attendent (visiteur pressé).
+    const low = this.waiters.length > 0 || this.ready.length < CONFIG.art.bufferTarget / 2;
+    const maxInFlight = low && this.consecutiveFailures === 0 ? 2 : 1;
+    if (this.fetching < maxInFlight && this.queued.length < CONFIG.art.batchSize && this.ready.length + this.loading < target && performance.now() >= this.retryAt) {
       void this.fetchNextBatch();
     }
     this.pumpThemes();
